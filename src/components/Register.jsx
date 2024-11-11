@@ -118,11 +118,11 @@ const Register = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(<span style={{ color: 'green' }}>Registration successful! Redirecting to login...</span>);
+        setMessage(<span style={{ color: 'green' }}>Registration successful! Now you can login into extension using this credentials</span>);
         localStorage.setItem('registrationSuccess', 'true');
-        setTimeout(() => {
-          window.location.href = 'login.html';
-        }, 2000);
+        // setTimeout(() => {
+        //   window.location.href = 'login.html';
+        // }, 2000);
       } else {
         switch (response.status) {
           case 400:
