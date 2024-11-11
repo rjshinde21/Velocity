@@ -146,37 +146,12 @@ body{
   }
 }
 
-.animate-scroll-left {
-  animation: scroll-left 20s linear alternate infinite;
-}
-
-.animate-scroll-right {
-  animation: scroll-right 20s linear alternate infinite;
-}
-
-@keyframes scroll-left {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-100%);
-  }
-}
-
-@keyframes scroll-right {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
 .image img {
   max-width: 421px;
+  height: 421px;
   object-fit: cover;
-  border-radius: 20px;
-  margin-right: 15px;
+  border-radius: 40px;
+  margin-right: 24px;
 }
 
 @keyframes swipeleft {
@@ -203,7 +178,7 @@ body{
   position: relative;
   width: 100%;
   overflow: hidden;
-  height: 21rem;
+  height: 27rem;
 }
 
 .wrapper {
@@ -220,6 +195,31 @@ body{
 .row2 section {
   animation: swipeleft var(--speed) linear infinite forwards;
 }
+
+@keyframes gradient-move {
+  0% {
+    background-position: 0% 50%;
+  }
+  25% {
+    background-position: 50% 0%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  75% {
+    background-position: 50% 100%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient-move {
+  animation: gradient-move 60s infinite alternate;
+  background-position: 0% 0%;
+  background-size: 200% 200%;
+}
+
 
 
 @media screen and (max-width: 768px) {

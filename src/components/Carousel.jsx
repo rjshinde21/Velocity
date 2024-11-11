@@ -1,13 +1,15 @@
-const Carousel = ({speed=20000}) => {
+import img1 from "../assets/carousel1.png";
+import img2 from "../assets/carousel2.png"
+import img3 from "../assets/carousel3.png"
+import img4 from "../assets/carousel4.png"
+import img5 from "../assets/carousel5.png"
+import img6 from "../assets/carousel6.png"
+
+
+const Carousel = ({speed}) => {
 
   const images = [
-    "https://flowbite.s3.amazonaws.com/docs/gallery/square/image.jpg",
-    "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-1.jpg",
-    "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-2.jpg",
-    "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-3.jpg",
-    "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-4.jpg",
-    "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-5.jpg",
-    "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-6.jpg"
+   img1, img2, img3, img4, img5, img6
   ].map((image) => ({
     id: crypto.randomUUID(),
     image
@@ -15,7 +17,7 @@ const Carousel = ({speed=20000}) => {
 
   return (
     <>
-      <div className="sm:w-[70%] w-full">
+      <div className="sm:w-[80%] w-full">
         <h1 className="bg-gradient-text pt-20 sm:pt-60 text-3xl sm:text-5xl mb-12 w-[90%] sm:w-[60%] mx-auto font-[Amenti]">
           At Velocity — We craft AI driven prompts that engage your audience
           with clarity and creativity.
