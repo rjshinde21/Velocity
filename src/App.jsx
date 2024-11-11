@@ -10,6 +10,7 @@ import { useState } from 'react'
 import Register from './components/Register'
 import TokenDetails from './components/TokenDetails'  // Import TokenDetails
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import Footer from './components/Footer'
 
 function App() {
   const [showLogin, setShowLogin] = useState(false);
@@ -38,6 +39,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/token-details" element={<TokenDetails />} />
         </Routes>
+        <Footer />
       </main>
     </Router>
   )
