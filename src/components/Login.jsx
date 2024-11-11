@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import GetStartedBtn from './GetStartedBtn';
 import { Link } from 'react-router-dom';
 import bg from "../assets/mainbg.png"
+import TokenDetails from './TokenDetails';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -117,6 +118,10 @@ const Register = () => {
     }
   };
 
+  function handleClick(){
+    return <TokenDetails />
+  }
+
   return (
     <div className="min-h-screen backdrop-blur-lg absolute h-full w-full flex justify-center items-center z-10" style={{
         backgroundImage: `url(${bg})`,
@@ -166,7 +171,7 @@ const Register = () => {
 
             {/* Register Button */}
             <div className='w-full flex justify-center'>
-            <GetStartedBtn content="Sign in" disabled={isLoading} />
+            <GetStartedBtn click={handleClick} content="Sign in" disabled={isLoading} />
                 </div>
           </div>
 
