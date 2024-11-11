@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import GetStartedBtn from './GetStartedBtn';
-import { Link, useNavigate } from 'react-router-dom'; // Changed Navigate to useNavigate
+import { Link, useNavigate } from 'react-router-dom';
 import bg from "../assets/mainbg.png"
 import TokenDetails from './TokenDetails';
 
@@ -9,12 +9,12 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showTokenDetails, setShowTokenDetails] = useState(false); // Add this state
+  const [showTokenDetails, setShowTokenDetails] = useState(false);
+  const navigate = useNavigate(); // Add this line to use navigation
   const [fieldErrors, setFieldErrors] = useState({
     email: '',
     password: '',
   });
-
 
   const validateField = (field, value) => {
     let error = '';
@@ -35,18 +35,17 @@ const Login = () => {
   };
 
   const handleFieldChange = (field, value) => {
-    // Update the field value
     switch (field) {
       case 'email':
         setEmail(value);
         break;
       case 'password':
         setPassword(value);
+        break;
       default:
         break;
     }
 
-    // Validate and set error
     const error = validateField(field, value);
     setFieldErrors(prev => ({
       ...prev,
@@ -58,6 +57,7 @@ const Login = () => {
     event.preventDefault();
     setMessage('');
 
+    // Validate fields
     const errors = {
       email: validateField('email', email),
       password: validateField('password', password),
@@ -80,35 +80,64 @@ const Login = () => {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        credentials: 'include',
         body: JSON.stringify({
           email,
-          password,
+          password
         }),
       });
 
       const data = await response.json();
-
+      console.log("data recvd:"+data.data.token);
       if (response.ok) {
-        setMessage(<span style={{ color: 'green' }}>Login successful!</span>);
-        setShowTokenDetails(true); // Show TokenDetails after successful login
+        
+        // Save user data and token
+        console.log("setting token:"+data.data.token);
+        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('userId', data.data.userId);
+        localStorage.setItem('userEmail', data.data.email);
+        console.log("token set:"+data.token);
+        setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
+        
+        // Navigate after a short delay
+        setTimeout(() => {
+          setShowTokenDetails(true);
+          //navigate('/token-details');
+        }, 1000);
       } else {
-        // ... your error handling ...
+        // Handle different error cases
+        switch (response.status) {
+          case 400:
+            setMessage(<span style={{ color: 'red' }}>Invalid email or password format</span>);
+            break;
+          case 401:
+            setMessage(<span style={{ color: 'red' }}>Invalid email or password</span>);
+            break;
+          case 404:
+            setMessage(<span style={{ color: 'red' }}>Account not found</span>);
+            break;
+          default:
+            setMessage(<span style={{ color: 'red' }}>{data.message || 'Login failed'}</span>);
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
-      setMessage(<span style={{ color: 'red' }}>Network error. Please check your connection and try again.</span>);
+      setMessage(
+        <span style={{ color: 'red' }}>
+          Network error. Please check your connection and try again.
+        </span>
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   if (showTokenDetails) {
-    return <TokenDetails />;  // Show TokenDetails when showTokenDetails is true
+    return <TokenDetails />;
   }
 
   return (
-    <div className="min-h-screen backdrop-blur-lg absolute h-full w-full flex justify-center items-center z-10" style={{
+    <div className="min-h-screen backdrop-blur-lg absolute h-full w-full flex justify-center items-center z-10" 
+      style={{
         backgroundImage: `url(${bg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
@@ -129,6 +158,7 @@ const Login = () => {
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => handleFieldChange('email', e.target.value)}
+                disabled={isLoading}
               />
               {fieldErrors.email && (
                 <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
@@ -147,6 +177,7 @@ const Login = () => {
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => handleFieldChange('password', e.target.value)}
+                disabled={isLoading}
               />
               {fieldErrors.password && (
                 <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>
@@ -157,7 +188,7 @@ const Login = () => {
             <div className='w-full flex justify-center'>
               <GetStartedBtn 
                 click={handleSubmit} 
-                content="Sign in" 
+                content={isLoading ? "Signing in..." : "Sign in"} 
                 disabled={isLoading} 
               />
             </div>
@@ -171,8 +202,11 @@ const Login = () => {
 
         {/* Link to Register */}
         <div className="mt-4 text-center">
-          <p className="text-sm bg-gradient-text">Don't have an account? 
-            <Link to="/register" className="text-blue-600 hover:text-blue-800">Sign up</Link>
+          <p className="text-sm bg-gradient-text">
+            Don't have an account?{' '}
+            <Link to="/register" className="text-blue-600 hover:text-blue-800">
+              Sign up
+            </Link>
           </p>
         </div>
       </div>
