@@ -8,10 +8,12 @@ import Carousel from './components/Carousel'
 import Login from './components/Login'
 import { useState } from 'react'
 import Register from './components/Register'
+import TokenDetails from './components/TokenDetails'  // Import TokenDetails
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 
 function App() {
   const [showLogin, setShowLogin] = useState(false);
+  const [showTokenDetails, setShowTokenDetails] = useState(false);  // New state
 
   const handleClick = () => {
     setShowLogin(prev => !prev);
@@ -25,7 +27,8 @@ function App() {
           <Route path="/" element={
             <>
               <Home />
-              {showLogin && <Register />}
+              {showLogin && !showTokenDetails && <Register setShowTokenDetails={setShowTokenDetails} />}
+              {showTokenDetails && <TokenDetails />}
               <FreeTrial />
               <Pricing />
               <Carousel speed={20000} />
@@ -33,6 +36,7 @@ function App() {
           } />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/token-details" element={<TokenDetails />} />
         </Routes>
       </main>
     </Router>

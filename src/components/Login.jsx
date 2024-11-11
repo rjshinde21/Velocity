@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 import GetStartedBtn from './GetStartedBtn';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Changed Navigate to useNavigate
 import bg from "../assets/mainbg.png"
 import TokenDetails from './TokenDetails';
 
-const Register = () => {
+const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showTokenDetails, setShowTokenDetails] = useState(false); // Add this state
   const [fieldErrors, setFieldErrors] = useState({
     email: '',
     password: '',
   });
+
 
   const validateField = (field, value) => {
     let error = '';
@@ -63,14 +65,13 @@ const Register = () => {
 
     setFieldErrors(errors);
 
-    // Check if there are any errors
     if (Object.values(errors).some(error => error)) {
       setMessage(<span style={{ color: 'red' }}>Please fix the errors before submitting</span>);
       return;
     }
 
     setIsLoading(true);
-    setMessage(<span style={{ color: '#2563eb' }}>Processing registration...</span>);
+    setMessage(<span style={{ color: '#2563eb' }}>Processing login...</span>);
 
     try {
       const response = await fetch('http://127.0.0.1:3000/api/users/login', {
@@ -81,7 +82,6 @@ const Register = () => {
         },
         credentials: 'include',
         body: JSON.stringify({
-          name,
           email,
           password,
         }),
@@ -90,36 +90,21 @@ const Register = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(<span style={{ color: 'green' }}>Registration successful! Redirecting to login...</span>);
-        localStorage.setItem('registrationSuccess', 'true');
-        // setTimeout(() => {
-        //   window.location.href = 'login.html';
-        // }, 2000);
+        setMessage(<span style={{ color: 'green' }}>Login successful!</span>);
+        setShowTokenDetails(true); // Show TokenDetails after successful login
       } else {
-        switch (response.status) {
-          case 400:
-            setMessage(<span style={{ color: 'red' }}>Error: {data.message || 'Invalid input data'}</span>);
-            break;
-          case 409:
-            setMessage(<span style={{ color: 'red' }}>Email already registered. Please login instead.</span>);
-            break;
-          case 500:
-            setMessage(<span style={{ color: 'red' }}>Server error. Please try again later.</span>);
-            break;
-          default:
-            setMessage(<span style={{ color: 'red' }}>Error: {data.message || 'Registration failed'}</span>);
-        }
+        // ... your error handling ...
       }
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('Login error:', error);
       setMessage(<span style={{ color: 'red' }}>Network error. Please check your connection and try again.</span>);
     } finally {
       setIsLoading(false);
     }
   };
 
-  function handleClick(){
-    return <TokenDetails />
+  if (showTokenDetails) {
+    return <TokenDetails />;  // Show TokenDetails when showTokenDetails is true
   }
 
   return (
@@ -132,7 +117,6 @@ const Register = () => {
         <h2 className="text-center text-2xl font-bold bg-gradient-text mb-4">Sign into your Account</h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
-
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-600">Email</label>
@@ -169,10 +153,14 @@ const Register = () => {
               )}
             </div>
 
-            {/* Register Button */}
+            {/* Submit Button */}
             <div className='w-full flex justify-center'>
-            <GetStartedBtn click={handleClick} content="Sign in" disabled={isLoading} />
-                </div>
+              <GetStartedBtn 
+                click={handleSubmit} 
+                content="Sign in" 
+                disabled={isLoading} 
+              />
+            </div>
           </div>
 
           {/* Message Area */}
@@ -181,10 +169,10 @@ const Register = () => {
           </div>
         </form>
 
-        {/* Link to Login */}
+        {/* Link to Register */}
         <div className="mt-4 text-center">
           <p className="text-sm bg-gradient-text">Don't have an account? 
-          <Link to="/register" className="text-blue-600 hover:text-blue-800">Sign up</Link>
+            <Link to="/register" className="text-blue-600 hover:text-blue-800">Sign up</Link>
           </p>
         </div>
       </div>
@@ -192,4 +180,4 @@ const Register = () => {
   );
 };
 
-export default Register;
+export default Login;
