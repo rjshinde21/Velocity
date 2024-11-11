@@ -93,9 +93,10 @@ const Login = () => {
         // Save user data and token
         console.log("setting token:"+data.data.token);
         localStorage.setItem('token', data.data.token);
-        localStorage.setItem('userId', data.data.userId);
+        localStorage.setItem('userId', data.data.user.id);
+        console.log("user raj:"+data.data.user.id);
         localStorage.setItem('userEmail', data.data.email);
-        console.log("token set:"+data.token);
+        console.log("token set:"+data.data.token);
         setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
         
         // Navigate after a short delay

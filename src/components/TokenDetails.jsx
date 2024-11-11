@@ -5,49 +5,52 @@ import { useNavigate } from 'react-router-dom';
 const TokenDetails = () => {
   const [tokenInfo, setTokenInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  // Get user data from localStorage
+  const userId = localStorage.getItem('userId');
+  const authToken = localStorage.getItem('token');
+
   useEffect(() => {
     const checkAuthAndFetchTokens = async () => {
-      const authToken = localStorage.getItem('token');
-      console.log("auth token:"+authToken);
-      if (!authToken) {
+      console.log("Checking auth - User ID:", userId);
+      console.log("Auth Token:", authToken);
+
+      if (!authToken || !userId) {
         setError('Authentication required');
         navigate('/login');
         return;
       }
-      await fetchTokenDetails(authToken);
+      await fetchTokenDetails();
     };
 
     checkAuthAndFetchTokens();
   }, [navigate]);
 
-  const fetchTokenDetails = async (authToken) => {
+  const fetchTokenDetails = async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Get user ID from localStorage
-      const userId = localStorage.getItem('userId');
-      if (!userId) {
-        throw new Error('User ID not found');
-      }
-
-      const response = await fetch('http://127.0.0.1:3000/api/token-types/23', {
+      console.log("Fetching tokens for user:", userId);
+      const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        },
+        },  
         credentials: 'include'
       });
 
+      console.log("Token API Response status:", response.status);
+
       if (response.status === 401) {
-        // Clear invalid credentials
         localStorage.removeItem('token');
         localStorage.removeItem('userId');
+        localStorage.removeItem('userEmail');
         navigate('/login');
         throw new Error('Session expired. Please login again.');
       }
@@ -56,15 +59,21 @@ const TokenDetails = () => {
         throw new Error(`Error: ${response.status}`);
       }
 
-      const data = await response.json();
-      setTokenInfo(data.data);
+      const responseData = await response.json();
+      console.log("Token API Response data:", responseData);
+
+      // Make sure we're accessing the correct data structure
+      if (responseData.data) {
+        setTokenInfo(responseData.data);
+      } else {
+        throw new Error('Invalid data format received');
+      }
 
     } catch (err) {
       console.error('Token fetch error:', err);
       setError(err.message);
       
-      // Handle specific error cases
-      if (err.message.includes('Session expired') || err.message.includes('User ID not found')) {
+      if (err.message.includes('Session expired') || err.message.includes('Invalid data format')) {
         navigate('/login');
       }
     } finally {
@@ -72,22 +81,60 @@ const TokenDetails = () => {
     }
   };
 
-  const handleRefresh = async () => {
+  const handleTopUp = async () => {
     const authToken = localStorage.getItem('token');
-    if (authToken) {
-      await fetchTokenDetails(authToken);
-    } else {
-      navigate('/login');
+    const userId = localStorage.getItem('userId'); // Ensure userId is retrieved correctly
+    if (!authToken || !userId) {
+      setError('Authentication required.');
+      return;
+    }
+  
+    try {
+      setIsUpdating(true);
+      setError(null);
+  
+      console.log("Initiating top-up for user:", userId);
+        
+      const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          token_received: 90,
+          user_id: userId
+        })
+      });
+  
+      console.log("Top-up response status:", response.status);
+  
+      if (!response.ok) {
+        throw new Error(`Failed to update tokens: ${response.status}`);
+      }
+  
+      const updatedData = await response.json();
+      console.log("Top-up response data:", updatedData); // Log the full response structure
+  
+      // Check and set token info based on the actual structure
+      if (updatedData && updatedData.data) {
+        setTokenInfo(updatedData.data);
+        alert('Successfully topped up credits!');
+      } 
+      // else {
+      //   console.log("Unexpected response format:", updatedData);
+      //   throw new Error('Invalid response data format. Expected "data" field.');
+      // }
+  
+    } catch (error) {
+      console.error('Top-up error:', error);
+      setError(error.message);
+      alert('Failed to top up tokens. Please try again.');
+    } finally {
+      setIsUpdating(false);
     }
   };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
+  
 
   if (isLoading) {
     return (
@@ -103,7 +150,7 @@ const TokenDetails = () => {
         <div className="text-red-500 text-center">
           <p>{error}</p>
           <button
-            onClick={handleRefresh}
+            onClick={fetchTokenDetails}
             className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
           >
             Try Again
@@ -133,34 +180,22 @@ const TokenDetails = () => {
               <p className="text-gray-400 text-sm">Used Tokens</p>
               <p className="text-white font-semibold">{tokenInfo.tokens_used}</p>
             </div>
-            <button>Top UP Credits</button>
           </div>
 
-          {/* <div className="bg-black/60 p-3 rounded">
-            <p className="text-gray-400 text-sm">Remaining Tokens</p>
-            <p className="text-white font-semibold">
-              {tokenInfo.token_received - tokenInfo.tokens_used}
-            </p>
-            <div className="w-full bg-gray-700 rounded-full h-2.5 mt-2">
-              <div 
-                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                style={{
-                  width: `${((tokenInfo.token_received - tokenInfo.tokens_used) / tokenInfo.token_received) * 100}%`
-                }}
-              ></div>
-            </div>
-          </div> */}
 
-          {/* <div className="grid grid-cols-2 gap-4">
-            <div className="bg-black/60 p-3 rounded">
-              <p className="text-gray-400 text-sm">Purchase Date</p>
-              <p className="text-white font-semibold">{formatDate(tokenInfo.boughtDateTime)}</p>
-            </div>
-            <div className="bg-black/60 p-3 rounded">
-              <p className="text-gray-400 text-sm">Expiry Date</p>
-              <p className="text-white font-semibold">{formatDate(tokenInfo.expiryDateTime)}</p>
-            </div>
-          </div> */}
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={handleTopUp}
+              disabled={isUpdating}
+              className={`px-4 py-2 ${
+                isUpdating 
+                  ? 'bg-gray-500 cursor-not-allowed' 
+                  : 'bg-green-500 hover:bg-green-600'
+              } text-white font-semibold rounded transition-colors`}
+            >
+              {isUpdating ? 'Processing...' : 'Top Up Credits'}
+            </button>
+          </div>
         </div>
       )}
     </div>
