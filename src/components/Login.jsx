@@ -73,7 +73,7 @@ const Register = () => {
     setMessage(<span style={{ color: '#2563eb' }}>Processing registration...</span>);
 
     try {
-      const response = await fetch('http://127.0.0.1:3000/api/users/register', {
+      const response = await fetch('http://127.0.0.1:3000/api/users/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,9 +92,9 @@ const Register = () => {
       if (response.ok) {
         setMessage(<span style={{ color: 'green' }}>Registration successful! Redirecting to login...</span>);
         localStorage.setItem('registrationSuccess', 'true');
-        setTimeout(() => {
-          window.location.href = 'login.html';
-        }, 2000);
+        // setTimeout(() => {
+        //   window.location.href = 'login.html';
+        // }, 2000);
       } else {
         switch (response.status) {
           case 400:
