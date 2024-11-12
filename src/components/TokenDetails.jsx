@@ -15,8 +15,8 @@ const TokenDetails = () => {
 
   useEffect(() => {
     const checkAuthAndFetchTokens = async () => {
-      console.log("Checking auth - User ID:", userId);
-      console.log("Auth Token:", authToken);
+      // console.log("Checking auth - User ID:", userId);
+      // console.log("Auth Token:", authToken);
 
       if (!authToken || !userId) {
         setError('Authentication required');
@@ -34,7 +34,7 @@ const TokenDetails = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log("Fetching tokens for user:", userId);
+      // console.log("Fetching tokens for user:", userId);
       const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
         method: 'GET',
         headers: {
@@ -45,7 +45,7 @@ const TokenDetails = () => {
         credentials: 'include'
       });
 
-      console.log("Token API Response status:", response.status);
+      // console.log("Token API Response status:", response.status);
 
       if (response.status === 401) {
         localStorage.removeItem('token');
@@ -60,7 +60,7 @@ const TokenDetails = () => {
       }
 
       const responseData = await response.json();
-      console.log("Token API Response data:", responseData);
+      // console.log("Token API Response data:", responseData);
 
       // Make sure we're accessing the correct data structure
       if (responseData.data) {
@@ -107,7 +107,7 @@ const TokenDetails = () => {
         })
       });
   
-      console.log("Top-up response status:", response.status);
+      // console.log("Top-up response status:", response.status);
   
       if (!response.ok) {
         throw new Error(`Failed to update tokens: ${response.status}`);

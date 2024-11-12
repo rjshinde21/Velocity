@@ -87,16 +87,16 @@ const Login = () => {
       });
 
       const data = await response.json();
-      console.log("data recvd:"+data.data.token);
+      // console.log("data recvd:"+data.data.token);
       if (response.ok) {
         
         // Save user data and token
-        console.log("setting token:"+data.data.token);
+        // console.log("setting token:"+data.data.token);
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('userId', data.data.user.id);
-        console.log("user raj:"+data.data.user.id);
+        // console.log("user raj:"+data.data.user.id);
         localStorage.setItem('userEmail', data.data.email);
-        console.log("token set:"+data.data.token);
+        // console.log("token set:"+data.data.token);
         setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
         
         // Navigate after a short delay
