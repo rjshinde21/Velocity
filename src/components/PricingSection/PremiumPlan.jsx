@@ -33,7 +33,7 @@ const PremiumPlan = ({ planData }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:3000/api/plans/31', {
+      const response = await fetch('http://127.0.0.1:3000/api/plans/30', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
