@@ -1,7 +1,88 @@
+import { useState, useEffect } from 'react';
 import FreePlan from "./FreePlan";
 import PremiumPlan from "./PremiumPlan";
 
-const Pricing = () => {  
+const Pricing = () => {
+  const [freePlanData, setFreePlanData] = useState(null);
+  const [premiumPlanData, setPremiumPlanData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+
+        const [freeResponse, premiumResponse] = await Promise.all([
+          fetch('http://127.0.0.1:3000/api/plans/1', {
+            method: 'GET',
+            headers: headers
+          }),
+          fetch('http://127.0.0.1:3000/api/plans/2', {
+            method: 'GET',
+            headers: headers
+          })
+        ]);
+
+        if (!freeResponse.ok || !premiumResponse.ok) {
+          throw new Error(`Failed to fetch plans: ${freeResponse.statusText}`);
+        }
+
+        const { data: freeData } = await freeResponse.json();
+        const { data: premiumData } = await premiumResponse.json();
+
+        // Transform API data to match component needs
+        const transformedFreePlan = {
+          name: freeData.plan_name,
+          price: freeData.cost,
+          tokens: freeData.token_received,
+          features: [
+            "Unlimited usage",
+            // `${freeData.token_received} tokens per month`,
+            "Usable up to 5 times",
+          ],
+          disabledFeatures: [
+            "5 credits per use",
+            "10 credits per use",
+            "Included"
+          ],
+          activeUsers: freeData.active_users
+        };
+
+        const transformedPremiumPlan = {
+          name: premiumData.plan_name,
+          price: premiumData.cost,
+          tokens: premiumData.token_received,
+          features: [
+            "Unlimited usage",
+            // `${premiumData.token_received} tokens per month`,
+            "Unlimited usage with credits",
+
+            "5 credits per use",
+            "10 credits per use",
+            "Include"
+          ],
+          disabledFeatures: [],
+          activeUsers: premiumData.active_users
+        };
+
+        setFreePlanData(transformedFreePlan);
+        setPremiumPlanData(transformedPremiumPlan);
+      } catch (err) {
+        setError(err.message);
+        console.error('Error fetching plans:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlans();
+  }, []);
 
   return (
     <div className="flex flex-col items-center">
