@@ -22,6 +22,13 @@ html {
   color: transparent; /* Make text color transparent to reveal the gradient */
 }
 
+.bg-gradient-blue {
+  background: linear-gradient(to right, #32a9df, #6ACFFF);
+  background-clip: text;
+  -webkit-background-clip: text; /* For Safari */
+  color: transparent; /* Make text color transparent to reveal the gradient */
+}
+
 .bg-gradient-premium {
   background: linear-gradient(to right, #B78629, #FCC101);
   background-clip: text;

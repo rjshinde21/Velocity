@@ -25,7 +25,7 @@ const FreePlan = ({ planData }) => {
   );
 
   return (
-    <div class="w-full max-w-lg p-4 border border-[#2C2C2C] font-[Inter] rounded-lg shadow sm:p-12 bg-[#111111] hover:border-[#757575] transition-all duration-200">
+    <div className="w-full max-w-lg p-4 border border-[#2C2C2C] font-[Inter] rounded-lg shadow sm:p-12 bg-[#111111] hover:scale-105 transition-all duration-200">
       <div className="flex md:flex-col justify-between md:justify-start items-center md:items-start">
         <h5 className="mb-0 sm:mb-4 text-md sm:text-xl font-medium text-[#757575]">
           {planData.name || 'Free plan'}
