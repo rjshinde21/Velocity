@@ -27,7 +27,7 @@ const TokenDetails = () => {
     };
 
     checkAuthAndFetchTokens();
-  }, [navigate]);
+  }, [navigate, isUpdating]);
 
   const fetchTokenDetails = async () => {
     try {
@@ -102,7 +102,7 @@ const TokenDetails = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          token_received: 90,
+          token_received: 72,
           user_id: userId
         })
       });
