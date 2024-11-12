@@ -8,7 +8,7 @@ const ScrollAnchor = () => {
   };
 
   return (
-    <div className="flex justify-center items-center space-x-7 backdrop-blur-lg border border-[#1E1E1E] p-4 rounded-full w-fit mx-auto">
+    <div className="flex justify-center items-center space-x-7 backdrop-blur-sm border border-[#1E1E1E] p-4 rounded-full w-fit mx-auto">
       <button
         className={`flex items-center transition text-lg ${
           selected === 1 ? "text-white" : "text-gray-500"

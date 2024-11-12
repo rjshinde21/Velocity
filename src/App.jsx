@@ -35,7 +35,7 @@ function App() {
                   <Register setShowTokenDetails={setShowTokenDetails} />
                 )}
                 {showTokenDetails && <TokenDetails />}
-                {/* <HowItWorksCard /> */}
+                <HowItWorksCard />
                 <FreeTrial />
                 <Pricing />
                 <Carousel speed={40000} />

@@ -18,6 +18,13 @@
   color: transparent; /* Make text color transparent to reveal the gradient */
 }
 
+.bg-gradient-premium {
+  background: linear-gradient(to right, #B78629, #FCC101);
+  background-clip: text;
+  -webkit-background-clip: text; /* For Safari */
+  color: transparent; /* Make text color transparent to reveal the gradient */
+}
+
 /* You can now use the custom font in your CSS */
 
 @tailwind base;
