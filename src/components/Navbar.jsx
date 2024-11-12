@@ -4,18 +4,25 @@ import GetStartedBtn from "./GetStartedBtn";
 import { Link } from "react-router-dom";
 import ScrollAnchor from "./ScrollAnchor";
 
-const Navbar = ({handleClick}) => {
-
+const Navbar = ({ handleClick, howItWorksRef, freeTrialRef, pricingRef, carouselRef }) => {
   return (
     <div>
-      <nav class="bg-transparent text-primary fixed z-20 w-full top-0 start-0 px-4 sm:px-5">
-        <div class="max-w-screen-2xl flex flex-wrap items-center justify-between sm:mx-10 lg:mx-auto pt-5 sm:pt-12">
-          <Link to="#" class="flex items-center space-x-3 w-[161px]">
-            <img src={velocitylogo} class="h-10 sm:h-14" alt="Velocity Logo" />
+      <nav className="bg-transparent text-primary fixed w-full top-0 start-0 px-4 sm:px-5 z-50">
+        <div className="max-w-screen-3xl flex flex-wrap items-center justify-between sm:mx-10 lg:mx-auto pt-5 sm:pt-12">
+          <Link to="/" className="flex items-center space-x-3 w-[161px]">
+            <img src={velocitylogo} className="h-10 sm:h-14" alt="Velocity Logo" />
           </Link>
-          <ScrollAnchor />
+
+          {/* Render ScrollAnchor inside Navbar */}
+          <ScrollAnchor
+            howItWorksRef={howItWorksRef}
+            freeTrialRef={freeTrialRef}
+            pricingRef={pricingRef}
+            carouselRef={carouselRef}
+          />
+
           <Link to="/register">
-          <GetStartedBtn click={handleClick} content="Get Started"/>
+            <GetStartedBtn click={handleClick} content="Get Started" />
           </Link>
         </div>
       </nav>

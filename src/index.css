@@ -10,6 +10,10 @@
   font-style: normal;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 /* Add the custom gradient class */
 .bg-gradient-text {
   background: linear-gradient(to right, #DADADA, #999999);
@@ -59,7 +63,7 @@ body{
 
 .glowing-button {
   position: relative;
-  padding: 21px 46px;
+  padding: 20px 50px;
   background-color: #000;
   color: #fff;
   border: 1px solid #0095ff;
@@ -205,16 +209,16 @@ body{
 
 @keyframes gradient-move {
   0% {
-    background-position: 0% 50%;
+    background-position: 0% 100%;
   }
   25% {
     background-position: 50% 0%;
   }
   50% {
-    background-position: 100% 50%;
+    background-position: 100% 100%;
   }
   75% {
-    background-position: 50% 100%;
+    background-position: 100% 0%;
   }
   100% {
     background-position: 0% 50%;

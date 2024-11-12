@@ -6,8 +6,8 @@ const Pricing = () => {
   return (
     <div className="flex flex-col items-center">
       <h3 className="bg-gradient-to-r from-[#DADADA] to-[#999999] bg-clip-text text-transparent text-3xl sm:text-4xl p-4 sm:p-10 font-[Amenti]">Explore our Plans</h3>
-      <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 p-4">
-        <div class="w-full max-w-3xl py-4 font-[Inter] rounded-lg shadow sm:py-12">
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 p-4 w-full max-w-6xl">
+        <div class="w-full max-w-3xl py-4 px-2 font-[Inter] rounded-lg shadow sm:py-12 sm:px-1">
       <div className="flex md:flex-col justify-between md:justify-start items-center md:items-start">
       <h5 class="leading-tight text-[#999999] font-bold ms-3 mb-10">
         Features

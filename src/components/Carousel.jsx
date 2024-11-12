@@ -6,7 +6,7 @@ import img5 from "../assets/carousel5.png"
 import img6 from "../assets/carousel6.png"
 
 
-const Carousel = ({speed}) => {
+const Carousel = ({speed=30000}) => {
 
   const images = [
    img1, img2, img3, img4, img5, img6

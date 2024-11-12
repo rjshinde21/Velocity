@@ -2,7 +2,7 @@ import React from "react";
 
 const PremiumPlan = () => {
   return (
-    <div class="w-full max-w-sm p-4 border border-[#B78629] font-[Inter] rounded-lg shadow sm:p-12 bg-gradient-to-r from-[#B78629]/10 to-[#FCC101]/10 hover:scale-105 transition-all duration-200">
+    <div class="w-full max-w-lg p-4 border border-[#B78629] font-[Inter] rounded-lg shadow sm:p-12 bg-gradient-to-r from-[#B78629]/10 to-[#FCC101]/10 hover:border-[#ffe078] transition-all duration-100">
       <div className="flex md:flex-col justify-between md:justify-start items-center md:items-start">
         <h5 class="mb-0 sm:mb-4 text-md sm:text-xl font-medium bg-gradient-premium">
           Premium plan

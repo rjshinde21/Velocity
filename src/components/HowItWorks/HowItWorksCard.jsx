@@ -1,21 +1,19 @@
 import React from 'react'
-import circuit from "../../assets/circuit.png"
 import cardbg from "../../assets/howitworkscard.png"
 
 const HowItWorksCard = () => {
   return (
-    <div className='w-[350px]' style={{ backgroundImage: `url(${cardbg})`, backgroundRepeat: "no-repeat", backgroundSize: "cover", backgroundPosition: "center"}}>
-      <div className='py-10'>
-        <div className='flex items-center'>
-          <img src={circuit} alt="Circuit Icon" />
-          <span className='text-primary'>Choose your AI platform</span>
-        </div>
-        <div>
-          <span className='text-[#999999]'>Choose your desired AI platform
-          (e.g., GPT, DALL-E)</span>
+    <div
+        className="w-[300px] h-[150px] flex flex-col justify-center items-center p-6 text-white bg-cover bg-center rounded-md shadow-lg"
+      style={{ backgroundImage: `url(${cardbg})` }}  // Replace with your image URL
+      >
+        <div className="flex flex-col items-center">
+          <div className="text-2xl font-semibold mb-2">Choose your AI platform</div>
+          <p className="text-sm text-gray-300 text-center">
+            Choose your desired AI platform (e.g., GPT, DALL-E)
+          </p>
         </div>
       </div>
-    </div>
   )
 }
 
