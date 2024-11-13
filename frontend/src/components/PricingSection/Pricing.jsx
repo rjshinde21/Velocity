@@ -18,23 +18,43 @@ const Pricing = () => {
           'Content-Type': 'application/json'
         };
 
-        const [freeResponse, premiumResponse] = await Promise.all([
-          fetch('http://127.0.0.1:3000/api/plans/1', {
-            method: 'GET',
-            headers: headers
-          }),
-          fetch('http://127.0.0.1:3000/api/plans/2', {
-            method: 'GET',
-            headers: headers
-          })
-        ]);
+        // const [freeResponse, premiumResponse] = await Promise.all([
+        //   fetch('http://127.0.0.1:3000/api/plans/1', {
+        //     method: 'GET',
+        //     headers: headers
+        //   }),
+        //   fetch('http://127.0.0.1:3000/api/plans/2', {
+        //     method: 'GET',
+        //     headers: headers
+        //   })
+        // ]);
+        const freeResponse = 
+          {
+            "success": true,
+            "data": {
+                "plan_id": 1,
+                "plan_name": "freeee plan",
+                "token_received": 100,
+                "cost": "0.00",
+                "active_users": 4
+            }
+          }
+          const premiumResponse = {
+            "success": true,
+            "data": {
+                "plan_id": 2,
+                "plan_name": "premium plannn",
+                "token_received": 100,
+                "cost": "299.00",
+                "active_users": 6
+            }
+        }        
+        // if (!freeResponse.ok || !premiumResponse.ok) {
+        //   throw new Error(`Failed to fetch plans: ${freeResponse.statusText}`);
+        // }
 
-        if (!freeResponse.ok || !premiumResponse.ok) {
-          throw new Error(`Failed to fetch plans: ${freeResponse.statusText}`);
-        }
-
-        const { data: freeData } = await freeResponse.json();
-        const { data: premiumData } = await premiumResponse.json();
+        const { data: freeData } =  freeResponse
+        const { data: premiumData } =premiumResponse;
 
         // Transform API data to match component needs
         const transformedFreePlan = {
@@ -90,40 +110,7 @@ const Pricing = () => {
         Explore our Plans
       </h3>
       <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 p-4">
-        <div className="w-full max-w-3xl py-4 font-[Inter] rounded-lg shadow sm:py-12">
-          <div className="flex md:flex-col justify-between md:justify-start items-center md:items-start">
-            <h5 className="leading-tight text-[#999999] font-bold ms-3 mb-10">
-              Features
-            </h5>
-          </div>
-          <ul role="list" className="space-y-5 my-3 sm:my-7 grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-2">
-            <li className="flex items-center sm:block md:flex">
-              <span className="text-base font-normal leading-tight text-[#999999] dark:text-gray-400 ms-3">
-                Base Level Prompt Enhancement
-              </span>
-            </li>
-            <li className="flex sm:block md:flex">
-              <span className="text-base font-normal leading-tight text-[#999999] dark:text-gray-400 ms-3">
-                Advanced Features
-              </span>
-            </li>
-            <li className="flex sm:block md:flex">
-              <span className="text-base font-normal leading-tight text-[#999999] dark:text-gray-400 ms-3">
-                Advanced Prompt Customization
-              </span>
-            </li>
-            <li className="flex sm:block md:flex">
-              <span className="text-base font-normal leading-tight text-[#999999] ms-3">
-                Image to Prompt Feature
-              </span>
-            </li>
-            <li className="flex sm:block md:flex">
-              <span className="text-base font-normal leading-tight text-[#999999] ms-3">
-                Storage of Prompts
-              </span>
-            </li>
-          </ul>
-        </div>
+        
         
         {loading ? (
           <div className="flex justify-center items-center p-4">
@@ -135,6 +122,7 @@ const Pricing = () => {
           <>
             <FreePlan planData={freePlanData} />
             <PremiumPlan planData={premiumPlanData} />
+            <FreePlan planData={freePlanData} />
           </>
         )}
       </div>

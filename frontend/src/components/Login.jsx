@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import GetStartedBtn from './GetStartedBtn';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import bg from "../assets/mainbg.png"
 import TokenDetails from './TokenDetails';
 
@@ -10,7 +10,6 @@ const Login = () => {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showTokenDetails, setShowTokenDetails] = useState(false);
-  const navigate = useNavigate(); // Add this line to use navigation
   const [fieldErrors, setFieldErrors] = useState({
     email: '',
     password: '',
@@ -99,10 +98,8 @@ const Login = () => {
         // console.log("token set:"+data.data.token);
         setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
         
-        // Navigate after a short delay
         setTimeout(() => {
           setShowTokenDetails(true);
-          //navigate('/token-details');
         }, 1000);
       } else {
         // Handle different error cases

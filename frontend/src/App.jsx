@@ -9,7 +9,7 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import TokenDetails from "./components/TokenDetails";
 import Footer from "./components/Footer";
-import HowItWorks from "./components/HowItWorks/HowItWorks";
+import HowItWorks from "./components/HowItWorks";
 import ProfilePage from "./components/ProfilePage";
 
 function App() {
@@ -28,7 +28,7 @@ function App() {
 
   return (
     <Router>
-      <main className="bg-primary overflow-hidden">
+      <main className="bg-primary overflow-hidden scrollbar scrollbar-thumb-slate-50 scrollbar-track-slate-800">
         <Navbar
           handleClick={handleClick}
           howItWorksRef={howItWorksRef}

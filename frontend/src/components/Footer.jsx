@@ -15,7 +15,7 @@ const Footer = () => {
                 alt="Velocity Logo"
               />
             </a>
-            <p class="self-center text-xl sm:text-2xl font-semibold whitespace-nowrap font-[Inter] my-4 bg-gradient-text">
+            <p class="self-center text-2xl font-semibold whitespace-nowrap font-[Inter] my-4 bg-gradient-text">
               We grow up your business <br /> with personal AI manager.
             </p>
             <p className="text-md bg-gradient-text mb-8 sm:mb-0">
