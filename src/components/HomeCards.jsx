@@ -20,7 +20,7 @@ const HomeCards = () => {
         <div
           key={index}
           className="max-w-[530px] max-h-[260px] flex flex-col justify-center items-center py-10 mx-4 px-4 sm:py-16 sm:px-10 sm:mx-0 text-white bg-cover bg-center rounded-md shadow-lg"
-          style={{ backgroundImage: `url(${cardbg})`, backgroundSize: "cover" }}
+          style={{ backgroundImage: `url(${cardbg})`, backgroundSize: "contain",backgroundRepeat: "no-repeat" }}
         >
           <div className="flex flex-col justify-center text-left">
             <div className="font-semibold mb-5 flex items-center">

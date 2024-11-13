@@ -9,7 +9,6 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import TokenDetails from "./components/TokenDetails";
 import Footer from "./components/Footer";
-import HowItWorksCard from "./components/HowItWorks/HowItWorksCard";
 import HowItWorks from "./components/HowItWorks/HowItWorks";
 import ProfilePage from "./components/ProfilePage";
 
