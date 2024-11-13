@@ -5,6 +5,7 @@ import PromptGrid from './PromptGrid';
 const ProfilePage = () => {
     const [name, setName] = useState("Mukul Goyal");
     const [isEditing, setIsEditing] = useState(false);
+    const [isPremium, setIsPremium] = useState(false)
 
     const handleClick = () => {
         setIsEditing(!isEditing);
@@ -68,9 +69,9 @@ const ProfilePage = () => {
                             ) : (
                                 <h2 className="text-white font-[Inter] text-3xl">{name}</h2>
                             )}
-                            <span className="bg-[#F7AA1C80] text-white text-xs px-3 py-1 rounded-lg gap-1 inline-flex items-center mt-2 italic">
+                            <span className={`${isPremium ? 'bg-[#F7AA1C80]' : 'bg-[#D9D9D966]'} text-white text-xs px-3 py-1 rounded-lg gap-1 inline-flex items-center mt-2 italic`}>
                                 <img className="w-3 h-3" src={logo} alt="" />
-                                Premium User
+                                {isPremium?"Premium":"Free Plan"} User
                             </span>
                         </div>
                     </div>
