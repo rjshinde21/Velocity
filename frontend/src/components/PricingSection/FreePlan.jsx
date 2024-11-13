@@ -25,10 +25,15 @@ const FreePlan = ({ planData }) => {
   );
 
   return (
-    <div className="w-full max-w-lg p-4 border border-[#2C2C2C] font-[Inter] rounded-lg shadow sm:p-12 bg-[#111111] hover:scale-105 transition-all duration-200">
+    <div className="w-full max-w-lg p-4 border border-[#2C2C2C] font-[Inter] rounded-[32px] shadow sm:p-12 bg-[#111111] hover:scale-105 transition-all duration-200">
       <div className="flex md:flex-col justify-between md:justify-start items-center md:items-start">
+        <h5 className="mb-0 sm:mb-1 text-md sm:text-xl font-[Inter] text-[#ffffff]">
+          {/* {planData.name || 'Free plan'} */}
+          Basic
+        </h5>
         <h5 className="mb-0 sm:mb-4 text-md sm:text-xl font-medium text-[#757575]">
-          {planData.name || 'Free plan'}
+          {/* {planData.name || 'Limited but powerful'} */}
+          'Limited but powerful'
         </h5>
         <div className="flex items-baseline text-[#757575]">
           <span className="text-3xl sm:text-5xl font-semibold">₹</span>

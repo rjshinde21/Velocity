@@ -15,18 +15,18 @@ const HomeCards = () => {
   ];
 
   return (
-    <div className="flex flex-col sm:flex-row justify-center items-center gap-6 sm:gap-10 pb-16 pt-56">
+    <div className="flex flex-col sm:flex-row justify-center items-center gap-0 sm:gap-10 pb-6 pt-56">
       {cardsData.map((card, index) => (
         <div
           key={index}
-          className="max-w-[530px] max-h-[260px] flex flex-col justify-center items-center py-10 mx-4 px-4 sm:py-16 sm:px-10 sm:mx-0 text-white bg-cover bg-center rounded-md shadow-lg"
+          className="max-w-[530px] max-h-[260px] flex flex-col justify-center items-center py-10 mx-4 px-6 sm:py-16 sm:px-10 sm:mx-0 text-white bg-cover bg-center rounded-md shadow-lg"
           style={{ backgroundImage: `url(${cardbg})`, backgroundSize: "contain",backgroundRepeat: "no-repeat" }}
         >
           <div className="flex flex-col justify-center text-left">
-            <div className="font-semibold mb-5 flex items-center">
-              <span className="text-lg">{card.title}</span>
+            <div className="font-semibold mb-2 sm:mb-5 flex items-center">
+              <span className="text-md sm:text-lg">{card.title}</span>
             </div>
-            <p className="text-lg text-[#999999] text-left">
+            <p className="text-md sm:text-lg text-[#999999] text-left">
               {card.description}
             </p>
           </div>

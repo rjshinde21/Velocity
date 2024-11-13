@@ -1,10 +1,13 @@
 import React, { useState } from "react";
-import copy from "../assets/copy.png";
+import star from "../assets/Home/star.png";
 import GetStartedBtn from "./GetStartedBtn";
 import { CheckCheckIcon, Clipboard } from "lucide-react";
 
 const PromptGrid = () => {
   const prompts = [
+    "Qorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum, ac aliquet odio mattis.",
+    "Qorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum, ac aliquet odio mattis.",
+    "Qorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum, ac aliquet odio mattis.",
     "Qorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum, ac aliquet odio mattis.",
     "Qorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum, ac aliquet odio mattis.",
     "Qorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum, ac aliquet odio mattis.",
@@ -44,7 +47,10 @@ const PromptGrid = () => {
           </div>
         ))}
       </div>
-      <GetStartedBtn content="Create More" />
+      <button className="glowing-button flex items-center gap-2 sm:mt-12 mt-6">
+            <span>Create More</span>
+            <img src={star} alt="Star" />
+        </button>
     </div>
   );
 };

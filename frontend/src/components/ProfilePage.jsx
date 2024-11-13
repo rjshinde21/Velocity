@@ -5,7 +5,7 @@ import PromptGrid from './PromptGrid';
 const ProfilePage = () => {
     const [name, setName] = useState("Mukul Goyal");
     const [isEditing, setIsEditing] = useState(false);
-    const [isPremium, setIsPremium] = useState(false)
+    const [isPremium, setIsPremium] = useState(false);
 
     const handleClick = () => {
         setIsEditing(!isEditing);
@@ -15,36 +15,47 @@ const ProfilePage = () => {
         setName(e.target.value);
     };
 
-    return (
-        <div className="md:flex h-[100vh] w-[100vw]">
-            <div className="flex-column justify-center sm:justify-normal sm:w-[485px] border-r border-r-[#2C2C2C] flex space-y-4 text-sm text-gray-500 dark:text-gray-400 md:me-4 mb-4 md:mb-0 sm:px-6 sm:py-5 items-center">
-                <div className="px-4 py-10">
-                    <div className="sm:px-4 sm:py-5">
-                        <p className="text-[#ffffff]/80 font-[Inter] text-sm mb-3">Credit Balance of today</p>
-                        <p className="pb-3 text-[#ffffff] font-[Inter] border-b border-[#ffffff]/30">
-                            <span className="text-4xl">40</span> Credits Left
-                        </p>
-                        <p className="text-[#ffffff]/80 my-3 italic font-normal font-[Inter]">Running out of daily credits?</p>
-                        <button className="flex font-[Inter] border border-[#F7AA1C] transition-all duration-200 text-[10px] px-2 py-2 sm:px-4 sm:py-3 text-primary rounded-[35px] items-center bg-[radial-gradient(circle_at_center,_rgba(247,170,28,0.2),_rgba(247,170,28,0.4))] hover:shadow-[0_0_7px_rgba(255,255,255,0.7)] mb-4 sm:mb-8">
-                            Top Up Credits
-                        </button>
-                    </div>
-                    <button className="flex justify-center text-lg px-7 py-3 sm:px-36 sm:py-5 text-[#444444] border border-[#444444] transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]">
-                        Upgrade
-                    </button>
+    // Credits section component to avoid duplication
+    const CreditsSection = () => (
+        <div className="flex flex-col justify-center items-center px-10 sm:px-4 py-6 md:py-10 ">
+            <div className="w-full max-w-sm sm:px-4 sm:py-5">
+                <p className="text-[#ffffff]/80 font-[Inter] text-sm mb-3">Credit Balance of today</p>
+                <p className="pb-3 text-[#ffffff] font-[Inter] border-b border-[#ffffff]/30">
+                    <span className="text-4xl">40</span> Credits Left
+                </p>
+                <p className="text-[#ffffff]/80 my-3 italic font-normal font-[Inter]">Running out of daily credits?</p>
+                <div className='flex sm:flex-col gap-10 sm:gap-0'>
+                <button className="w-full md:w-fit flex justify-center font-[Inter] border border-[#F7AA1C] transition-all duration-200 text-[10px] px-2 py-2 sm:px-4 sm:py-3 text-primary rounded-[35px] items-center bg-[radial-gradient(circle_at_center,_rgba(247,170,28,0.2),_rgba(247,170,28,0.4))] hover:shadow-[0_0_7px_rgba(255,255,255,0.7)] my-3 sm:mb-8">
+                    Top Up Credits
+                </button>
+            <button className="w-full max-w-sm flex justify-center text-lg px-7 py-4 sm:px-36 sm:py-5 text-[#444444] border border-[#444444] transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]">
+                Upgrade
+            </button>
                 </div>
             </div>
-            <div className="flex items-center p-4 bg-black rounded-lg">
-                <div className="flex flex-col mt-12 sm:mt-28">
-                    <div className="flex gap-10 sm:gap-32 justify-center sm:justify-normal items-center">
+        </div>
+    );
+
+    return (
+        <div className="flex flex-col md:flex h-screen w-screen overflow-x-hidden">
+            {/* Credits section for desktop only */}
+            <div className="hidden absolute items-end md:flex md:w-[485px] flex-shrink-0 bg-black h-full">
+                <CreditsSection />
+            </div>
+            
+            {/* Main content area */}
+            <div className="flex-1 overflow-y-auto bg-black rounded-lg md:ml-[485px] sm:border-l border-l-[#2C2C2C]">
+                <div className="flex flex-col mt-6 md:mt-12 lg:mt-52">
+                    {/* Profile Section */}
+                    <div className="flex flex-col md:flex-row md:gap-16 lg:gap-32 items-center p-4 md:p-8">
                         <img
                             src=""
                             alt="Profile"
-                            className="object-cover w-24 h-24 sm:w-52 sm:h-52 border rounded-full overflow-hidden"
+                            className="w-20 h-20 md:w-24 md:h-24 lg:w-52 lg:h-52 border rounded-full overflow-hidden mb-4 md:mb-0"
                         />
-                        <div>
+                        <div className="text-center md:text-left">
                             <button
-                                className="bg-[#2C2C2C] hover:bg-gray-600 text-white text-sm px-4 py-2 rounded-lg font-[Inter] mb-4 flex gap-2 items-center"
+                                className="bg-[#2C2C2C] hover:bg-gray-600 text-white text-sm px-4 py-2 rounded-lg font-[Inter] mb-4 flex gap-2 items-center mx-auto md:mx-0"
                                 onClick={handleClick}
                             >
                                 <svg
@@ -61,20 +72,27 @@ const ProfilePage = () => {
 
                             {isEditing ? (
                                 <input
-                                    className="text-white font-[Inter] text-3xl bg-transparent border-b border-gray-500 focus:outline-none focus:border-white"
+                                    className="text-white font-[Inter] text-2xl md:text-3xl bg-transparent border-b border-gray-500 focus:outline-none focus:border-white text-center md:text-left"
                                     onChange={handleChange}
                                     value={name}
                                     autoFocus
                                 />
                             ) : (
-                                <h2 className="text-white font-[Inter] text-3xl">{name}</h2>
+                                <h2 className="text-white font-[Inter] text-2xl md:text-3xl">{name}</h2>
                             )}
                             <span className={`${isPremium ? 'bg-[#F7AA1C80]' : 'bg-[#D9D9D966]'} text-white text-xs px-3 py-1 rounded-lg gap-1 inline-flex items-center mt-2 italic`}>
-                                <img className="w-3 h-3" src={logo} alt="" />
-                                {isPremium?"Premium":"Free Plan"} User
+                                {isPremium && <img className="w-3 h-3" src={logo} alt="" />}
+                                {isPremium ? "Premium" : "Free Plan"} User
                             </span>
                         </div>
                     </div>
+
+                    {/* Credits section for mobile only - shows below profile */}
+                    <div className="md:hidden w-[90%] border-t border-[#2C2C2C] mx-auto mt-6 sm:mx-0">
+                        <CreditsSection />
+                    </div>
+
+                    {/* PromptGrid will be scrollable if content grows */}
                     <PromptGrid />
                 </div>
             </div>

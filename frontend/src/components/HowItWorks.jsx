@@ -1,7 +1,7 @@
 import React from 'react';
-import cardbg from '../../assets/howitworkscard.png';
-import circuit from '../../assets/circuit.png';
-import mask from '../../assets/Mask.png';
+import cardbg from '../../src/assets/howitworkscard.png';
+import circuit from '../../src/assets/circuit.png';
+import mask from '../../src/assets/Mask.png';
 
 const HowItWorks = () => {
   // Define an array of objects for card content
@@ -28,7 +28,7 @@ const HowItWorks = () => {
 
   return (
     <div
-      className=""
+      className="my-20 sm:my-32"
       style={{
         backgroundImage: `url(${mask})`,
         backgroundRepeat: 'no-repeat',
@@ -43,7 +43,7 @@ const HowItWorks = () => {
         {steps.map((step) => (
           <div
             key={step.id}
-            className="w-[300px] h-[150px] flex flex-col justify-center items-center p-6 text-white bg-cover bg-center rounded-md shadow-lg"
+            className="w-[350px] h-[150px] flex flex-col justify-center items-center py-8 px-12 sm:py-10 sm:px-12 text-white bg-cover bg-center rounded-md shadow-lg"
             style={{
               backgroundImage: `url(${cardbg})`,
               backgroundSize: 'contain',
@@ -51,7 +51,7 @@ const HowItWorks = () => {
             }}
           >
             <div className="flex flex-col justify-center text-left">
-              <div className="font-semibold mb-2 flex items-center">
+              <div className="font-semibold mb-4 flex items-center">
                 <img className="w-7 h-7 mr-3" src={step.icon} alt="Step Icon" />
                 <span className="text-md">{step.title}</span>
               </div>
