@@ -43,5 +43,5 @@ export default {
       backdropBlur: ['responsive', 'hover', 'focus'],
     },
   },
-  plugins: [require('tailwind-scrollbar')],
+  plugins: [],
 }

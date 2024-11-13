@@ -63,7 +63,7 @@ const PremiumPlan = ({ planData }) => {
           if (response.status === 401) {
             localStorage.clear();
             navigate('/login');
-            throw new Error('Session expired. Please login again.');
+            // throw new Error('Session expired. Please login again.');
           }
           throw new Error(`Server error: ${response.status}`);
         }
@@ -83,10 +83,10 @@ const PremiumPlan = ({ planData }) => {
         setError(err.message || 'Failed to load user data');
         setUserData(null);
         
-        if (err.message.includes('token') || err.message.includes('Session expired')) {
-          localStorage.clear();
-          navigate('/login');
-        }
+        // if (err.message.includes('token') || err.message.includes('Session expired')) {
+        //   localStorage.clear();
+        //   navigate('/login');
+        // }
       }
     };
 
@@ -150,7 +150,7 @@ const PremiumPlan = ({ planData }) => {
         if (response.status === 401) {
           localStorage.clear();
           navigate('/login');
-          throw new Error('Session expired. Please login again.');
+          // throw new Error('Session expired. Please login again.');
         }
         throw new Error(data.message || 'Failed to upgrade plan');
       }

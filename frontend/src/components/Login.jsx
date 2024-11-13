@@ -17,7 +17,7 @@ const Login = () => {
   });
 
   // Session management
-  const SESSION_DURATION = 60 * 1000; // 1 minute in milliseconds
+  const SESSION_DURATION = 60 * 1000; // 1 day in milliseconds
 
   const handleReLogin = async (email, password) => {
     try {
@@ -101,7 +101,7 @@ const Login = () => {
       if (timeRemaining > 0) {
         const timeoutId = setTimeout(() => {
           clearSessionData();
-          setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
+          // setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
         }, timeRemaining);
 
         return () => clearTimeout(timeoutId);
