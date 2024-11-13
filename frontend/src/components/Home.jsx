@@ -1,6 +1,5 @@
 import React from "react";
 import star from "../assets/Home/star.png";
-import HowItWorksCard from "./HowItWorks/HowItWorksCard";
 import HomeCards from "./HomeCards";
 import { Link } from "react-router-dom";
 
