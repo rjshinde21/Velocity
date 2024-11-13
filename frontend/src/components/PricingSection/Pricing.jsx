@@ -12,7 +12,12 @@ const Pricing = () => {
     const fetchPlans = async () => {
       try {
         const token = localStorage.getItem('token');
+        console.log("usertoken:"+token);
         
+        if (!token) {
+          throw new Error("User is not logged in. Please log in to view plans.");
+        }
+
         const headers = {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -30,7 +35,10 @@ const Pricing = () => {
         ]);
 
         if (!freeResponse.ok || !premiumResponse.ok) {
-          throw new Error(`Failed to fetch plans: ${freeResponse.statusText}`);
+          if (freeResponse.status === 401 || premiumResponse.status === 401) {
+            throw new Error("Unauthorized. Please log in again.");
+          }
+          throw new Error(`Failed to fetch plans: ${freeResponse.statusText || premiumResponse.statusText}`);
         }
 
         const { data: freeData } = await freeResponse.json();
@@ -43,7 +51,6 @@ const Pricing = () => {
           tokens: freeData.token_received,
           features: [
             "Unlimited usage",
-            // `${freeData.token_received} tokens per month`,
             "Usable up to 5 times",
           ],
           disabledFeatures: [
@@ -60,9 +67,7 @@ const Pricing = () => {
           tokens: premiumData.token_received,
           features: [
             "Unlimited usage",
-            // `${premiumData.token_received} tokens per month`,
             "Unlimited usage with credits",
-
             "5 credits per use",
             "10 credits per use",
             "Include"

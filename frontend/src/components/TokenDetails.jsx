@@ -173,7 +173,7 @@ const TokenDetails = () => {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-black/60 p-3 rounded">
-              <p className="text-gray-400 text-sm">Total Tokens</p>
+              <p className="text-gray-400 text-sm">Credits left</p>
               <p className="text-white font-semibold">{tokenInfo.token_received}</p>
             </div>
             <div className="bg-black/60 p-3 rounded">

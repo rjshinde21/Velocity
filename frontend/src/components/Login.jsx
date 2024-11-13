@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GetStartedBtn from './GetStartedBtn';
 import { Link, useNavigate } from 'react-router-dom';
-import bg from "../assets/mainbg.png"
+import bg from "../assets/mainbg.png";
 import TokenDetails from './TokenDetails';
 
 const Login = () => {
@@ -10,11 +10,132 @@ const Login = () => {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showTokenDetails, setShowTokenDetails] = useState(false);
-  const navigate = useNavigate(); // Add this line to use navigation
+  const navigate = useNavigate();
   const [fieldErrors, setFieldErrors] = useState({
     email: '',
     password: '',
   });
+
+  // Session management
+  const SESSION_DURATION = 60 * 1000; // 1 minute in milliseconds
+
+  const handleReLogin = async (email, password) => {
+    try {
+      const response = await fetch('http://127.0.0.1:3000/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const currentTime = new Date().getTime();
+
+        // Save session data again
+        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('userId', data.data.user.id);
+        localStorage.setItem('userEmail', email);
+        localStorage.setItem('loginTime', currentTime.toString());
+        return true; // Re-login successful
+      } else {
+        console.error("Re-login failed:", await response.text());
+        return false; // Re-login failed
+      }
+    } catch (error) {
+      console.error("Network error during re-login:", error);
+      return false; // Network or other error
+    }
+  };
+
+  const checkAndClearSession = async () => {
+    const loginTime = localStorage.getItem('loginTime');
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+    const savedEmail = localStorage.getItem('userEmail');
+  
+    if (loginTime && token && userId) {
+      const currentTime = new Date().getTime();
+      const timeSinceLogin = currentTime - parseInt(loginTime, 10);
+  
+      if (timeSinceLogin > SESSION_DURATION) {
+        // Session expired, clear session and attempt re-login
+        clearSessionData();
+  
+        // Attempt re-login if saved credentials are available
+        if (savedEmail && password) {
+          const reLoginSuccessful = await handleReLogin(savedEmail, password);
+          if (reLoginSuccessful) {
+            setShowTokenDetails(true);
+            return false; // Session refreshed
+          }
+        }
+        return true; // Session expired, re-login failed
+      } else {
+        // Session is still valid
+        setShowTokenDetails(true);
+        return false;
+      }
+    }
+    return true; // No session exists
+  };
+
+  const clearSessionData = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('loginTime');
+    setShowTokenDetails(false);
+    navigate('/login');
+  };
+
+  const setupSessionExpirationCheck = () => {
+    const loginTime = localStorage.getItem('loginTime');
+    if (loginTime) {
+      const currentTime = new Date().getTime();
+      const timeSinceLogin = currentTime - parseInt(loginTime, 10);
+      const timeRemaining = SESSION_DURATION - timeSinceLogin;
+
+      if (timeRemaining > 0) {
+        const timeoutId = setTimeout(() => {
+          clearSessionData();
+          setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
+        }, timeRemaining);
+
+        return () => clearTimeout(timeoutId);
+      } else {
+        clearSessionData();
+      }
+    }
+  };
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const sessionExpired = await checkAndClearSession();
+      if (sessionExpired) {
+        setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
+      }
+    };
+
+    checkSession();
+    const cleanup = setupSessionExpirationCheck();
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []);
+
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      const sessionExpired = await checkAndClearSession();
+      if (sessionExpired) {
+        setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
+      }
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   const validateField = (field, value) => {
     let error = '';
@@ -87,25 +208,24 @@ const Login = () => {
       });
 
       const data = await response.json();
-      // console.log("data recvd:"+data.data.token);
+
       if (response.ok) {
+        const currentTime = new Date().getTime();
         
-        // Save user data and token
-        // console.log("setting token:"+data.data.token);
+        // Save session data
         localStorage.setItem('token', data.data.token);
-        localStorage.setItem('userId', data.data.user.id);
-        // console.log("user raj:"+data.data.user.id);
-        localStorage.setItem('userEmail', data.data.email);
-        // console.log("token set:"+data.data.token);
+        localStorage.setItem('userId', String(data.data.user.id)); // Ensure userId is stored as string
+        localStorage.setItem('userEmail', email);
+        localStorage.setItem('loginTime', currentTime.toString());
+
         setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
         
-        // Navigate after a short delay
+        setupSessionExpirationCheck();
+        
         setTimeout(() => {
           setShowTokenDetails(true);
-          //navigate('/token-details');
         }, 1000);
       } else {
-        // Handle different error cases
         switch (response.status) {
           case 400:
             setMessage(<span style={{ color: 'red' }}>Invalid email or password format</span>);
@@ -147,7 +267,6 @@ const Login = () => {
         <h2 className="text-center text-2xl font-bold bg-gradient-text mb-4">Sign into your Account</h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
-            {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-600">Email</label>
               <input
@@ -166,7 +285,6 @@ const Login = () => {
               )}
             </div>
 
-            {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-semibold text-gray-600">Password</label>
               <input
@@ -185,7 +303,6 @@ const Login = () => {
               )}
             </div>
 
-            {/* Submit Button */}
             <div className='w-full flex justify-center'>
               <GetStartedBtn 
                 click={handleSubmit} 
@@ -195,13 +312,11 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Message Area */}
           <div id="message" className="mt-4 text-center text-sm text-gray-600">
             {message}
           </div>
         </form>
 
-        {/* Link to Register */}
         <div className="mt-4 text-center">
           <p className="text-sm bg-gradient-text">
             Don't have an account?{' '}
