@@ -48,7 +48,7 @@ function App() {
                 {showLogin && !showTokenDetails && (
                   <Register setShowTokenDetails={setShowTokenDetails} />
                 )}
-                {showTokenDetails && <TokenDetails />}
+                {showTokenDetails && <ProfilePage />}
                 
                 <div ref={howItWorksRef}>
                   <HowItWorks />
@@ -67,7 +67,7 @@ function App() {
           />
           <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn}/>} />
           <Route path="/register" element={<Register />} />
-          <Route path="/token-details" element={<TokenDetails />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Routes>
         <Footer />
       </main>
