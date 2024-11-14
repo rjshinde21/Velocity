@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
+import {useNavigate} from 'react-router-dom';
 import logo from '../assets/velocitylogo.png';
 import PromptGrid from './PromptGrid';
 
@@ -149,7 +150,7 @@ const ProfilePage = () => {
             <div className="w-full max-w-sm sm:px-4 sm:py-5">
                 <p className="text-[#ffffff]/80 font-[Inter] text-sm mb-3">Credit Balance of today</p>
                 <p className="pb-3 text-[#ffffff] font-[Inter] border-b border-[#ffffff]/30">
-                    <span className="text-4xl">40</span> Credits Left
+                    <span className="text-4xl">{tokenInfo?.token_received || 0}</span> Credits Left
                 </p>
                 <p className="text-[#ffffff]/80 my-3 italic font-normal font-[Inter]">Running out of daily credits?</p>
                 <div className='flex sm:flex-col gap-10 sm:gap-0'>

@@ -15,7 +15,7 @@ import ProfilePage from "./components/ProfilePage";
 function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [showTokenDetails, setShowTokenDetails] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Define refs for each section
   const howItWorksRef = useRef(null);

@@ -230,7 +230,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
           backgroundImage:
             "linear-gradient(to bottom, #008ACB 0%, #005076 100%)",
         }}
-        onClick={planData.onSignUp}
+        onClick={handleUpgrade}
       >
         {planData.buttonText || "Get Started"}
       </button>
