@@ -46,7 +46,7 @@ function App() {
                 {showLogin && !showTokenDetails && (
                   <Register setShowTokenDetails={setShowTokenDetails} />
                 )}
-                {showTokenDetails && <TokenDetails />}
+                {showTokenDetails && <ProfilePage />}
                 
                 {/* Attach refs to sections */}
                 <div ref={howItWorksRef}>
@@ -66,7 +66,7 @@ function App() {
           />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/token-details" element={<TokenDetails />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Routes>
         <Footer />
       </main>

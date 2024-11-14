@@ -113,7 +113,7 @@ const ProfilePage = () => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    token_received: 82,
+                    token_received: tokenInfo.token_received,
                     user_id: userId
                 })
             });

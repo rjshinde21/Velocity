@@ -3,6 +3,7 @@ import GetStartedBtn from './GetStartedBtn';
 import { Link, useNavigate } from 'react-router-dom';
 import bg from "../assets/mainbg.png";
 import TokenDetails from './TokenDetails';
+import ProfilePage from './ProfilePage';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -253,7 +254,7 @@ const Login = () => {
   };
 
   if (showTokenDetails) {
-    return <TokenDetails />;
+    return <ProfilePage />;
   }
 
   return (

@@ -102,7 +102,7 @@ const TokenDetails = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          token_received: 72,
+          token_received: token_received,
           user_id: userId
         })
       });
