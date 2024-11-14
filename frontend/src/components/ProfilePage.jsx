@@ -3,10 +3,138 @@ import logo from '../assets/velocitylogo.png';
 import PromptGrid from './PromptGrid';
 
 const ProfilePage = () => {
-    const [name, setName] = useState("Mukul Goyal");
+    const [name, setName] = useState("");
     const [isEditing, setIsEditing] = useState(false);
-    const [isPremium, setIsPremium] = useState(true);
+    const [isPremium, setIsPremium] = useState(false);
+    const [tokenInfo, setTokenInfo] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
+    const userId = localStorage.getItem('userId');
+    const authToken = localStorage.getItem('token');
+
+    useEffect(() => {
+        const checkAuthAndFetchTokens = async () => {
+            if (!authToken || !userId) {
+                setError('Authentication required');
+                navigate('/login');
+                return;
+            }
+            await fetchTokenDetails();
+            await fetchUserProfile(); // Fetch the user's name here
+        };
+
+        checkAuthAndFetchTokens();
+    }, [navigate, isUpdating]);
+
+    const fetchUserProfile = async () => {
+        try {
+            const response = await fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            const data = await response.json();
+            if (data && data.data && data.data.user) {
+                setName(data.data.user.name); // Set name from API data
+            } else {
+                throw new Error('Unable to fetch user profile.');
+            }
+        } catch (error) {
+            console.error("Error fetching profile:", error);
+            setError(error.message);
+        }
+    };
+
+    const fetchTokenDetails = async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'include'
+            });
+
+            if (response.status === 401) {
+                localStorage.clear();
+                navigate('/login');
+                throw new Error('Session expired. Please login again.');
+            }
+
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status}`);
+            }
+
+            const responseData = await response.json();
+
+            if (responseData.data) {
+                setTokenInfo(responseData.data);
+            } else {
+                throw new Error('Invalid data format received');
+            }
+
+        } catch (err) {
+            console.error('Token fetch error:', err);
+            setError(err.message);
+
+            if (err.message.includes('Session expired') || err.message.includes('Invalid data format')) {
+                navigate('/login');
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleTopUp = async () => {
+        if (!authToken || !userId) {
+            setError('Authentication required.');
+            return;
+        }
+
+        try {
+            setIsUpdating(true);
+            setError(null);
+
+            const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    token_received: tokenInfo.token_received,
+                    user_id: userId
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to update tokens: ${response.status}`);
+            }
+
+            const updatedData = await response.json();
+
+            if (updatedData && updatedData.data) {
+                setTokenInfo(updatedData.data);
+                alert('Successfully topped up credits!');
+            }
+
+        } catch (error) {
+            console.error('Top-up error:', error);
+            setError(error.message);
+            alert('Failed to top up tokens. Please try again.');
+        } finally {
+            setIsUpdating(false);
+        }
+    };
     const handleClick = () => {
         setIsEditing(!isEditing);
     };
