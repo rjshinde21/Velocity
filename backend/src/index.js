@@ -4,6 +4,7 @@ const cors = require('cors');
 const userRoutes = require('./routes/user.routes');
 const tokenRoutes = require('./routes/token.routes');
 const planRoutes = require('./routes/plan.routes');
+const creditRoutes = require('./routes/credit.route');
 require('dotenv').config();
 
 const app = express();
@@ -52,6 +53,7 @@ const connection = mysql.createConnection({
 app.use('/api/users', userRoutes);
 app.use('/api', tokenRoutes);
 app.use('/api/plans', planRoutes);
+app.use('/api/credit', creditRoutes);
 
 const PORT = process.env.PORT || 3000;
 
