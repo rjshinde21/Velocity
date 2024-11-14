@@ -164,7 +164,7 @@ const Register = () => {
                 id="name"
                 name="name"
                 required
-                className="w-full p-2 border-b bg-transparent rounded-lg focus:outline-none text-primary focus:none"
+                className="w-full p-2 border-b bg-transparent border-gray-600 focus:outline-none text-primary focus:none"
                 placeholder="Enter your name"
                 value={name}
                 onChange={(e) => handleFieldChange('name', e.target.value)}
@@ -182,7 +182,7 @@ const Register = () => {
                 id="email"
                 name="email"
                 required
-                className="w-full p-2 border-b bg-transparent rounded-lg focus:outline-none text-primary focus:none"
+                className="w-full p-2 border-b bg-transparent border-gray-600 focus:outline-none text-primary focus:none"
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => handleFieldChange('email', e.target.value)}
@@ -200,7 +200,7 @@ const Register = () => {
                 id="password"
                 name="password"
                 required
-                className="w-full p-2 border-b bg-transparent rounded-lg focus:outline-none text-primary focus:none"
+                className="w-full p-2 border-b bg-transparent border-gray-600 focus:outline-none text-primary focus:none"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => handleFieldChange('password', e.target.value)}
@@ -218,7 +218,7 @@ const Register = () => {
                 id="confirmPassword"
                 name="confirmPassword"
                 required
-                className="w-full p-2 border-b bg-transparent rounded-lg focus:outline-none text-primary focus:none"
+                className="w-full p-2 border-b bg-transparent border-gray-600 focus:outline-none text-primary focus:none"
                 placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => handleFieldChange('confirmPassword', e.target.value)}
@@ -242,7 +242,7 @@ const Register = () => {
 
         {/* Link to Login */}
         <div className="mt-4 text-center">
-          <p className="text-sm bg-gradient-text">Already have an account? 
+          <p className="text-sm bg-gradient-text">Already have an account? {' '}
           <Link to="/login" className="text-blue-600 hover:text-blue-800">Log In</Link>
           </p>
         </div>

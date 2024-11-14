@@ -14,6 +14,11 @@ html {
   scroll-behavior: smooth;
 }
 
+::selection{
+  background-color:#008ACB52;
+  color: var(--text-primary)
+}
+
 /* Add the custom gradient class */
 .bg-gradient-text {
   background: linear-gradient(to right, #DADADA, #999999);
@@ -231,6 +236,22 @@ body{
     background-position: 0% 50%;
   }
 }
+
+/* Keyframes for bouncing the icon */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0); /* Default position */
+  }
+  50% {
+    transform: translateY(5px); /* Move up */
+  }
+}
+
+/* Apply the animation on hover */
+button:hover .chevron-icon {
+  animation: bounce 0.6s ease-in-out infinite;
+}
+
 
 .animate-gradient-move {
   animation: gradient-move 60s infinite alternate;

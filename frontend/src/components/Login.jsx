@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import GetStartedBtn from './GetStartedBtn';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import bg from "../assets/mainbg.png";
-import TokenDetails from './TokenDetails';
+import ProfilePage from './ProfilePage';
 
-const Login = () => {
+const Login = ({setIsLoggedIn}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showTokenDetails, setShowTokenDetails] = useState(false);
-  const navigate = useNavigate();
   const [fieldErrors, setFieldErrors] = useState({
     email: '',
     password: '',
@@ -217,6 +216,7 @@ const Login = () => {
         localStorage.setItem('userId', String(data.data.user.id)); // Ensure userId is stored as string
         localStorage.setItem('userEmail', email);
         localStorage.setItem('loginTime', currentTime.toString());
+        setIsLoggedIn(true);
 
         setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
         
@@ -253,7 +253,7 @@ const Login = () => {
   };
 
   if (showTokenDetails) {
-    return <TokenDetails />;
+    return <ProfilePage />;
   }
 
   return (
@@ -274,7 +274,7 @@ const Login = () => {
                 id="email"
                 name="email"
                 required
-                className="w-full p-2 border-b bg-transparent rounded-lg focus:outline-none text-primary focus:none"
+                className="w-full p-2 border-b bg-transparent border-gray-600 focus:outline-none text-primary focus:none"
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => handleFieldChange('email', e.target.value)}
@@ -292,7 +292,7 @@ const Login = () => {
                 id="password"
                 name="password"
                 required
-                className="w-full p-2 border-b bg-transparent rounded-lg focus:outline-none text-primary focus:none"
+                className="w-full p-2 border-b bg-transparent border-gray-600 focus:outline-none text-primary focus:none"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => handleFieldChange('password', e.target.value)}

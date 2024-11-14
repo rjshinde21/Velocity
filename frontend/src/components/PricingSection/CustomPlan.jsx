@@ -1,6 +1,6 @@
 import React from "react";
 
-const FreePlan = ({ planData, isLoggedIn }) => {
+const FreePlan = ({ planData }) => {
   if (!planData) return null;
 
   const PlanDot = () => (
@@ -24,28 +24,28 @@ const FreePlan = ({ planData, isLoggedIn }) => {
     </li>
   );
 
-  const listItems = ["Base Level Prompt Enhancement with unlimited access", "Advanced Features, up to 5 uses"]
+  const listItems = ["Customized usage and features tailored to business needs", "Advanced integrations available upon request"]
 
   return (
     <div className="w-full max-w-xs p-6 font-[Inter] rounded-[32px] shadow sm:p-8 hover:scale-105 transition-all duration-200" style={{
-      backgroundImage: 'linear-gradient(to bottom left, #008ACB1A 0%, #008ACB1A 50%, #000000 100%)',
+      backgroundImage: 'linear-gradient(to bottom right, #008ACB1A 0%, #008ACB1A 50%, #000000 100%)',
     }}>
       <div className="flex md:flex-col justify-between md:justify-start items-center md:items-start">
         <div className="flex flex-col">
         <h5 className="mb-0 sm:mb-1 text-xl font-[Inter] text-[#ffffff]">
           {/* {planData.name || 'Free plan'} */}
-          Basic
+          Enterprise
         </h5>
         <h5 className="mb-0 sm:mb-8 text-sm font-medium text-[#757575]">
-          {/* {planData.name || 'Limited but powerful'} */}
-          Limited but powerful
+          {/* {planData.name || 'Built for teams and businesses'} */}
+          Built for teams and businesses
         </h5>
         </div>
         <div className="flex items-baseline text-[#ffffff]">
           <span className="text-[32px] font-semibold"></span>
-          <span className="text-[32px] tracking-tight">
+          <span className="text-[32px] tracking-tight text-right leading-tight">
             {/* {planData.price || '00'} */}
-            Free
+            Custom Pricing
           </span>
           <span className="ms-1 text-xl font-normal text-gray-500 dark:text-gray-400">
             
@@ -60,7 +60,7 @@ const FreePlan = ({ planData, isLoggedIn }) => {
         }}
         onClick={planData.onSignUp}
       >
-        {planData.buttonText || (isLoggedIn ? 'Current Plan' : 'Get Started')}
+        {planData.buttonText || 'Contact Sales'}
       </button>
       
       <ul

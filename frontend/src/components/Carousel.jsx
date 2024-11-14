@@ -4,12 +4,19 @@ import img3 from "../assets/carousel3.png"
 import img4 from "../assets/carousel4.png"
 import img5 from "../assets/carousel5.png"
 import img6 from "../assets/carousel6.png"
+import img7 from "../assets/carousel7.png"
+import img8 from "../assets/carousel8.png"
+import img9 from "../assets/carousel9.png"
+import img10 from "../assets/carousel10.png"
+import img11 from "../assets/carousel11.png"
+import img12 from "../assets/carousel12.png"
+
 
 
 const Carousel = ({speed=30000}) => {
 
   const images = [
-   img1, img2, img3, img4, img5, img6
+   img1, img2, img3, img4, img5, img6, img7, img8, img9, img10, img11, img12
   ].map((image) => ({
     id: crypto.randomUUID(),
     image

@@ -15,6 +15,7 @@ import ProfilePage from "./components/ProfilePage";
 function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [showTokenDetails, setShowTokenDetails] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
 
   // Define refs for each section
   const howItWorksRef = useRef(null);
@@ -35,6 +36,7 @@ function App() {
           freeTrialRef={freeTrialRef}
           pricingRef={pricingRef}
           carouselRef={carouselRef}
+          isLoggedIn={isLoggedIn}
         />
         <Routes>
         <Route path="/profile" element={<ProfilePage />} />
@@ -48,7 +50,6 @@ function App() {
                 )}
                 {showTokenDetails && <TokenDetails />}
                 
-                {/* Attach refs to sections */}
                 <div ref={howItWorksRef}>
                   <HowItWorks />
                 </div>
@@ -56,7 +57,7 @@ function App() {
                   <FreeTrial />
                 </div>
                 <div ref={pricingRef}>
-                  <Pricing />
+                  <Pricing isLoggedIn={isLoggedIn}/>
                 </div>
                 <div ref={carouselRef}>
                   <Carousel />
@@ -64,7 +65,7 @@ function App() {
               </>
             }
           />
-          <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn}/>} />
           <Route path="/register" element={<Register />} />
           <Route path="/token-details" element={<TokenDetails />} />
         </Routes>

@@ -5,7 +5,7 @@ import PromptGrid from './PromptGrid';
 const ProfilePage = () => {
     const [name, setName] = useState("Mukul Goyal");
     const [isEditing, setIsEditing] = useState(false);
-    const [isPremium, setIsPremium] = useState(false);
+    const [isPremium, setIsPremium] = useState(true);
 
     const handleClick = () => {
         setIsEditing(!isEditing);
@@ -45,7 +45,7 @@ const ProfilePage = () => {
             
             {/* Main content area */}
             <div className="flex-1 overflow-y-auto bg-black rounded-lg md:ml-[485px] sm:border-l border-l-[#2C2C2C]">
-                <div className="flex flex-col mt-6 md:mt-12 lg:mt-52">
+                <div className="flex flex-col mt-20 lg:mt-52">
                     {/* Profile Section */}
                     <div className="flex flex-col md:flex-row md:gap-16 lg:gap-32 items-center p-4 md:p-8">
                         <img

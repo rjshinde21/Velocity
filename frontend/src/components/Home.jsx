@@ -16,7 +16,7 @@ const Home = () => {
         <div className="absolute inset-0 bg-black opacity-0 flex" />
 
         <div className="relative z-10 flex flex-col items-center justify-center">
-          <h1 className="font-[Amenti] bg-gradient-text pt-30 text-3xl sm:text-6xl mb-4">
+          <h1 className="font-[Amenti] bg-gradient-text pt-30 text-3xl sm:text-6xl pb-4">
             Unlock Infinite Creativity
           </h1>
           <p className="text-[#999999] font-[Inter] text-sm sm:text-lg">

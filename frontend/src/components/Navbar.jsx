@@ -3,14 +3,29 @@ import velocitylogo from "../assets/velocitylogo.png";
 import GetStartedBtn from "./GetStartedBtn";
 import { Link } from "react-router-dom";
 import ScrollAnchor from "./ScrollAnchor";
+import { UserRound } from "lucide-react";
 
-const Navbar = ({ handleClick, howItWorksRef, freeTrialRef, pricingRef, carouselRef }) => {
+const Navbar = ({
+  handleClick,
+  howItWorksRef,
+  freeTrialRef,
+  pricingRef,
+  carouselRef,
+  isLoggedIn
+}) => {
   return (
     <div>
-      <nav className="bg-transparent text-primary fixed w-full top-0 start-0 px-4 sm:px-5 z-50">
+      <nav className="bg-transparent text-primary fixed w-full top-0 start-0 px-4 sm:px-8 z-10">
         <div className="max-w-screen-3xl flex flex-wrap items-center justify-between sm:mx-10 lg:mx-auto pt-5 sm:pt-12">
-          <Link to="/" className="flex items-center space-x-3 sm:w-auto lg:w-[161px]">
-            <img src={velocitylogo} className="h-10 sm:h-14" alt="Velocity Logo" />
+        <Link
+  to="/"
+  className={`flex items-center space-x-3 sm:w-auto ${!isLoggedIn ? 'lg:w-[161px]' : 'w-auto'}`}
+>
+            <img
+              src={velocitylogo}
+              className="h-10 sm:h-14"
+              alt="Velocity Logo"
+            />
           </Link>
 
           {/* Render ScrollAnchor inside Navbar */}
@@ -20,10 +35,15 @@ const Navbar = ({ handleClick, howItWorksRef, freeTrialRef, pricingRef, carousel
             pricingRef={pricingRef}
             carouselRef={carouselRef}
           />
-
-          <Link to="/register">
-            <GetStartedBtn click={handleClick} content="Get Started" />
-          </Link>
+          {!isLoggedIn ? (
+            <Link to="/register">
+              <GetStartedBtn click={handleClick} content="Get Started" />
+            </Link>
+          ) : (
+            <Link to="/profile">
+              <UserRound className="border rounded-full w-8 h-8 sm:w-10 sm:h-10"/>
+            </Link>
+          )}
         </div>
       </nav>
     </div>
