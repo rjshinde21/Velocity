@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import logo from '../assets/velocitylogo.png';
 import PromptGrid from './PromptGrid';
+import { useNavigate } from 'react-router-dom';
 
 const ProfilePage = () => {
     const [name, setName] = useState("");
