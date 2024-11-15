@@ -141,18 +141,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
       card.appendChild(selectButton);
 
+      // Toggle the selected state on single and double clicks
+      let isSelected = false;
+
       selectButton.addEventListener('click', function (event) {
         event.stopPropagation();
-        horizontalContainer.querySelectorAll('.dropdown-card').forEach(c =>
-          c.classList.remove('selected')
-        );
-        card.classList.add('selected');
-        updateDropdownButton(dropdownButton, card);
-        dropdownContent.style.display = 'none';
-      });
-
-      horizontalContainer.appendChild(card);
+        if (isSelected) {
+            // Unselect the item if it's already selected
+            card.classList.remove('selected');
+            updateDropdownButton(dropdownButton, { querySelector: () => ({ textContent: 'Select' }) }); // Reset button text
+            isSelected = false;
+        } else {
+            // Select the item if it's not selected
+            horizontalContainer.querySelectorAll('.dropdown-card').forEach(c =>
+                c.classList.remove('selected')
+            );
+            card.classList.add('selected');
+            updateDropdownButton(dropdownButton, card);
+            isSelected = true;
+        }
+        dropdownContent.style.display = 'none'; // Close dropdown on selection
     });
+
+    selectButton.addEventListener('dblclick', function (event) {
+        event.stopPropagation();
+        // Unselect the item on double-click
+        card.classList.remove('selected');
+        updateDropdownButton(dropdownButton, { querySelector: () => ({ textContent: 'Select' }) }); // Reset button text
+        isSelected = false;
+    });
+
+    horizontalContainer.appendChild(card);
+});
 
     dropdownContent.appendChild(horizontalContainer);
     dropdownContainer.appendChild(dropdownButton);
@@ -635,7 +655,7 @@ fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
   })
   .catch(error => console.error('Error fetching user profile:', error));
 
-  // Fetch and update user's token balance
+// Fetch and update user's token balance
 fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
   method: 'GET',
   headers: {
@@ -729,51 +749,42 @@ let imageGuidanceUsed = false;
 let advancedOptionsSelected = new Set();
 
 // Event listener for basic prompt
-document.getElementById('promptInput').addEventListener('change', function() {
-  if (!promptUsed) {
-    handleCreditDeduction('basic_prompt');
-    promptUsed = true;
-  }
+document.getElementById('promptInput').addEventListener('change', function () {
+  promptUsed = true; // Mark basic prompt as used
 });
 
 // Event listeners for advanced option buttons
-const advancedOptionButtons = document.querySelectorAll('.category-card'); // Assuming each button has class 'category-card'
+const advancedOptionButtons = document.querySelectorAll('.dropdown-card');
 advancedOptionButtons.forEach(button => {
-  button.addEventListener('click', function() {
-    const optionId = this.getAttribute('data-option-id'); // Unique identifier for each option
-    
+  button.addEventListener('click', function () {
+    const optionId = this.querySelector('.dropdown-card-select').innerText; // Use button text as unique identifier
+
     if (!advancedOptionsSelected.has(optionId)) {
-      // If this option hasn't been selected before
-      if (!advancedOptionsUsed) {
-        // Only deduct tokens the first time any advanced option is selected
-        handleCreditDeduction('advanced_prompt');
-        advancedOptionsUsed = true;
-      }
+      // Add option to the selected set
       advancedOptionsSelected.add(optionId);
-      
-      // Add selected state to button
+
+      // Mark the option as selected visually
       this.classList.add('selected');
     } else {
-      // Option is being deselected
+      // Remove option from the selected set
       advancedOptionsSelected.delete(optionId);
+
+      // Remove the selected state visually
       this.classList.remove('selected');
-      
-      // If no options are selected anymore, reset the advanced options usage
-      if (advancedOptionsSelected.size === 0) {
-        advancedOptionsUsed = false;
-      }
     }
+
+    // Update the advancedOptionsUsed flag based on selections
+    advancedOptionsUsed = advancedOptionsSelected.size > 0;
   });
 });
 
 // Event listener for image upload
 document.getElementById('imageUpload').addEventListener('change', function () {
   const allowedExtensions = ['jpg', 'jpeg', 'png'];
-  
-  // Check if files are selected
+
   if (this.files.length > 0) {
     const file = this.files[0];
-    const fileExtension = file.name.split('.').pop().toLowerCase(); // Get file extension
+    const fileExtension = file.name.split('.').pop().toLowerCase();
 
     if (!allowedExtensions.includes(fileExtension)) {
       alert('Only image files (jpg, jpeg, png) are allowed!');
@@ -782,38 +793,55 @@ document.getElementById('imageUpload').addEventListener('change', function () {
       return;
     }
 
-    if (!imageGuidanceUsed) {
-      handleCreditDeduction('image_prompt');
-      imageGuidanceUsed = true;
-    }
+    imageGuidanceUsed = true; // Mark image guidance as used
   } else {
-    imageGuidanceUsed = false;
+    imageGuidanceUsed = false; // Reset if no files are selected
   }
 });
 
+// Event listener for generate button
+document.getElementById('sendButton').addEventListener('click', function () {
+  // Determine the total deductions
+  if (promptUsed) {
+    handleCreditDeduction('basic_prompt');
+  }
 
-// Event listener for send button
-document.getElementById('sendButton').addEventListener('click', function() {
+  if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
+    // Deduct tokens for each selected advanced option
+    advancedOptionsSelected.forEach(optionId => {
+      handleCreditDeduction(`advanced_prompt_${optionId}`);
+    });
+  }
+
+  if (imageGuidanceUsed) {
+    handleCreditDeduction('image_prompt');
+  }
+
   if (promptUsed && advancedOptionsUsed && imageGuidanceUsed) {
     handleCreditDeduction('complete_prompt');
   }
-  
-  // Reset all tracking
+    
+
+  // Reset all tracking after generating
   promptUsed = false;
   advancedOptionsUsed = false;
   imageGuidanceUsed = false;
   advancedOptionsSelected.clear();
-  
+
   // Reset visual state of buttons
   advancedOptionButtons.forEach(button => {
     button.classList.remove('selected');
   });
+
+  // Clear the image upload input
+  document.getElementById('imageUpload').value = '';
 });
 
 // Helper function to get selected advanced options count
 function getSelectedAdvancedOptionsCount() {
   return advancedOptionsSelected.size;
 }
+
 
 
 

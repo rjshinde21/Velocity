@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import React, { useState, useRef, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./components/Home";
 import FreeTrial from "./components/FreeTrial";
@@ -23,8 +23,78 @@ function App() {
   const pricingRef = useRef(null);
   const carouselRef = useRef(null);
 
+  const SESSION_DURATION = 60 * 1000; // 1 minute in milliseconds
+
+  // Session check function
+  const checkSessionValidity = () => {
+    const loginTime = localStorage.getItem('loginTime');
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+
+    if (!loginTime || !token || !userId) {
+      handleSessionExpiration();
+      return false;
+    }
+
+    const currentTime = new Date().getTime();
+    const sessionStartTime = parseInt(loginTime, 10);
+
+    if (currentTime - sessionStartTime > SESSION_DURATION) {
+      handleSessionExpiration();
+      return false;
+    }
+
+    return true;
+  };
+
+  // Handle session expiration
+  const handleSessionExpiration = () => {
+    localStorage.clear();
+    setIsLoggedIn(false);
+    setShowTokenDetails(false);
+    // window.location.href = '/login';
+  };
+
+  // Update session timestamp on user activity
+  const updateSessionTimestamp = () => {
+    if (isLoggedIn) {
+      localStorage.setItem('loginTime', new Date().getTime().toString());
+    }
+  };
+
+  useEffect(() => {
+    // Initial session check
+    setIsLoggedIn(checkSessionValidity());
+
+    // Set up periodic session checks
+    const sessionCheckInterval = setInterval(() => {
+      setIsLoggedIn(checkSessionValidity());
+    }); // Check every 10 seconds
+
+    // Activity listeners to reset session timer
+    const activityEvents = ['mousedown', 'keydown', 'scroll', 'mousemove', 'touchstart'];
+    activityEvents.forEach(event => {
+      window.addEventListener(event, updateSessionTimestamp);
+    });
+
+    return () => {
+      clearInterval(sessionCheckInterval);
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, updateSessionTimestamp);
+      });
+    };
+  }, []);
+
+  // Protected Route component
+  const ProtectedRoute = ({ children }) => {
+    if (!isLoggedIn) {
+      return <Navigate to="/login" replace />;
+    }
+    return children;
+  };
+
   const handleClick = () => {
-    setShowLogin((prev) => !prev);
+    setShowLogin(prev => !prev);
   };
 
   return (
@@ -39,7 +109,7 @@ function App() {
           isLoggedIn={isLoggedIn}
         />
         <Routes>
-        <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route
             path="/"
             element={
@@ -49,7 +119,7 @@ function App() {
                   <Register setShowTokenDetails={setShowTokenDetails} />
                 )}
                 {showTokenDetails && <ProfilePage />}
-                
+
                 <div ref={howItWorksRef}>
                   <HowItWorks />
                 </div>
@@ -57,7 +127,7 @@ function App() {
                   <FreeTrial />
                 </div>
                 <div ref={pricingRef}>
-                  <Pricing isLoggedIn={isLoggedIn}/>
+                  <Pricing isLoggedIn={isLoggedIn} />
                 </div>
                 <div ref={carouselRef}>
                   <Carousel />
@@ -65,9 +135,16 @@ function App() {
               </>
             }
           />
-          <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn}/>} />
+          <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/profile" element={<ProfilePage />} />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
         <Footer />
       </main>
