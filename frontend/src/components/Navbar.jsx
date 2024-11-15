@@ -11,9 +11,16 @@ const Navbar = ({
   pricingRef,
   carouselRef,
   isLoggedIn,
+  
 }) => {
   // const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // useEffect(() => {
+  //   // Check for login status from localStorage
+  //   const userId = localStorage.getItem("userId");
+  //   const authToken = localStorage.getItem("token");
+  //   setIsLoggedIn(!!userId && !!authToken);
+  // }, [isLoggedIn]);
 
   return (
     <div>
