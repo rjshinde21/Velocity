@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Extension Popup</title>
+  <link rel="stylesheet" href="src/output.css">
+  <style>
+    body {
+      min-width: 400px; /* Set the minimum width of the popup */
+    }
+  </style>
+</head>
+<body class="bg-black/80">
+  <div class="w-[433px] h-[869px] relative">
+    <div class="w-[433px] h-[60px] left-0 top-0 absolute bg-[#00131c]"></div>
+    <div class="left-[180px] top-[22px] absolute text-center text-white text-lg font-normal font-['Amenti']">Velocity</div>
+    <div class="w-[393px] h-[91px] px-9 py-[26px] left-[20px] top-[93px] absolute bg-black/40 rounded-2xl border border-[#444444] justify-start items-start gap-2 inline-flex">
+        <div id="categories" class="text-[#999999] text-sm font-normal font-['Inter']">Add your prompt here</div>
+    </div>
+    <div class="w-[181px] left-[126px] top-[217px] absolute">
+        <div class="w-[162px] left-0 top-0 absolute text-center text-[#008acb] text-lg font-semibold font-['Inter']">Advance Options</div>
+        <img class="w-[19px] h-[19px] left-[162px] top-[2px] absolute" src="https://via.placeholder.com/19x19" />
+    </div>
+    <div class="px-[58px] py-[21px] left-[96px] top-[763px] absolute bg-black/40 rounded-[48px] shadow border border-[#008acb] flex-col justify-center items-center gap-2 inline-flex">
+        <div class="justify-center items-center gap-[7px] inline-flex">
+            <button id="sendButton" class="text-white text-lg font-normal font-['Inter']">Generate</button>
+        </div>
+    </div>
+    <div class="w-[191px] h-[130px] px-9 py-[26px] left-[21px] top-[410px] absolute bg-black/40 rounded-2xl border border-[#444444] flex-col justify-start items-center gap-[26px] inline-flex">
+        <div class="w-[119px] text-center text-white text-xs font-normal font-['Inter']">Main Subject & Style</div>
+        <div class="justify-start items-start gap-2 inline-flex">
+            <div class="h-[38px] justify-start items-start gap-2.5 flex">
+                <div class="h-[38px] py-[13px] bg-black/40 rounded-[40px] border border-[#444444] justify-center items-center gap-2 flex">
+                    <div class="text-white text-[10px] font-normal font-['Inter']">Select</div>
+                </div>
+            </div>
+            <div class="h-[38px] justify-start items-start gap-2.5 flex">
+                <div class="h-[38px] py-[13px] bg-black/40 rounded-[40px] border border-[#444444] justify-center items-center gap-2 flex">
+                    <div class="text-white text-[10px] font-normal font-['Inter']">Select</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="w-[191px] h-[130px] px-9 py-[26px] left-[220px] top-[410px] absolute bg-black/40 rounded-2xl border border-[#444444] flex-col justify-start items-center gap-[26px] inline-flex">
+        <div class="w-[119px] text-center text-white text-xs font-normal font-['Inter']">Main Subject & Style</div>
+        <div class="justify-start items-start gap-2 inline-flex">
+            <div class="h-[38px] justify-start items-start gap-2.5 flex">
+                <div class="h-[38px] py-[13px] bg-black/40 rounded-[40px] border border-[#444444] justify-center items-center gap-2 flex">
+                    <div class="text-white text-[10px] font-normal font-['Inter']">Select</div>
+                </div>
+            </div>
+            <div class="h-[38px] justify-start items-start gap-2.5 flex">
+                <div class="h-[38px] py-[13px] bg-black/40 rounded-[40px] border border-[#444444] justify-center items-center gap-2 flex">
+                    <div class="text-white text-[10px] font-normal font-['Inter']">Select</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="w-[191px] h-[130px] px-9 py-[26px] left-[21px] top-[272px] absolute bg-black/40 rounded-2xl border border-[#444444] flex-col justify-start items-center gap-[26px] inline-flex">
+        <div class="w-[119px] text-center text-white text-xs font-normal font-['Inter']">Main Subject & Style</div>
+        <div class="justify-start items-start gap-2 inline-flex">
+            <div class="h-[38px] justify-start items-start gap-2 flex">
+                <div class="h-[38px] justify-start items-start gap-2.5 flex">
+                    <div class="h-[38px] py-[13px] bg-black/40 rounded-[40px] border border-[#444444] justify-center items-center gap-2 flex">
+                        <div class="text-white text-[10px] font-normal font-['Inter']">Select</div>
+                    </div>
+                </div>
+            </div>
+            <div class="h-[38px] justify-start items-start gap-2.5 flex">
+                <div class="h-[38px] py-[13px] bg-black/40 rounded-[40px] border border-[#444444] justify-center items-center gap-2 flex">
+                    <div class="text-white text-[10px] font-normal font-['Inter']">Select</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="w-[191px] h-[130px] px-9 py-[26px] left-[220px] top-[272px] absolute bg-black/40 rounded-2xl border border-[#444444] flex-col justify-start items-center gap-[26px] inline-flex">
+        <div class="w-[151px] text-center text-white text-xs font-normal font-['Inter']">Background and Settings</div>
+        <div class="justify-start items-start gap-2 inline-flex">
+            <div class="h-[38px] justify-start items-start gap-2 flex">
+                <div class="h-[38px] justify-start items-start gap-2.5 flex">
+                    <div class="h-[38px] py-[13px] bg-black/40 rounded-[40px] border border-[#444444] justify-center items-center gap-2 flex">
+                        <div class="text-white text-[10px] font-normal font-['Inter']">Select</div>
+                    </div>
+                </div>
+            </div>
+            <div class="h-[38px] justify-start items-start gap-2.5 flex">
+                <div class="h-[38px] py-[13px] bg-black/40 rounded-[40px] border border-[#444444] justify-center items-center gap-2 flex">
+                    <div class="text-white text-[10px] font-normal font-['Inter']">Select</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="w-[433px] h-[60px] left-0 bottom-0 absolute bg-[#00131c]"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

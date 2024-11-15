@@ -100,7 +100,7 @@ const Login = ({setIsLoggedIn}) => {
       if (timeRemaining > 0) {
         const timeoutId = setTimeout(() => {
           clearSessionData();
-          setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
+          // setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
         }, timeRemaining);
 
         return () => clearTimeout(timeoutId);
@@ -114,7 +114,7 @@ const Login = ({setIsLoggedIn}) => {
     const checkSession = async () => {
       const sessionExpired = await checkAndClearSession();
       if (sessionExpired) {
-        setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
+        // setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
       }
     };
 
@@ -129,7 +129,7 @@ const Login = ({setIsLoggedIn}) => {
     const intervalId = setInterval(async () => {
       const sessionExpired = await checkAndClearSession();
       if (sessionExpired) {
-        setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
+        // setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
       }
     }, 5000);
 

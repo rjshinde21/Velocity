@@ -33,8 +33,8 @@ const FreePlan = ({ planData, isLoggedIn }) => {
       <div className="flex md:flex-col justify-between md:justify-start items-center md:items-start">
         <div className="flex flex-col">
         <h5 className="mb-0 sm:mb-1 text-xl font-[Inter] text-[#ffffff]">
-          {/* {planData.name || 'Free plan'} */}
-          Basic
+          {planData.name || 'Basic'}
+          {/* Basic */}
         </h5>
         <h5 className="mb-0 sm:mb-8 text-sm font-medium text-[#757575]">
           {/* {planData.name || 'Limited but powerful'} */}

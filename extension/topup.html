@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velocity - Pricing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="src/output.css">
+    <style>
+        /* Base Styles */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(to bottom, #000000 20%, #00131c 80%);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            min-width: 400px;
+            min-height: 800px;
+        }
+
+        /* Pricing Cards */
+        .pricing-card {
+            width: 340px;
+            height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: linear-gradient(180deg, rgba(0, 19, 28, 0.5) 0%, rgba(0, 19, 28, 0.8) 100%);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            padding: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Creator Pack Specific */
+        .creator-pack {
+            border: 1px solid #008acb;
+            box-shadow: 0 0 10px #008acb;
+            transition: all 0.3s ease;
+        }
+
+        .creator-pack:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 20px #008acb;
+        }
+
+        /* Master Mind Pack Specific */
+        .master-pack {
+            border: 1px solid #ffd700;
+            box-shadow: 0 0 10px #ffd700;
+            transition: all 0.3s ease;
+        }
+
+        .master-pack:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 20px #ffd700;
+        }
+
+        /* Explorer Pack Hover */
+        .explorer-pack:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+
+        /* Tag Style */
+        .tag {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+        }
+
+        /* Container Glow */
+        .pricing-container {
+            /* background: rgba(0, 19, 28, 0.3); */
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 138, 203, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .pricing-container:hover {
+            box-shadow: 0 0 40px rgba(0, 138, 203, 0.2);
+        }
+
+        .toggle-btn {
+        transition: background-color 0.3s ease, color 0.3s ease; /* Add transition for color change */
+        flex: 1; /* Allow buttons to grow equally */
+        padding: 0.5rem; /* Adjust padding as needed */
+        text-align: center; /* Center text inside buttons */
+        background-color: transparent; /* Default background */
+        color: white; /* Default text color */
+    }
+
+    .toggle-btn.active {
+        border-radius: 12px;
+        background-color: rgba(255, 255, 255, 0.2); /* Highlight active button */
+        color: #1a1a1a; /* Change text color to match background */
+    }
+
+    .toggle-btn:hover:not(.active) {
+        background-color: rgba(255, 255, 255, 0.1); /* Shade for hover effect on inactive buttons */
+    }
+
+    .month {
+        width: 200px; /* Set the width of the container */
+        padding: 0.25rem; /* Add some padding */
+        display: flex; /* Use flex to arrange buttons */
+        border-radius: 12px;
+    }
+    .grid-container{
+        margin-bottom: 15px;
+    }
+
+
+    </style>
+</head>
+<body class="bg-[#00131c] min-h-screen text-white p-8">
+    <div class="w-full bg-[#00131c] text-white text-lg font-normal font-amenti h-[50px] flex items-center justify-center px-2">
+        <!-- Velocity Logo Centered -->
+        <div class="flex items-center gap-2">
+            <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto">
+            <span>Velocity</span>
+        </div>
+    </div>
+
+    <!-- Toggle Buttons -->
+    <div class="flex justify-center mt-6">
+    <div class="month bg-[#1a1a1a] rounded-full p-1 border border-gray-600" style="width: 200px;">
+        <button id="monthlyBtn" class="toggle-btn active">Monthly</button>
+        <button id="yearlyBtn" class="toggle-btn">Yearly</button>
+    </div>
+</div>
+
+
+    <!-- Pricing Cards Container -->
+    <div class="max-w-6xl mx-auto grid md:grid-cols-3 gap-4 mt-6 grid-container">
+        <!-- Explorer Pack -->
+        <div class="pricing-card explorer-pack relative bg-[#1a1a1a] p-4 rounded-lg hover:shadow-lg transition-shadow duration-300 flex flex-col">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6">
+                    <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0l2.868 8.827h9.132l-7.385 5.369 2.868 8.827-7.483-5.369-7.483 5.369 2.868-8.827-7.385-5.369h9.132z"/>
+                    </svg>
+                </div>
+                <h3 class="text-sm font-semibold">Explorer Pack</h3>
+            </div>
+            <div class="text-xs flex justify-between my-1">
+                <span>50 credits/month</span>
+                <span>5 Prompts/Day</span>
+            </div>
+            <p class="text-xs text-gray-400">No Bonus Credits</p>
+            <div class="text-xs text-gray-400 mt-auto">FREE</div>
+            <span class="tag bg-gray-700 text-xs px-2 py-1 rounded">Sign Up Required</span>
+        </div>
+    
+        <!-- Creator Pack -->
+        <div class="pricing-card creator-pack relative bg-[#1a1a1a] p-4 rounded-lg hover:shadow-lg transition-shadow duration-300">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6">
+                    <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 2c5.514 0 10 4.486 10 10s-4.486 10-10 10-10-4.486-10-10 4.486-10 10-10z"/>
+                    </svg>
+                </div>
+                <h3 class="text-sm font-semibold">Creator Pack</h3>
+            </div>
+            <div class="text-xs flex justify-between my-1">
+                <span>300 credits/month</span>
+                <span>10 Prompts/Day</span>
+            </div>
+            <p class="text-xs text-gray-400">50 Bonus Credits</p>
+            <div class="text-xs text-gray-400 mt-auto">₹499</div>
+            <span class="tag bg-blue-900/50 text-xs px-2 py-1 rounded">New Launch</span>
+        </div>
+    
+        <!-- Master Mind Pack -->
+        <div class="pricing-card master-pack relative bg-[#1a1a1a] p-4 rounded-lg hover:shadow-lg transition-shadow duration-300">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6">
+                    <svg class="w-4 h-4 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0l3.597 7.282 8.403.612-6.088 5.929 1.435 8.377-7.347-3.859-7.347 3.859 1.435-8.377-6.088-5.929 8.403-.612z"/>
+                    </svg>
+                </div>
+                <h3 class="text-sm font-semibold">Master Mind Pack</h3>
+            </div>
+            <div class="text-xs flex justify-between my-1">
+                <span>1000 credits/month</span>
+                <span>Unlimited Prompts</span>
+            </div>
+            <p class="text-xs text-gray-400">150 Bonus Credits</p>
+            <div class="text-xs text-gray-400 mt-auto">₹999</div>
+            <span class="tag bg-yellow-900/50 text-xs px-2 py-1 rounded">Best Selling</span>
+        </div>
+    </div>
+          
+    <script src="popup.js"></script>
+</body>
+</html>

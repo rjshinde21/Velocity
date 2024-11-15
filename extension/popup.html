@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extension Popup</title>
+  <link rel="stylesheet" href="src/output.css">
+  <style>
+	.hidden2 {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        background: linear-gradient(to bottom, #000000 20%, #00131c 80%);
+        color: white;
+        font-family: "Inter", sans-serif;
+        min-width: 650px;
+        min-height: 550px;
+      }
+      #advancedOptionsButton {
+        background-color: transparent;
+        color: #ffffff;
+        font-weight: 600;
+        border: none;
+        border-radius: 10px;
+        padding: 10px; /* Adjust if needed for spacing */
+        margin-top: 10px;
+        margin-left: 12px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        width: 200px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      #advancedOptionsButton:hover {
+      color: #008acb;
+    }
+      /* .response-box {
+        position: relative;
+        padding: 10px;
+        background-color: rgba(0, 0, 0, 0.4);
+        border-radius: 18px;
+        margin-bottom: 10px;
+        border: 2px solid #008acb;
+        box-shadow: 0 0 10px #008acb, 0 0 20px #008acb;
+        animation: glowingBorder 2s ease-in-out infinite alternate;
+      } */
+      @keyframes glowingBorder {
+        from {
+          box-shadow: 0 0 10px #008acb, 0 0 20px #008acb;
+        }
+        to {
+          box-shadow: 0 0 20px #008acb, 0 0 20px #008acb, 0 0 20px #008acb;
+        }
+      }
+      .copy-button {
+        cursor: pointer;
+        width: 24px;
+        height: 24px;
+        vertical-align: middle;
+        margin-left: 10px;
+      }
+      .response-text {
+        margin-right: 70px; /* Make space for the button */
+      }
+      .scrollable-container {
+        display: flex;
+        flex-direction: column;
+        padding: 10px;
+        overflow-y: auto;
+        flex-grow: 1;
+        /* padding-bottom: 70px; Prevent content from being hidden behind the button */
+      }
+      #categories-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+      }
+      #categories-container::-webkit-scrollbar {
+        height: 8px;
+      }
+      #categories-container::-webkit-scrollbar-track {
+        background: #222;
+      }
+      #categories-container::-webkit-scrollbar-thumb {
+        background-color: #008acb;
+        border-radius: 4px;
+      }
+      .radio-group {
+        display: flex;
+        gap: 12px;
+        padding: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .radio-button {
+        position: relative;
+        display: inline-block;
+      }
+      .radio-button input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .radio-button label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 80px;
+        height: 80px;
+        font-size: 12px;
+        color: white;
+        /* border: 2px solid #444; */
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-shadow: 0 0 10px #0099ff;
+      }
+      .radio-button input[type="radio"]:checked + label {
+        border-color: #0099ff;
+        box-shadow: 0 0 10px #0099ff;
+      }
+      /* .radio-button label::after {
+            content: '>';
+            margin-left: 5px;
+        } */
+      /* Removed duplicate scrollbar styling */
+      .category-card {
+        background: rgba(0, 0, 0, 0.4); /* Black with 40% opacity */;
+        border: 1px solid #444444;
+            border-radius: 16px;
+            padding: 20px;
+            width: 300px;
+            text-align: center;
+      }
+      .radio-button label img {
+        width: 82px;
+        height: 110px;
+        /* margin-bottom: 5px; */
+      }
+      .radio-button label span {
+        text-align: center;
+      }
+      .dropdown-button-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .category-title {
+        color: #757575;
+        font-size: 12px;
+        margin-bottom: 10px;
+      }
+      .dropdown {
+        position: relative;
+        margin-top: 20px;
+        width: 100%; /* This controls the width of the dropdown button */
+      }
+      .dropdown:hover{
+        display: block;
+      }
+      .dropdown-button {
+        background-color: #000000;
+            border: 1px solid #757575;
+            border-radius: 30px;
+            padding: 13px 16px;
+            font-size: 12px;
+            cursor: pointer;
+            color: #ffffff;
+      }
+      .dropdown-button-container{
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+      }
+      .dropdown-item:hover {
+        background-color: #444;
+      }
+      .dropdown-item.selected {
+        background-color: #008acb;
+      }
+      .dropdown-button-image {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        overflow: hidden;
+      }
+      .dropdown-card-select:hover {
+        background-color: #f1f1f1;
+      }
+      .dropdown-item-image {
+        width: 30px;
+        height: 30px;
+        margin-right: 10px;
+        border-radius: 50%;
+        overflow: hidden;
+      }
+      .dropdown-button-image img,
+      .dropdown-item-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .dropdown-item {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        padding: 5px;
+        background: #333;
+        border: none;
+        border-radius: 0;
+        margin: 0;
+        cursor: pointer;
+        text-align: left;
+      }
+      .dropdownicon {
+        width: 13px;
+        height: 13px;
+        margin-right: 5px;
+      }
+      .dropdown-button-name,
+      .dropdown-item-name {
+        flex-grow: 1;
+      }
+      .dropdown-content {
+        display: none;
+            position: absolute;
+            background-color: #ffffff;
+            color: #000;
+            min-width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+            z-index: 1;
+      }
+      .dropdown-card-select {
+        background: none;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            color: #000;
+      }
+      .dropdown-horizontal-container {
+        display: inline-flex; /* Use inline-flex for horizontal alignment */
+        gap: 10px; /* Add some space between cards */
+      }
+      .dropdown-card.selected {
+        border-color: #008acb;
+        box-shadow: 0 0 10px #008acb;
+      }
+      .dropdown-card-name {
+        font-size: 12px;
+        text-align: left;
+        margin-right: 5px;
+        flex-grow: 1;
+        white-space: normal;
+        word-break: break-word;
+      }
+      .dropdown-card-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .dropdown-card-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        height: 40px;
+      }
+      .dropdown-card-image {
+        width: 100px;
+        height: 100px;
+        border-radius: 6%;
+        overflow: hidden;
+        margin-bottom: 1px;
+      }
+      .dropdown-card {
+        margin: 5px 0;
+      }
+      #dropdownMenu {
+        width: 175px;
+        z-index: 10;
+        margin-right: 15px;
+        border-radius: 16px; /* Curve the corners */
+        background-color: black;
+        backdrop-filter: 5px; /* Ensure background is visible */
+      }
+      #dropdownMenu hr {
+        border-color: #444; /* Set the border color to gray */
+      }
+      #editDropdownMenu {
+        width: 150px; /* Width of the dropdown */
+        margin-right: 25px;
+        z-index: 20;
+        border-radius: 12px; /* Curve the corners */
+        background-color: black; /* Ensure background is visible */
+        overflow: hidden; /* Prevent overflow */
+      }
+      #editDropdownMenu hr {
+        border-color: #444; /* Set the border color to gray */
+        margin: 0; /* Remove default margins for better spacing */
+        height: 1px; /* Set a height for the hr element */
+        background-color: #444; /* Background color for better visibility */
+      }
+      /* Adjust the scrollbar for horizontal scrolling */
+      .dropdown-content::-webkit-scrollbar {
+        height: 8px; /* Change from width to height for horizontal scrollbar */
+      }
+      .dropdown-content::-webkit-scrollbar-track {
+        background: #222;
+      }
+      .dropdown-content::-webkit-scrollbar-thumb {
+        background-color: #008acb;
+        border-radius: 4px;
+      }
+      .dropdown-content button {
+        color: white;
+        padding: 8px 16px;
+        background: #000000;
+        border: 1px solid #444;
+        border-radius: 7px;
+        margin: 5px;
+        cursor: pointer;
+        width: 100px;
+      }
+      .dropdown-content button:hover {
+        background-color: #008acb;
+      }
+
+      #promptInput {
+        background-color: rgba(0, 0, 0, 0.4);
+        border: 1px solid #444;
+        border-radius: 16px;
+        padding-right: 40px; /* Make room for the icon */
+        width: 100%; /* Adjust width to account for padding and border */
+        color: #999999;
+        padding: 15px;
+        /* margin-top: 10px; */
+        height: 100px;
+      }
+      .icon {
+        position: absolute;
+        bottom: 20px;
+        right: 10px;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+      }
+      .icon-button {
+        display: flex;
+        font-family: sans-serif;
+        align-items: center; /* Center items vertically */
+        justify-content: center; /* Align items to the start (left) */
+        background-color: #00131C; /* Use your desired background color */
+        border: none;
+        border-radius: 20px;
+        color: white;
+        padding: 10px 20px; /* Adjust padding if needed */
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 16px; /* Ensure text size is not too large */
+      }
+      .button-icon {
+        width: 20px;
+        height: 20px;
+        margin-left: 8px;
+        flex-shrink: 0; /* Prevent icon from shrinking */
+      }
+      .icon:hover {
+        transform: scale(1.1); /* Slightly enlarge the icon on hover */
+      }
+      .fixed-bottom {
+        position: fixed;
+        bottom: 0px;
+        left: 0;
+        right: 0;
+        background-color: transparent;
+        padding: 0 10px; /* Add horizontal padding */
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+      }
+      #sendButton {
+        margin-top: 10px;
+        background-color: #00000000;
+        border: none;
+        backdrop-filter: blur(5px);
+        border-radius: 30px;
+        color: white;
+        overflow: hidden; /* Prevent content from spilling out */
+        white-space: nowrap; /* Prevent text wrapping */
+        padding: 15px 20px;
+        text-align: center;
+        margin-bottom: 20px;
+        max-width: 150px;
+        /* display: block; */
+        width: calc(100% - 20px);
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 0 10px #008ACB;
+      }
+      .generate-button-container{
+        width: 100%;
+        display: flex;
+        justify-content: center;
+      }
+      #sendButton:hover {
+        box-shadow: 0 0 20px #008ACB;
+      }
+      #response {
+        white-space: pre-wrap;
+        margin-bottom: 5px;
+        font-size: 14px;
+        background: rgba(0, 0, 0, 0.4);
+        /* padding: 10px; */
+        border-radius: 10px;
+      }
+      .response-container {
+        background-color: rgba(0, 0, 0, 0.4);
+        padding: 10px;
+        border-radius: 10px;
+        margin-top: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .prompt-text {
+        flex-grow: 1;
+        margin-right: 10px;
+      }
+      /* .copy-button {
+      background-color: #008ACB;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 14px;
+    } */
+      .copy-button:hover {
+        background-color: #005F7F;
+      }
+      .image-upload-container {
+        position: relative; /* or absolute if positioning relative to a parent */
+        background-color: rgba(0, 0, 0, 0.4);
+        border: 1px solid #444;
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 10px;
+        width: 100%;
+      }
+      .image-upload-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .image-upload-title {
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .image-upload-info {
+        cursor: pointer;
+        font-size: 18px;
+        color: #888;
+      }
+      .image-upload-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 10px;
+        background-color: rgba(0, 0, 0, 0.6);
+        border: 1px dashed #666;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .image-upload-button:hover {
+        background-color: rgba(0, 0, 0, 0.8);
+      }
+      .image-upload-icon {
+        margin-right: 10px;
+      }
+      .image-upload-text {
+        font-size: 14px;
+        color: #ccc;
+      }
+      .dropdown-button span,
+      .dropdown-item-name {
+        flex-grow: 1;
+      }
+      #imageUpload {
+        display: none;
+      }
+      .input-container {
+        /* position: relative; */
+        width: 100%;
+        padding: 10px;
+      }
+      .vlc {
+        margin-left: 40px;
+      }
+      #signupButton {
+        height: auto; /* Set height to auto for content-based height */
+        margin-right: 15px; /* Space between buttons */
+        margin-top: 5px;
+        font-style: italic;
+        margin-bottom: 5px;
+        background: linear-gradient(to bottom, #f7aa1c4d, #f1d49f4d);
+        border: 1px solid #F7AA1C; /* No border */
+        border-radius: 12px; /* Makes the button pill-shaped */
+        padding: 0px 10px; /* Decrease padding for reduced height */
+        color: white; /* Text color */
+        font-size: 14px; /* Reduce font size */
+        cursor: pointer; /* Pointer cursor on hover */
+        transition: background-color 0.3s ease; /* Smooth background transition */
+      }
+      #editButton {
+        height: auto; /* Set height to auto for content-based height */
+        margin-top: 5px;
+        margin-bottom: 5px;
+        background: linear-gradient(to bottom, #f7aa1c4d, #f1d49f4d);
+        border: 1px solid #F7AA1C;
+        border-radius: 25px; /* Makes the button pill-shaped */
+        padding: 2px 8px; /* Decrease padding for reduced height */
+        color: white; /* Text color */
+        font-size: 14px; /* Reduce font size */
+        cursor: pointer; /* Pointer cursor on hover */
+        transition: background-color 0.3s ease; /* Smooth background transition */
+      }
+      #deleteButton {
+        height: auto; /* Set height to auto for content-based height */
+        margin-right: 15px; /* Space between buttons */
+        margin-top: 5px;
+        margin-bottom: 5px;
+        background: linear-gradient(to bottom, #008ACB4D, #008ACB4D);
+        border: 1px solid #008ACB;
+        font-style: italic;
+        font-weight: 600;
+        border-radius: 25px; /* Makes the button pill-shaped */
+        padding: 2px 8px; /* Decrease padding for reduced height */
+        color: white; /* Text color */
+        font-size: 14px; /* Reduce font size */
+        cursor: pointer; /* Pointer cursor on hover */
+        transition: background-color 0.3s ease; /* Smooth background transition */
+      }
+      #editButton1 {
+ /* Set height to auto for content-based height */
+        margin-top: 5px;
+        margin-bottom: 5px;
+        background: linear-gradient(to bottom, #f7aa1c4d, #f1d49f4d);
+        border: 1px solid #F7AA1C;
+        border-radius: 25px; /* Makes the button pill-shaped */
+        padding: 2px 8px; /* Decrease padding for reduced height */
+        color: white; /* Text color */
+        font-size: 14px; /* Reduce font size */
+        cursor: pointer; /* Pointer cursor on hover */
+        transition: background-color 0.3s ease; /* Smooth background transition */
+      }
+      #editButton:hover, #editButton1:hover, #signupButton:hover {
+        box-shadow: 0 0 10px #FFC107; /* Darker shade on hover for edit button */
+      }
+      #deleteButton:hover {
+        box-shadow: 0 0 10px #008ACB /* Darker shade on hover for delete button */
+      }
+
+
+  </style>
+</head>
+<body>
+  <div class="w-full bg-[#00131c] flex items-center justify-between text-white text-lg font-normal font-amenti h-[50px] relative px-2">
+    <div class="vlc flex items-center justify-center flex-grow gap-2">
+        <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto mr-2">
+        <span>Velocity</span>
+    </div>
+    <div class="flex-none relative">
+        <button id="signupButton" class="text-white flex items-center space-x-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 .587l3.668 7.429 8.332 1.151-6.064 5.703 1.482 8.13L12 18.896l-7.418 4.104 1.482-8.13L0 9.167l8.332-1.151L12 .587z"/>
+            </svg>
+            <span>Sign Up</span>
+        </button>
+        <div id="editDeleteButtons" style="height: 50px; display: flex; align-items: center;">
+          <button id="editButton">40 credits</button>
+          <div id="editDropdownMenu" class="absolute text-xs font-normal font-amenti mt-[47px] bg-black border border-[#222222] rounded-[12px] shadow-xl overflow-hidden" style="display: none;">
+            <ul class="py-7 px-4 space-y-2">
+                <li>
+                    <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors mt-4">
+                        <button>Credit Balance of</button>
+                    </div>
+                </li>
+              
+                <li>
+                    <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors">
+                        <button>40 Credits Left</button>
+                    </div>
+                </li>
+                <hr class="border border-[#444]"> <!-- Added horizontal line -->
+                <li>
+                    <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors">
+                        <button>Top UP Credits</button>
+                    </div>
+                    <button id="editButton1" onclick="window.location.href='topup.html';">Top Up Credits</button>
+                </li>
+            </ul>
+        </div>        
+          <button id="deleteButton">Hii Nikhil</button>
+      </div>
+      
+        
+        <!-- Dropdown Menu -->
+        <div id="dropdownMenu" class="absolute text-xs font-normal font-amenti right-0 mt-[47px] w-[172px] h-[209px] bg-black border border-[#222222] rounded-[24px] shadow-xl overflow-hidden">
+          <ul class="py-7 px-4 space-y-2 mt-4">
+              <!-- Inside the dropdown menu -->
+<li>
+  <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors">
+      <div class="w-8 h-6 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-600" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 4v1H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H18a1 1 0 0 0 1-1v-7h1v-2h-2V4z"/>
+          </svg>
+      </div>
+      <button id="accountButton">Account</button>
+  </div>
+  <hr>
+</li>
+
+              <li>
+                  <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors">
+                      <div class="w-8 h-6 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-600" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 4v1H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H18a1 1 0 0 0 1-1v-7h1v-2h-2V4z"/>
+                          </svg>
+                      </div>
+                      <button>Credits</button>
+                  </div>
+                  <hr>
+              </li>
+              <li>
+                  <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors">
+                      <div class="w-8 h-6 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-600" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2c-1.2 0-2.5.5-3.4 1.3C7.5 4 6 5.5 6 7.5c0 1 .5 1.9 1.2 2.6C6.5 11.1 6 12.6 6 14c0 1.6.6 3 1.5 4h9c.9-1 1.5-2.4 1.5-4 0-1.4-.5-2.9-1.2-3.9C17.5 9.4 18 8.5 18 7.5c0-2-1.5-3.5-2.6-4.2C14.5 2.5 13.2 2 12 2zM8 9.5c0-.7.4-1.3 1-1.6.6-.3 1.2-.1 1.6.4.3.5.1 1.1-.4 1.4-.5.3-1.1.1-1.4-.4-.3-.5-.1-1.1.4-1.4.5-.3 1.1-.1 1.4.4.3.5.1 1.1-.4 1.4-.5.3-1.2.1-1.6-.4-.6-.5-.7-1.2-.7-1.8zm8 0c0-.7-.4-1.3-1-1.6-.6-.3-1.2-.1-1.6.4-.3.5-.1 1.1.4 1.4.5.3 1.1.1 1.4-.4.3-.5.1-1.1-.4-1.4-.5-.3-1.1-.1-1.4.4-.3.5-.1 1.1.4 1.4.5.3 1.2.1 1.6-.4.6-.5.7-1.2.7-1.8zM12 20c-1.1 0-2-.9-2-2h4c0 1.1-.9 2-2 2z" />
+                        </svg>                        
+                      </div>
+                      <button>Subscription</button>
+                  </div>
+                  <hr>
+              </li>
+              <li>
+                  <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors">
+                      <div class="w-8 h-6 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-600" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2a2 2 0 0 1 2 2v1h6a1 1 0 0 1 1 1v1h-2v4a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6V6H4V5a1 1 0 0 1 1-1h6V4a2 2 0 0 1 2-2zM6 12v2a4 4 0 0 0 4 4h2a4 4 0 0 0 4-4v-2h-2v2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-2H6zM4 18h16v2H4v-2z" />
+                        </svg>
+                        
+                      </div>
+                      <button>Referral & Bonus</button>
+                  </div>
+                  <hr>
+              </li>
+              <li>
+                <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors pb-10 mb-4">
+                  <div class="w-8 h-6 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-600" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M6 18h12v2H6zm6-16a4 4 0 1 1-4 4 4 4 0 0 1 4-4z"/>
+                      </svg>
+                  </div>
+                  <button id="logoutButton" class="logout-button">Log Out</button>
+              </div>              
+              </li>
+          </ul>
+      </div>
+    </div>
+</div>
+
+
+  <div class="scrollable-container">
+    <div id="response"></div>
+    
+    <div class="input-container">
+      <textarea 
+        id="promptInput" 
+        class="w-full p-4 bg-black/40 rounded-2xl" 
+        placeholder="Add your prompt here"></textarea>
+    </div>
+    
+  
+  <div class="radio-group">
+    <div class="radio-button">
+      <input type="radio" id="option1" name="option" value="General">
+      <label class="radio-button selected" for="option1">
+        <img style="width: 25%; height: 25%; margin-bottom: 11px;" src="./assets/wandWhite.png" alt="General">
+		<p style="margin-bottom: -14px; font-size: 0.8em;">General</p>
+        <!-- <span>General</span> -->
+      </label>
+    </div>
+    <div class="radio-button">
+      <input type="radio" id="option2" name="option" value="DALL-E">
+      <label class="radio-button" for="option2">
+        <img src="./assets/dalle-2.png" alt="DALL-E">
+        <!-- <span>DALL-E</span> -->
+      </label>
+    </div>
+    <div class="radio-button">
+      <input type="radio" id="option3" name="option" value="Midjourney">
+      <label class="radio-button" for="option3">
+        <img src="./assets/midjourney.png" alt="Midjourney">
+        <!-- <span>Midjourney</span> -->
+      </label>
+    </div>
+    <div class="radio-button">
+      <input type="radio" id="option4" name="option" value="Meta AI">
+      <label class="radio-button" for="option4">
+        <img src="./assets/metaAi.png" alt="Meta AI">
+        <!-- <span>Meta AI</span> -->
+      </label>
+    </div>
+  </div>
+  
+  <div class="image-upload-container">
+    <div class="image-upload-header">
+      <span class="image-upload-title">Image to prompt</span>
+      <!-- <span class="image-upload-info">ⓘ</span> -->
+    </div>
+    <label for="imageUpload" class="image-upload-button">
+      <img src="./assets/uploadIcon.png" alt="Upload Icon" class="image-upload-icon">
+      <span class="image-upload-text">Image Guidance</span>
+    </label>
+    <input type="file" id="imageUpload" name="imageUpload" accept="image/*">
+  </div>
+  <button id="advancedOptionsButton" class="icon-button">
+    <span>Advanced Options</span>
+    <img src="./assets/Rectangle 33.png" alt="Advanced Options Icon" class="button-icon">
+</button>
+        <div id="categories-container" class="hidden2">
+      <!-- Category cards will be dynamically inserted here -->
+    </div>
+  </div>
+  <div class="fixed-bottom">
+    <button id="sendButton" class="generate-button flex justify-between items-center w-full"> <!-- Added width for full button -->
+      <span class="mx-auto">Generate</span> <!-- Center text -->
+      <!-- <img id="generateIcon" src="./assets/Rectangle 32.png" alt="Generate" class="ml-2" /> Space between text and image -->
+    </button>
+  </div>   
+  <script src="popup.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+<!-- .dropdown-card {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    background: #333;
+    border: 1px solid #444;
+    border-radius: 8px;
+    margin-bottom: 3px;
+    margin-right: 10px;
+    padding: 5px;
+    width: 135px;
+ -->

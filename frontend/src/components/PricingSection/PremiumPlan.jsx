@@ -204,8 +204,8 @@ const PremiumPlan = ({ planData, isMonthly }) => {
       <div className="flex md:flex-col justify-between md:justify-start items-center md:items-start">
       <div className="flex flex-col">
         <h5 className="mb-0 sm:mb-1 text-xl font-[Inter] text-[#ffffff]">
-          {/* {planData.name || 'Free plan'} */}
-          Premium
+          {planData.name || 'Premium'}
+          {/* Premium */}
         </h5>
         <h5 className="mb-0 sm:mb-4 text-sm font-medium text-[#757575]">
           {/* {planData.name || 'Limited but powerful'} */}
@@ -215,8 +215,8 @@ const PremiumPlan = ({ planData, isMonthly }) => {
         <div className="flex items-baseline text-[#ffffff]">
           <span className="text-[32px] font-semibold">₹</span>
           <span className="text-[32px] sm:text-[48px] tracking-tight">
-            {/* {planData.price || '00'} */}
-            {isMonthly ? 149 : 149 * 12}
+            {planData.price || '00'}
+            {/* {isMonthly ? 149 : 149 * 12} */}
           </span>
           <span className="ms-1 text-sm font-normal text-gray-500 dark:text-gray-400">
             /{isMonthly ? "month" : "year"}

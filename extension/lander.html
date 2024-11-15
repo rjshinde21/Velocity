@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Velocity Register</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9fafb;
+      margin: 0;
+      padding: 0;
+    }
+    .min-h-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .bg-gray-50 { background-color: #f9fafb; }
+    .bg-white { background-color: #ffffff; }
+    .text-gray-800 { color: #1f2937; }
+    .text-gray-600 { color: #4b5563; }
+    .text-blue-600 { color: #2563eb; }
+    .font-bold { font-weight: bold; }
+    .font-semibold { font-weight: 600; }
+    .p-4 { padding: 1rem; }
+    .rounded-lg { border-radius: 0.5rem; }
+    .shadow-sm { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
+    .space-y-4 > * + * { margin-top: 1rem; }
+    .text-center { text-align: center; }
+    .text-lg { font-size: 1.125rem; }
+    .transition-colors { transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out; }
+    .hover\:bg-blue-500:hover { background-color: #2563eb; color: white; }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Registration Form -->
+    <div class="bg-white rounded-lg shadow-sm p-6 max-w-md w-full mx-auto">
+      <h2 class="text-center text-2xl font-bold text-gray-800 mb-4">Create an Account</h2>
+      
+      <form id="registerForm">
+        <!-- Name -->
+        <div class="space-y-4">
+          <div>
+            <label for="name" class="block text-sm font-semibold text-gray-600">Name</label>
+            <input 
+              type="text" 
+              id="name" 
+              name="name" 
+              required 
+              class="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your name"
+            />
+          </div>
+
+          <!-- Email -->
+          <div>
+            <label for="email" class="block text-sm font-semibold text-gray-600">Email</label>
+            <input 
+              type="email" 
+              id="email" 
+              name="email" 
+              required 
+              class="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your email"
+            />
+          </div>
+
+          <!-- Password -->
+          <div>
+            <label for="password" class="block text-sm font-semibold text-gray-600">Password</label>
+            <input 
+              type="password" 
+              id="password" 
+              name="password" 
+              required 
+              class="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your password"
+            />
+          </div>
+
+          <!-- Register Button -->
+          <button 
+            type="submit" 
+            class="w-full p-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-500 transition-colors"
+          >
+            Register
+          </button>
+        </div>
+
+        <!-- Message Area -->
+        <div id="message" class="mt-4 text-center text-sm text-gray-600"></div>
+      </form>
+
+      <!-- Link to Login -->
+      <div class="mt-4 text-center">
+        <p class="text-sm">Already have an account? 
+          <!-- <a href="login.html" class="text-blue-600 hover:text-blue-800">Log In</a> -->
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add the registration script here -->
+  <script>
+    document.getElementById('registerForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const messageDiv = document.getElementById('message');
+        
+        // Basic validation
+        if (!name || !email || !password) {
+            messageDiv.innerHTML = '<span style="color: red;">Please fill in all fields</span>';
+            return;
+        }
+
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            messageDiv.innerHTML = '<span style="color: red;">Please enter a valid email address</span>';
+            return;
+        }
+
+        // Password validation (minimum 6 characters)
+        if (password.length < 6) {
+            messageDiv.innerHTML = '<span style="color: red;">Password must be at least 6 characters long</span>';
+            return;
+        }
+
+        // Show loading message
+        messageDiv.innerHTML = '<span style="color: blue;">Processing registration...</span>';
+        
+        try {
+            const response = await fetch('http://127.0.0.1:3000/api/users/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    name: name,
+                    email: email,
+                    password: password
+                })
+            });
+    
+            const data = await response.json();
+    
+            if (response.ok) {
+                messageDiv.innerHTML = '<span style="color: green;">Registration successful! Now you can login into velocity extension using same credentials</span>';
+                localStorage.setItem('registrationSuccess', 'true');
+                // setTimeout(() => {
+                //     window.location.href = 'login.html';
+                // }, 2000);
+            } else {
+                switch (response.status) {
+                    case 400:
+                        messageDiv.innerHTML = `<span style="color: red;">Error: ${data.message || 'Invalid input data'}</span>`;
+                        break;
+                    case 409:
+                        messageDiv.innerHTML = '<span style="color: red;">Email already registered. Please login instead.</span>';
+                        break;
+                    case 500:
+                        messageDiv.innerHTML = '<span style="color: red;">Server error. Please try again later.</span>';
+                        break;
+                    default:
+                        messageDiv.innerHTML = `<span style="color: red;">Error: ${data.message || 'Registration failed'}</span>`;
+                }
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            messageDiv.innerHTML = '<span style="color: red;">Network error. Please check your connection and try again.</span>';
+        }
+    });
+  </script>
+</body>
+</html>
