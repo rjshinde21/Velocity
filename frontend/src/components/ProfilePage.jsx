@@ -2,7 +2,6 @@ import React, { useState,useEffect } from 'react';
 // import {useNavigate} from 'react-router-dom';
 import logo from '../assets/velocitylogo.png';
 import PromptGrid from './PromptGrid';
-import { useNavigate } from 'react-router-dom';
 
 const ProfilePage = () => {
     const [name, setName] = useState("");
@@ -145,6 +144,12 @@ const ProfilePage = () => {
         setName(e.target.value);
     };
 
+    const scrollToPricing = () => {
+        if (pricingRef && pricingRef.current) {
+            pricingRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     // Credits section component to avoid duplication
     const CreditsSection = () => (
         <div className="flex flex-col justify-center items-center px-10 sm:px-4 py-6 md:py-10 ">
@@ -158,7 +163,7 @@ const ProfilePage = () => {
                 <button className="w-full md:w-fit flex justify-center font-[Inter] border border-[#F7AA1C] transition-all duration-200 text-[10px] px-2 py-2 sm:px-4 sm:py-3 text-primary rounded-[35px] items-center bg-[radial-gradient(circle_at_center,_rgba(247,170,28,0.2),_rgba(247,170,28,0.4))] hover:shadow-[0_0_7px_rgba(255,255,255,0.7)] my-3 sm:mb-8">
                     Top Up Credits
                 </button>
-            <button className="w-full max-w-sm flex justify-center text-lg px-7 py-4 sm:px-36 sm:py-5 text-[#444444] border border-[#444444] transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]">
+            <button  onClick={scrollToPricing} className="w-full max-w-sm flex justify-center text-lg px-7 py-4 sm:px-36 sm:py-5 text-[#444444] border border-[#444444] transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]">
                 Upgrade
             </button>
                 </div>

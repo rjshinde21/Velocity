@@ -19,6 +19,26 @@ html {
   color: var(--text-primary)
 }
 
+/* Target autofill for input elements */
+input:-webkit-autofill {
+  background-color: black !important;
+  -webkit-box-shadow: 0 0 0px 1000px black inset !important;
+  -webkit-text-fill-color: white !important;
+}
+
+input:-webkit-autofill:focus {
+  background-color: black !important;
+  -webkit-box-shadow: 0 0 0px 1000px black inset !important;
+  -webkit-text-fill-color: white !important;
+}
+
+input:-webkit-autofill:hover {
+  background-color: black !important;
+  -webkit-box-shadow: 0 0 0px 1000px black inset !important;
+  -webkit-text-fill-color: white !important;
+}
+
+
 /* Add the custom gradient class */
 .bg-gradient-text {
   background: linear-gradient(to right, #DADADA, #999999);

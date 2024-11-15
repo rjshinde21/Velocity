@@ -17,6 +17,13 @@ function App() {
   const [showTokenDetails, setShowTokenDetails] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  useEffect(() => {
+    // Check for login status from localStorage
+    const userId = localStorage.getItem("userId");
+    const authToken = localStorage.getItem("token");
+    setIsLoggedIn(!!userId && !!authToken);
+  }, [isLoggedIn]);
+
   // Define refs for each section
   const howItWorksRef = useRef(null);
   const freeTrialRef = useRef(null);
