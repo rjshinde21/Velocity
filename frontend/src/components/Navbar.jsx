@@ -14,6 +14,7 @@ const Navbar = ({
   
 }) => {
   // const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // useEffect(() => {
   //   // Check for login status from localStorage
