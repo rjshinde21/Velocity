@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./components/Home";
@@ -16,6 +16,13 @@ function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [showTokenDetails, setShowTokenDetails] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // Check for login status from localStorage
+    const userId = localStorage.getItem("userId");
+    const authToken = localStorage.getItem("token");
+    setIsLoggedIn(!!userId && !!authToken);
+  }, [isLoggedIn]);
 
   // Define refs for each section
   const howItWorksRef = useRef(null);
@@ -67,7 +74,7 @@ function App() {
           />
           <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn}/>} />
           <Route path="/register" element={<Register />} />
-          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile" element={<ProfilePage pricingRef={pricingRef}/>} />
         </Routes>
         <Footer />
       </main>

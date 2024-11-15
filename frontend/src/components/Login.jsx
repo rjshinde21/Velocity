@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import GetStartedBtn from './GetStartedBtn';
+import velocitylogo from "../assets/velocitylogo.png";
 import { Link } from 'react-router-dom';
-import bg from "../assets/mainbg.png";
 import ProfilePage from './ProfilePage';
 
 const Login = ({setIsLoggedIn}) => {
@@ -257,24 +256,20 @@ const Login = ({setIsLoggedIn}) => {
   }
 
   return (
-    <div className="min-h-screen backdrop-blur-lg absolute h-full w-full flex justify-center items-center z-10" 
-      style={{
-        backgroundImage: `url(${bg})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}>
-      <div className="bg-black/60 rounded-lg shadow-sm p-6 max-w-md w-full mx-auto">
-        <h2 className="text-center text-2xl font-bold bg-gradient-text mb-4">Sign into your Account</h2>
+    <div className="min-h-screen bg-[#0C0C0C] sm:bg-black absolute h-full w-full flex justify-center items-center z-30 flex-col sm:flex-row sm:gap-0 gap-12" >
+      <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm py-6 px-6 sm:px-36 sm:w-1/2 w-full">
+        <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-4">Welcome back</h2>
+        <h2 className="text-left text-[16px] font-normal text-[#808080] mb-10">Welcome back! Please enter your details.</h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-600">Email</label>
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-600 mb-2">Email</label>
               <input
                 type="email"
                 id="email"
                 name="email"
                 required
-                className="w-full p-2 border-b bg-transparent border-gray-600 focus:outline-none text-primary focus:none"
+                className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary focus:none"
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => handleFieldChange('email', e.target.value)}
@@ -286,13 +281,13 @@ const Login = ({setIsLoggedIn}) => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-600">Password</label>
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-600 mb-2">Password</label>
               <input
                 type="password"
                 id="password"
                 name="password"
                 required
-                className="w-full p-2 border-b bg-transparent border-gray-600 focus:outline-none text-primary focus:none"
+                className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary focus:none"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => handleFieldChange('password', e.target.value)}
@@ -303,12 +298,17 @@ const Login = ({setIsLoggedIn}) => {
               )}
             </div>
 
+            <div className='my-3 flex justify-center'>
+              <span className='font-[Inter] text-sm text-[#008ACB] hover:text-[#4bb8eb] cursor-pointer'>Forgot password?</span>
+            </div>
+
             <div className='w-full flex justify-center'>
-              <GetStartedBtn 
+              <button 
+              className='bg-[#008ACB] text-primary rounded-md w-full py-3'
                 click={handleSubmit} 
                 content={isLoading ? "Signing in..." : "Sign in"} 
                 disabled={isLoading} 
-              />
+              >Sign in</button>
             </div>
           </div>
 
@@ -320,12 +320,31 @@ const Login = ({setIsLoggedIn}) => {
         <div className="mt-4 text-center">
           <p className="text-sm bg-gradient-text">
             Don't have an account?{' '}
-            <Link to="/register" className="text-blue-600 hover:text-blue-800">
+            <Link to="/register" className="text-[#008ACB] hover:text-[#4bb8eb]">
               Sign up
             </Link>
           </p>
         </div>
       </div>
+      <div className="flex justify-center order-1 sm:order-2 items-center w-1/2 h-auto sm:h-screen bg-[#0C0C0C]">
+      <Link
+            to="/"
+            className={'flex items-center space-x-3 sm:w-auto w-auto absolute top-16 right-16 '}
+          >
+            <img
+              src={velocitylogo}
+              className="h-10 sm:h-14"
+              alt="Velocity Logo"
+            />
+          </Link>
+      <div className="relative">
+        {/* Blue Circle */}
+        <div className="w-24 h-24 sm:w-64 sm:h-64 bg-blue-500 rounded-full"></div>
+
+        {/* Backdrop blur effect on the lower half */}
+        <div className="absolute top-1/2 sm:left-[-40px] w-40 h-20 left-[-35px] sm:w-96 sm:h-40 backdrop-blur-md bg-[#0C0C0C]/40"></div>
+      </div>
+    </div>
     </div>
   );
 };

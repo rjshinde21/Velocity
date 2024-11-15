@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import GetStartedBtn from './GetStartedBtn';
+import velocitylogo from "../assets/velocitylogo.png";
 import { Link } from 'react-router-dom';
-import bg from "../assets/mainbg.png"
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -147,24 +146,20 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen backdrop-blur-lg absolute h-full w-full flex justify-center items-center z-10" style={{
-        backgroundImage: `url(${bg})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}>
-      <div className="bg-black/60 rounded-lg shadow-sm p-6 max-w-md w-full mx-auto">
-        <h2 className="text-center text-2xl font-bold bg-gradient-text mb-4">Create an Account</h2>
+    <div className="min-h-screen bg-[#0C0C0C] sm:bg-black absolute h-full w-full flex justify-center items-center sm:flex-row flex-col z-30 sm:gap-0 gap-12">
+      <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm px-6 sm:px-36 sm:w-1/2 w-full">
+      <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-8">Create an account</h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             {/* Name */}
             <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-gray-600">Name</label>
+              <label htmlFor="name" className="block text-sm font-semibold text-gray-600 mb-2">Name</label>
               <input
                 type="text"
                 id="name"
                 name="name"
                 required
-                className="w-full p-2 border-b bg-transparent border-gray-600 focus:outline-none text-primary focus:none"
+                className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary focus:none"
                 placeholder="Enter your name"
                 value={name}
                 onChange={(e) => handleFieldChange('name', e.target.value)}
@@ -176,13 +171,13 @@ const Register = () => {
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-600">Email</label>
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-600 mb-2">Email</label>
               <input
                 type="email"
                 id="email"
                 name="email"
                 required
-                className="w-full p-2 border-b bg-transparent border-gray-600 focus:outline-none text-primary focus:none"
+                className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary focus:none"
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => handleFieldChange('email', e.target.value)}
@@ -194,13 +189,13 @@ const Register = () => {
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-600">Password</label>
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-600 mb-2">Password</label>
               <input
                 type="password"
                 id="password"
                 name="password"
                 required
-                className="w-full p-2 border-b bg-transparent border-gray-600 focus:outline-none text-primary focus:none"
+                className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary focus:none"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => handleFieldChange('password', e.target.value)}
@@ -212,13 +207,13 @@ const Register = () => {
 
             {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-600">Confirm Password</label>
+              <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-600 mb-2">Confirm Password</label>
               <input
                 type="password"
                 id="confirmPassword"
                 name="confirmPassword"
                 required
-                className="w-full p-2 border-b bg-transparent border-gray-600 focus:outline-none text-primary focus:none"
+                className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary focus:none"
                 placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => handleFieldChange('confirmPassword', e.target.value)}
@@ -230,7 +225,9 @@ const Register = () => {
 
             {/* Register Button */}
             <div className='w-full flex justify-center'>
-            <GetStartedBtn content="Register" disabled={isLoading} />
+            <button className='bg-[#008ACB] text-primary rounded-md w-full py-3 mt-2' content="Register" disabled={isLoading}>
+              Register
+            </button>
             </div>
           </div>
 
@@ -243,10 +240,31 @@ const Register = () => {
         {/* Link to Login */}
         <div className="mt-4 text-center">
           <p className="text-sm bg-gradient-text">Already have an account? {' '}
-          <Link to="/login" className="text-blue-600 hover:text-blue-800">Log In</Link>
+          <Link to="/login" className="text-[#008ACB] hover:text-[#4bb8eb]">Log In</Link>
           </p>
         </div>
       </div>
+      <div className="flex justify-center order-1 sm:order-2 items-center w-1/2 h-auto sm:h-screen bg-[#0C0C0C]">
+
+      <Link
+            to="/"
+            className={'flex items-center space-x-3 sm:w-auto w-auto absolute top-16 right-16 '}
+          >
+            <img
+              src={velocitylogo}
+              className="h-10 sm:h-14"
+              alt="Velocity Logo"
+            />
+          </Link>
+
+      <div className="relative">
+        {/* Blue Circle */}
+        <div className="w-24 h-24 sm:w-64 sm:h-64 bg-blue-500 rounded-full"></div>
+
+        {/* Backdrop blur effect on the lower half */}
+        <div className="absolute top-1/2 sm:left-[-40px] w-40 h-20 left-[-35px] sm:w-96 sm:h-40 backdrop-blur-md bg-[#0C0C0C]/40"></div>
+      </div>
+    </div>
     </div>
   );
 };
