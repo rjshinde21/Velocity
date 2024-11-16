@@ -25,8 +25,8 @@ const Navbar = ({
 
   return (
     <div>
-      <nav className="bg-transparent text-primary fixed w-full top-0 start-0 px-4 sm:px-8 z-20">
-        <div className="max-w-screen-3xl flex flex-wrap items-center justify-between sm:mx-10 lg:mx-auto pt-5 sm:pt-12">
+      <nav className="bg-transparent text-primary fixed w-full top-0 start-0 px-6 z-20">
+        <div className="max-w-screen-2xl flex flex-wrap items-center justify-between lg:mx-auto pt-5 sm:pt-12">
           {/* <Link
             to="/"
             className={`flex items-center space-x-3 sm:w-auto ${

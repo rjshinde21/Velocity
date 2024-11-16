@@ -25,7 +25,7 @@ const Carousel = ({speed=30000}) => {
   return (
     <>
       <div className="sm:w-[80%] w-full">
-        <h1 className="bg-gradient-text pt-20 sm:pt-60 text-3xl sm:text-5xl mb-12 w-[90%] sm:w-[60%] mx-auto font-[Amenti]">
+        <h1 className="bg-gradient-text pt-20 sm:pt-40 text-3xl sm:text-5xl mb-12 w-[90%] sm:w-[60%] mx-auto font-[Amenti]">
           At Velocity — We craft AI driven prompts that engage your audience
           with clarity and creativity.
         </h1>

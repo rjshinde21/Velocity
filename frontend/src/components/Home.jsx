@@ -22,12 +22,12 @@ const Home = () => {
           <p className="text-[#999999] font-[Inter] text-sm sm:text-lg">
             Generate Your Perfect AI Prompts!
           </p>
-          <Link to="/profile">
+          <a href="https://chromewebstore.google.com/category/extensions?hl=en-US&utm_source=ext_sidebar" target="_blank">  
           <button className="glowing-button flex items-center gap-2 sm:mt-12 mt-6">
             <span>Try Now</span>
             <img src={star} alt="Star" />
           </button>
-          </Link>
+          </a>
         </div>
         <HomeCards />
       <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent via-[12%] bottom-0" />

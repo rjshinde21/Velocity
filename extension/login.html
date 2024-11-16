@@ -2,9 +2,10 @@
 <html>
 <head>
     <title>Velocity Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
     <style>
         body {
-            width: 350px;
+            width: 600px;
             height: 350px;
             font-family: Arial, sans-serif;
             /* padding: 15px; */
@@ -12,10 +13,11 @@
             background-color: #f5f5f5;
         }
         .form-container {
-            background-image: linear-gradient(to bottom, #000000, #008ACB);
-            padding: 20px;
+            background: linear-gradient(to bottom, #000000 20%, #00131c 80%);
+            /* padding: 20px; */
             /* border-radius: 8px; */
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 0px 160px;
         }
         .form-group {
             margin-bottom: 15px;
@@ -23,35 +25,76 @@
 
         .header{
             background-color: #00141D;
-            padding: 10px;
+            padding: 18px 0px;
             color: #ffffff;
+            margin: 0;
+            text-align: center;
+            font-family: Amenti;
         }
         .topText{
-            margin-bottom: 1rem; 
-            font-size: 1.875rem;
+            margin: 0;
+            padding: 10px 0px;
+            text-align: center;
+            font-size: 32px;
             line-height: 2.25rem; 
             font-weight: 400; 
-            text-align: left; 
+            text-align: center; 
             color: #ffffff;
+            padding-top: 60px;
+        }
+
+        .topText2{
+            color: #808080;
+            text-align: center;
+            font-weight: 400;
+            margin: 0;
+            font-size: 14px;
+            padding-bottom: 40px;
+        }
+
+        .forgot-password-container{
+            margin: 20px 0px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .forgot-password{
+            font-size: 14px;
+            color: #008ACB;
+            cursor: pointer;
+        }
+
+        .no-account-container{
+            text-align: center;
+            padding: 40px 0px;
+        }
+
+        .no-account{
+            font-size: 14px;
+            color: #808080;
+            text-align: center;
         }
 
         label {
             display: block;
             margin-bottom: 5px;
-            color: #333;
+            color: #808080;
             font-size: 14px;
+            font-family: Roboto;
         }
         input {
             width: 100%;
             padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
+            color: #ffffff;
+            /* margin-bottom: 10px; */
+            border: 1px solid #808080;
             border-radius: 4px;
             box-sizing: border-box;
             font-size: 14px;
+            background-color: transparent;
         }
-        button {
-            background-color: #4CAF50;
+        #loginButton {
+            background-color: #008ACB;
             color: white;
             padding: 10px 15px;
             border: none;
@@ -61,16 +104,30 @@
             font-size: 14px;
             transition: background-color 0.3s;
         }
+        #loginButton2{
+            background-color: transparent;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+            margin-top: 16px;
+            border: 1px solid #808080;
+        }
         button:hover {
-            background-color: #45a049;
+            background-color: #4bb8eb;
         }
         #response {
-            margin-top: 15px;
-            padding: 10px;
-            border: 1px solid #ddd;
             display: none;
-            border-radius: 4px;
+            margin-bottom: 5px;
             font-size: 13px;
+            background-color: transparent !important;
         }
         .error {
             color: #dc3545;
@@ -84,42 +141,43 @@
             color: #666;
             font-size: 13px;
         }
-        .signup-button {
-            width: 80px;
-            position: absolute;
-            bottom: 15px;
-            right: 10px;
-            background-color: #007BFF;
-            color: white;
-            padding: 10px 15px;
+        .signupButton {
+            color: #008ACB;
             border: none;
-            border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
-            transition: background-color 0.3s;
         }
-        .signup-button:hover {
-            background-color: #0056B3;
+        .signupButton:hover {
+            color: #4bb8eb;
         }
     </style>
 </head>
 <body>
+    <h2 class="header">Velocity</h2>
     <div id="loginForm" class="form-container">
-        <h2 class="header">Velocity</h2>
-        <h2 className="topText">Welcome back</h2>
-        <h2 className="text-left text-[16px] font-normal text-[#808080] mb-10">Welcome back! Please enter your details.</h2>
+        <h2 class="topText">Welcome back</h2>
+        <h2 class="topText2">Welcome back! Please enter your details.</h2>
+        <div id="response"></div>
         <div class="form-group">
             <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required>
+            <input type="email" id="email" name="email" placeholder="Enter your email" required>
         </div>
         <div class="form-group">
             <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
+            <input type="password" id="password" name="password" placeholder="Enter your password" required>
         </div>
-        <button id="loginButton">Login</button>
-        <div id="response"></div>
+        <div class='forgot-password-container'>
+            <span class='forgot-password'>Forgot password?</span>
+          </div>
+        <button id="loginButton">Sign in</button>
+        <button id="loginButton2"><img src="./assets/googlelogo.png" alt="Google logo">Sign in with Google</button>
+        <div class="no-account-container">
+            <span class="no-account">
+              Don't have an account?
+            </span>
+                <span class="signupButton" id="signup-button">Sign up</span>
+          </div>
         <div id="loading" class="loading">Logging in...</div>
-        <button class="signup-button" id="signupButton">Sign Up</button>
     </div>
     <script src="login.js"></script>
 </body>

@@ -13,11 +13,11 @@ const FreeTrial = () => {
           today!
         </span>
       </div>
-      <Link to="/register">
-      <button className="flex text-lg px-7 py-3 sm:px-14 sm:py-5 text-primary rounded-[35px] items-center shadow-[0_0_7px_rgba(255,255,255,0.7)]">
+      <a href="https://chromewebstore.google.com/category/extensions?hl=en-US&utm_source=ext_sidebar" target="_blank">
+      <button className="flex text-lg sm:w-52 w-38 px-7 py-3 sm:px-14 sm:py-5 text-primary rounded-[35px] items-center shadow-[0_0_7px_rgba(255,255,255,0.7)]">
         Get Started
       </button>
-      </Link>
+      </a>
     </div>
   );
 };

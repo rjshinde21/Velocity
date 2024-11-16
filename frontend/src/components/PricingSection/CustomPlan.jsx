@@ -1,6 +1,6 @@
 import React from "react";
 
-const FreePlan = ({ planData }) => {
+const CustomPlan = ({ planData }) => {
   if (!planData) return null;
 
   const PlanDot = () => (
@@ -97,4 +97,4 @@ const FreePlan = ({ planData }) => {
   );
 };
 
-export default FreePlan;
+export default CustomPlan;

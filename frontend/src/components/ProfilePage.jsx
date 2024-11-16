@@ -1,6 +1,6 @@
 import React, { useState,useEffect } from 'react';
-// import {useNavigate} from 'react-router-dom';
-import logo from '../assets/velocitylogo.png';
+import {Link, useNavigate} from 'react-router-dom';
+import velocitylogo from '../assets/velocitylogo.png';
 import PromptGrid from './PromptGrid';
 
 const ProfilePage = () => {
@@ -20,7 +20,7 @@ const ProfilePage = () => {
         const checkAuthAndFetchTokens = async () => {
             if (!authToken || !userId) {
                 setError('Authentication required');
-                navigate('/login');
+                navigate('/profile');
                 return;
             }
             await fetchTokenDetails();
@@ -150,45 +150,30 @@ const ProfilePage = () => {
         }
     };
 
+    function handleLogout() {
+        try {
+          // Clear all stored data
+          localStorage.clear();
+          sessionStorage.clear();
+  
+          // Clear cookies
+          document.cookie.split(";").forEach(function (c) {
+            document.cookie = c.replace(/^ +/, "")
+              .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+          });
+  
+          navigate('/login');
+        } catch (error) {
+          console.error('Logout failed:', error);
+          alert('Logout failed. Please try again.');
+        }
+      }
+
     // Credits section component to avoid duplication
     const CreditsSection = () => (
-        <div className="flex flex-col justify-center items-center px-10 sm:px-4 py-6 md:py-10 ">
-            <div className="w-full max-w-sm sm:px-4 sm:py-5">
-                <p className="text-[#ffffff]/80 font-[Inter] text-sm mb-3">Credit Balance of today</p>
-                <p className="pb-3 text-[#ffffff] font-[Inter] border-b border-[#ffffff]/30">
-                    <span className="text-4xl">{tokenInfo?.token_received || 0}</span> Credits Left
-                </p>
-                <p className="text-[#ffffff]/80 my-3 italic font-normal font-[Inter]">Running out of daily credits?</p>
-                <div className='flex sm:flex-col gap-10 sm:gap-0'>
-                <button className="w-full md:w-fit flex justify-center font-[Inter] border border-[#F7AA1C] transition-all duration-200 text-[10px] px-2 py-2 sm:px-4 sm:py-3 text-primary rounded-[35px] items-center bg-[radial-gradient(circle_at_center,_rgba(247,170,28,0.2),_rgba(247,170,28,0.4))] hover:shadow-[0_0_7px_rgba(255,255,255,0.7)] my-3 sm:mb-8">
-                    Top Up Credits
-                </button>
-            <button  onClick={scrollToPricing} className="w-full max-w-sm flex justify-center text-lg px-7 py-4 sm:px-36 sm:py-5 text-[#444444] border border-[#444444] transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]">
-                Upgrade
-            </button>
-                </div>
-            </div>
-        </div>
-    );
-
-    return (
-        <div className="flex flex-col md:flex h-screen w-screen overflow-x-hidden">
-            {/* Credits section for desktop only */}
-            <div className="hidden absolute items-end md:flex md:w-[485px] flex-shrink-0 bg-black h-full">
-                <CreditsSection />
-            </div>
-            
-            {/* Main content area */}
-            <div className="flex-1 overflow-y-auto bg-black rounded-lg md:ml-[485px] sm:border-l border-l-[#2C2C2C]">
-                <div className="flex flex-col mt-20 lg:mt-52">
-                    {/* Profile Section */}
-                    <div className="flex flex-col md:flex-row md:gap-16 lg:gap-32 items-center p-4 md:p-8">
-                        <img
-                            src=""
-                            alt="Profile"
-                            className="w-20 h-20 md:w-24 md:h-24 lg:w-52 lg:h-52 border rounded-full overflow-hidden mb-4 md:mb-0"
-                        />
-                        <div className="text-center md:text-left">
+        <div className="flex flex-col justify-between h-full px-6 sm:px-4 py-6 md:py-10 ">
+            <div className="flex flex-col md:flex-row md:gap-16 lg:gap-32 items-center px-4 sm:mt-40">
+                        <div className="text-center md:text-left mb-10 sm:mb-0">
                             <button
                                 className="bg-[#2C2C2C] hover:bg-gray-600 text-white text-sm px-4 py-2 rounded-lg font-[Inter] mb-4 flex gap-2 items-center mx-auto md:mx-0"
                                 onClick={handleClick}
@@ -207,7 +192,7 @@ const ProfilePage = () => {
 
                             {isEditing ? (
                                 <input
-                                    className="text-white font-[Inter] text-2xl md:text-3xl bg-transparent border-b border-gray-500 focus:outline-none focus:border-white text-center md:text-left"
+                                    className="text-white w-auto font-[Inter] text-2xl md:text-3xl bg-transparent border-b border-gray-500 focus:outline-none focus:border-white text-center md:text-left"
                                     onChange={handleChange}
                                     value={name}
                                     autoFocus
@@ -221,9 +206,47 @@ const ProfilePage = () => {
                             </span>
                         </div>
                     </div>
+            <div className="w-full max-w-sm sm:px-4 sm:py-5">
+                <p className="text-[#ffffff]/80 font-[Inter] text-sm mb-3">Credit Balance of today</p>
+                <p className="pb-3 text-[#ffffff] font-[Inter] border-b border-[#ffffff]/30">
+                    <span className="text-4xl">{tokenInfo?.token_received || 0}</span> Credits Left
+                </p>
+                <p className="text-[#ffffff]/80 my-3 italic font-normal font-[Inter]">Running out of daily credits?</p>
+                <div className='flex sm:flex-col gap-10 sm:gap-0'>
+            <button onClick={handleLogout} className="w-full max-w-sm flex justify-center text-lg px-7 py-4 sm:px-36 sm:py-5 text-[#bebebe] border border-[#ececec] transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]">
+                Logout
+            </button>
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="flex flex-col md:flex h-screen w-screen overflow-x-hidden">
+            {/* Credits section for desktop only */}
+            <div className="hidden absolute items-end md:flex md:w-[485px] flex-shrink-0 bg-black h-full justify-center">
+                <CreditsSection />
+            </div>
+            
+            {/* Main content area */}
+            <div className="flex-1 overflow-y-auto bg-black rounded-lg md:ml-[485px] sm:border-l border-l-[#2C2C2C]">
+                <div className="flex flex-col mt-20 lg:mt-40">
+                    {/* Profile Section */}
+                    
+
+                    <Link
+            to="/"
+            className={'flex items-center space-x-3 sm:w-auto w-auto absolute top-5 sm:top-12 left-4 sm:left-12 px-4 '}
+          >
+            <img
+              src={velocitylogo}
+              className="h-10 sm:h-14"
+              alt="Velocity Logo"
+            />
+          </Link>
 
                     {/* Credits section for mobile only - shows below profile */}
-                    <div className="md:hidden w-[90%] border-t border-[#2C2C2C] mx-auto mt-6 sm:mx-0">
+                    <div className="md:hidden w-[90%] sm:border-t border-[#2C2C2C] mx-auto mt-6 sm:mx-0">
                         <CreditsSection />
                     </div>
 

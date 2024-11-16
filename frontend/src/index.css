@@ -274,7 +274,7 @@ button:hover .chevron-icon {
 
 
 .animate-gradient-move {
-  animation: gradient-move 60s infinite alternate;
+  animation: gradient-move 60s linear infinite alternate;
   background-position: 0% 0%;
   background-size: 200% 200%;
 }

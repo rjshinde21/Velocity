@@ -2,15 +2,15 @@ import React from 'react';
 import cardbg from '../../src/assets/howitworkscard.png';
 import circuit from '../../src/assets/circuit.png';
 import mask from '../../src/assets/Mask.png';
+import rightarrow from "../assets/rightarrow.png";
 
 const HowItWorks = () => {
-  // Define an array of objects for card content
   const steps = [
     {
       id: 1,
       title: 'Choose your AI platform',
       description: 'Choose your desired AI platform (e.g., GPT, DALL-E)',
-      icon: circuit, // Reference to your image asset
+      icon: circuit,
     },
     {
       id: 2,
@@ -39,25 +39,41 @@ const HowItWorks = () => {
         How It Works
       </h3>
 
-      <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-10 pb-16">
-        {steps.map((step) => (
-          <div
-            key={step.id}
-            className="w-[350px] h-[150px] flex flex-col justify-center items-center py-8 px-12 sm:py-10 sm:px-12 text-white bg-cover bg-center rounded-md shadow-lg"
-            style={{
-              backgroundImage: `url(${cardbg})`,
-              backgroundSize: 'contain',
-              backgroundRepeat: 'no-repeat',
-            }}
-          >
-            <div className="flex flex-col justify-center text-left">
-              <div className="font-semibold mb-4 flex items-center">
-                <img className="w-7 h-7 mr-3" src={step.icon} alt="Step Icon" />
-                <span className="text-md">{step.title}</span>
+      <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4 pb-16">
+        {steps.map((step, index) => (
+          <React.Fragment key={step.id}>
+            <div
+              className="w-[350px] h-[150px] flex flex-col justify-center items-center py-8 px-12 sm:py-10 sm:px-12 text-white bg-cover bg-center rounded-md shadow-lg"
+              style={{
+                backgroundImage: `url(${cardbg})`,
+                backgroundSize: 'contain',
+                backgroundRepeat: 'no-repeat',
+              }}
+            >
+              <div className="flex flex-col justify-center text-left">
+                <div className="font-semibold mb-4 flex items-center">
+                  <img
+                    className="w-7 h-7 mr-3"
+                    src={step.icon}
+                    alt="Step Icon"
+                  />
+                  <span className="text-md">{step.title}</span>
+                </div>
+                <p className="text-sm text-[#999999] text-left">
+                  {step.description}
+                </p>
               </div>
-              <p className="text-sm text-[#999999] text-left">{step.description}</p>
             </div>
-          </div>
+
+            {/* Add arrow between cards */}
+            {index < steps.length - 1 && (
+              <img
+                src={rightarrow}
+                alt="Right Arrow"
+                className="w-8 h-8 sm:w-8 sm:h-8"
+              />
+            )}
+          </React.Fragment>
         ))}
       </div>
     </div>

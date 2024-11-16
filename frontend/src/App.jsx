@@ -107,20 +107,20 @@ function App() {
   return (
     <Router>
       <main className="bg-primary overflow-hidden scrollbar scrollbar-thumb-slate-50 scrollbar-track-slate-800">
-        <Navbar
-          handleClick={handleClick}
-          howItWorksRef={howItWorksRef}
-          freeTrialRef={freeTrialRef}
-          pricingRef={pricingRef}
-          carouselRef={carouselRef}
-          isLoggedIn={isLoggedIn}
-        />
         <Routes>
           <Route path="/profile" element={<ProfilePage />} />
           <Route
             path="/"
             element={
               <>
+              <Navbar
+                handleClick={handleClick}
+                howItWorksRef={howItWorksRef}
+                freeTrialRef={freeTrialRef}
+                pricingRef={pricingRef}
+                carouselRef={carouselRef}
+                isLoggedIn={isLoggedIn}
+              />
                 <Home />
                 {showLogin && !showTokenDetails && (
                   <Register setShowTokenDetails={setShowTokenDetails} />
