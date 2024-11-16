@@ -582,37 +582,42 @@
         <span>Velocity</span>
     </div>
     <div class="flex-none relative">
-        <button id="signupButton" class="text-white flex items-center space-x-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+        <!-- <button id="signupButton" class="text-white flex items-center space-x-2"> -->
+            <!-- <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 .587l3.668 7.429 8.332 1.151-6.064 5.703 1.482 8.13L12 18.896l-7.418 4.104 1.482-8.13L0 9.167l8.332-1.151L12 .587z"/>
-            </svg>
-            <span>Sign Up</span>
-        </button>
+            </svg> -->
+            <!-- <span>Sign Up</span> -->
+            <div style="height: 50px; display: flex; align-items: center;">
+            <button id="editButton">40 credits</button>
+            <div id="editDropdownMenu" class="absolute text-xs font-normal font-amenti mt-[47px] bg-black border border-[#222222] rounded-[12px] shadow-xl overflow-hidden" style="display: none;">
+              <ul class="py-7 px-4 space-y-2">
+                  <li>
+                      <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors mt-4">
+                          <button>Credit Balance of</button>
+                      </div>
+                  </li>
+                
+                  <li>
+                      <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors">
+                          <button>40 Credits Left</button>
+                      </div>
+                  </li>
+                  <hr class="border border-[#444]"> <!-- Added horizontal line -->
+                  <li>
+                      <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors">
+                          <button>Top UP Credits</button>
+                      </div>
+                      <button id="editButton1" onclick="window.location.href='topup.html';">Top Up Credits</button>
+                  </li>
+              </ul>
+          </div>
+            <button id="signupButton" class="text-white flex items-center space-x-2">Hii Nikhil</button>
+            </div>
+        <!-- </button> -->
         <div id="editDeleteButtons" style="height: 50px; display: flex; align-items: center;">
-          <button id="editButton">40 credits</button>
-          <div id="editDropdownMenu" class="absolute text-xs font-normal font-amenti mt-[47px] bg-black border border-[#222222] rounded-[12px] shadow-xl overflow-hidden" style="display: none;">
-            <ul class="py-7 px-4 space-y-2">
-                <li>
-                    <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors mt-4">
-                        <button>Credit Balance of</button>
-                    </div>
-                </li>
-              
-                <li>
-                    <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors">
-                        <button>40 Credits Left</button>
-                    </div>
-                </li>
-                <hr class="border border-[#444]"> <!-- Added horizontal line -->
-                <li>
-                    <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors">
-                        <button>Top UP Credits</button>
-                    </div>
-                    <button id="editButton1" onclick="window.location.href='topup.html';">Top Up Credits</button>
-                </li>
-            </ul>
-        </div>        
-          <button id="deleteButton">Hii Nikhil</button>
+          
+                  
+    
       </div>
       
         

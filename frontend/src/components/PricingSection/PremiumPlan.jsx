@@ -131,22 +131,24 @@ const PremiumPlan = ({ planData, isMonthly }) => {
   const handleUpgrade = async () => {
     if (!userData?.user_id) {
       setError("Please login to upgrade your plan");
+      alert("Please login to upgrade your plan Redirecting to login...");
       setTimeout(() => {
         navigate("/login");
       }, 2000);
       return;
     }
-
+  
     setLoading(true);
     setError(null);
-
+  
     try {
       const token = localStorage.getItem("token");
       if (!token) {
         throw new Error("Authentication required");
       }
-
-      const response = await fetch(
+  
+      // First update the plan
+      const planResponse = await fetch(
         `http://127.0.0.1:3000/api/plans/${userData.user_id}`,
         {
           method: "PUT",
@@ -156,26 +158,48 @@ const PremiumPlan = ({ planData, isMonthly }) => {
             Accept: "application/json",
           },
           body: JSON.stringify({
-            plan_id: 2,
+            plan_id: 2
           }),
         }
       );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 401) {
+  
+      const planData = await planResponse.json();
+  
+      if (!planResponse.ok) {
+        if (planResponse.status === 401) {
           localStorage.clear();
           navigate("/login");
           throw new Error("Session expired. Please login again.");
         }
-        throw new Error(data.message || "Failed to upgrade plan");
+        throw new Error(planData.message || "Failed to upgrade plan");
       }
-
+  
+      // Then update the token received
+      const tokenResponse = await fetch(
+        `http://127.0.0.1:3000/api/token-types/${userData.user_id}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token_received: 100 // Premium plan token amount
+          }),
+        }
+      );
+  
+      const tokenData = await tokenResponse.json();
+  
+      if (!tokenResponse.ok) {
+        throw new Error(tokenData.message || "Failed to update tokens");
+      }
+  
       setError(null);
-      alert("Plan upgraded successfully!");
+      alert("Plan and tokens upgraded successfully!");
       window.location.reload();
     } catch (err) {
+      console.error("Upgrade error:", err);
       setError(err.message);
       if (
         err.message.includes("authentication") ||
