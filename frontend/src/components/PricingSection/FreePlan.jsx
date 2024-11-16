@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 const FreePlan = ({ planData, isLoggedIn }) => {
   if (!planData) return null;
@@ -52,16 +53,31 @@ const FreePlan = ({ planData, isLoggedIn }) => {
           </span>
         </div>
       </div>
-      <button
+      {
+isLoggedIn?(<a href="https://chromewebstore.google.com/category/extensions?hl=en-US&utm_source=ext_sidebar">
+<button
+        type="button"
+        className="text-white my-4 sm:my-10 font-medium rounded-xl text-sm px-5 py-2.5 inline-flex justify-center  w-full text-center transition-colors duration-500 ease-in-out border border-[#ffffff]/10"
+        style={{
+          backgroundImage: 'linear-gradient(to bottom, #008ACB1A 0%, #000000 100%)',
+        }}
+      >
+        {/* {planData.buttonText || (isLoggedIn ? 'Current Plan' : 'Get Started')} */}
+        {planData.buttonText || 'Current Plan'}
+      </button>
+</a>):(
+        <button
         type="button"
         className="text-white my-4 sm:my-10 font-medium rounded-xl text-sm px-5 py-2.5 inline-flex justify-center  w-full text-center transition-colors duration-500 ease-in-out border border-[#ffffff]/10"
         style={{
           backgroundImage: 'linear-gradient(to bottom, #008ACB1A 0%, #000000 100%)',
         }}
         onClick={planData.onSignUp}
-      >
-        {planData.buttonText || (isLoggedIn ? 'Current Plan' : 'Get Started')}
-      </button>
+        >
+        {/* {planData.buttonText || (isLoggedIn ? 'Current Plan' : 'Get Started')} */}
+        {planData.buttonText || 'Get Started'}
+      </button>)
+      }
       
       <ul
         role="list"

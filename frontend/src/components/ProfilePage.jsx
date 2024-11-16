@@ -2,6 +2,7 @@ import React, { useState,useEffect } from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import velocitylogo from '../assets/velocitylogo.png';
 import PromptGrid from './PromptGrid';
+
 const ProfilePage = () => {
     const [name, setName] = useState("");
     const [isEditing, setIsEditing] = useState(false);
@@ -101,6 +102,7 @@ const ProfilePage = () => {
                     user_id: userId
                 })
             });
+
             if (!response.ok) {
                 throw new Error(`Failed to update tokens: ${response.status}`);
             }
@@ -128,6 +130,7 @@ const ProfilePage = () => {
             pricingRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     };
+
     function handleLogout() {
         try {
           // Clear all stored data
@@ -181,8 +184,8 @@ const ProfilePage = () => {
                         </div>
                     </div>
             <div className="w-full max-w-sm sm:px-4 sm:py-5">
-                <p className="text-[#FFFFFF]/80 font-[Inter] text-sm mb-3">Credit Balance of today</p>
-                <p className="pb-3 text-[#FFFFFF] font-[Inter] border-b border-[#FFFFFF]/30">
+                <p className="text-[#ffffff]/80 font-[Inter] text-sm mb-3">Credit Balance of today</p>
+                <p className="pb-3 text-[#ffffff] font-[Inter] border-b border-[#ffffff]/30">
                     <span className="text-4xl">{(tokenInfo?.token_received || 0) - (tokenInfo?.tokens_used || 0)}</span> Credits Left
                 </p>
                 <p className="text-[#FFFFFF]/80 my-3 italic font-normal font-[Inter]">Running out of daily credits?</p>
@@ -225,4 +228,5 @@ const ProfilePage = () => {
         </div>
     );
 };
-export default ProfilePage;
+
+export default ProfilePage; 
