@@ -70,7 +70,7 @@ const HowItWorks = () => {
               <img
                 src={rightarrow}
                 alt="Right Arrow"
-                className="w-8 h-8 sm:w-8 sm:h-8"
+                className="w-8 h-8 sm:w-8 sm:h-8 rotate-90 sm:rotate-0"
               />
             )}
           </React.Fragment>

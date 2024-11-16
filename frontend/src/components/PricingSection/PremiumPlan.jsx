@@ -224,7 +224,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
   ];
 
   return (
-    <div className="w-full max-w-xs p-6 font-[Inter] rounded-[32px] shadow sm:p-8 hover:scale-105 transition-all duration-200 bg-gradient-to-t from-[rgba(0,138,203,0.12)] via-[rgba(0,138,203,0.04)] to-[rgba(0,138,203,0.14)] border border-solid border-current backdrop-blur-[84px] ">
+    <div className="w-full max-w-sm border border-[#008ACB52] p-6 font-[Inter] rounded-[32px] shadow sm:p-8 hover:scale-105 transition-all duration-200 bg-gradient-to-t from-[rgba(0,138,203,0.12)] via-[rgba(0,138,203,0.04)] to-[rgba(0,138,203,0.14)] backdrop-blur-[84px] ">
       <div className="flex md:flex-col justify-between md:justify-start items-center md:items-start">
       <div className="flex flex-col">
         <h5 className="mb-0 sm:mb-1 text-xl font-[Inter] text-[#ffffff]">
