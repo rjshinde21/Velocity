@@ -422,7 +422,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Validate inputs
     if (!prompt && (!imageUpload || imageUpload.files.length === 0)) {
-      showError('Please enter a prompt or upload an image.');
+      showError('Please enter a prompt first than upload an image.');
       return;
     }
 
@@ -537,16 +537,17 @@ document.addEventListener('DOMContentLoaded', function () {
     dropdownMenu.style.display = 'none'; // Hide Sign Up dropdown when Edit is clicked
   });
 
-  // Show Edit/Delete buttons when Account button is clicked
-  accountButton.addEventListener('click', function (e) {
-    e.stopPropagation();
-    signupButton.style.display = 'none'; // Hide Sign Up button
-    editDeleteButtons.style.display = 'block'; // Show Edit/Delete buttons
-  });
+  // // Show Edit/Delete buttons when Account button is clicked
+  // accountButton.addEventListener('click', function (e) {
+  //   e.stopPropagation();
+  //   signupButton.style.display = 'none'; // Hide Sign Up button
+  //   editDeleteButtons.style.display = 'block'; // Show Edit/Delete buttons
+  //   editDropdownMenu.style.display = 'none'; // Close the Edit dropdown if open
+  // });
 
   // Close dropdowns when clicking outside
   document.addEventListener('click', function (e) {
-    if (e.target !== signupButton && e.target !== editButton && !dropdownMenu.contains(e.target) && !editDropdownMenu.contains(e.target)) {
+    if (e.target !== signupButton && e.target !== editButton && !dropdownMenu.contains(e.target) && !editDropdownMenu.contains(e.target) && e.target !== accountButton) {
       dropdownMenu.style.display = 'none';
       editDropdownMenu.style.display = 'none'; // Hide Edit dropdown
       signupButton.style.display = 'flex'; // Show Sign Up button again
@@ -649,26 +650,29 @@ fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
     const userName = data.data.user.name;
     console.log("data:" + data.data.user.name);
     // Update the "Hii Nikhil" button with the user's name
-    document.getElementById('deleteButton').textContent = `Hii ${userName}`; 
+    document.getElementById('signupButton').textContent = `Hii ${userName}`; 
     // signupButton
-    document.getElementById('signupButton').textContent = ` ${userName}`;
+    // document.getElementById('signupButton').textContent = ` ${userName}`;
   })
   .catch(error => console.error('Error fetching user profile:', error));
 
-// Fetch and update user's token balance
-fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
-  method: 'GET',
-  headers: {
-    'Authorization': `Bearer ${token}`,
-  }
-})
-  .then(response => response.json())
-  .then(data => {
+// Function to fetch and update credit display
+async function updateCreditDisplay() {
+  try {
+    const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+    const data = await response.json();
     const tokensReceived = data.data.token_received;
     const tokensUsed = data.data.tokens_used;
     document.getElementById('editButton').textContent = `${tokensReceived - tokensUsed} Credits`;
-  })
-  .catch(error => console.error('Error fetching token balance:', error));
+  } catch (error) {
+    console.error('Error updating credit display:', error);
+  }
+}
   
 
 
@@ -705,7 +709,7 @@ function handleCreditDeduction(feature) {
           const tokensReceived = data.data.token_received;
           const tokensUsed = data.data.tokens_used;
 
-          document.getElementById('editButton').textContent = `${tokensReceived - tokensUsed} Credits`;
+          // document.getElementById('editButton').textContent = `${tokensReceived - tokensUsed} Credits`;
 
           if (tokensReceived <= tokensUsed) {
             alert("You are out of tokens!");
@@ -728,10 +732,14 @@ function handleCreditDeduction(feature) {
               })
             })
               .then(updateResponse => updateResponse.json())
-              .then(updateData => {
+              .then(async (updateData)  => {
                 console.log(`Credits deducted for ${feature}:`, featureCredit.credits);
                 // Re-enable the send button if tokens are sufficient
                 document.getElementById('sendButton').disabled = false;
+                //  Refresh credits display immediately after deduction
+                  await updateCreditDisplay();
+                  
+                  resolve('Success');
               })
               .catch(error => console.error('Error updating tokens:', error));
           } else {
@@ -800,42 +808,51 @@ document.getElementById('imageUpload').addEventListener('change', function () {
 });
 
 // Event listener for generate button
-document.getElementById('sendButton').addEventListener('click', function () {
-  // Determine the total deductions
-  if (promptUsed) {
-    handleCreditDeduction('basic_prompt');
-  }
+document.getElementById('sendButton').addEventListener('click', async function () {
+  try {
+    if (promptUsed) {
+      await handleCreditDeduction('basic_prompt');
+    }
 
-  if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
-    // Deduct tokens for each selected advanced option
-    advancedOptionsSelected.forEach(optionId => {
-      handleCreditDeduction(`advanced_prompt_${optionId}`);
+    if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
+      for (const optionId of advancedOptionsSelected) {
+        await handleCreditDeduction(`advanced_prompt_${optionId}`);
+      }
+    }
+
+    if (imageGuidanceUsed) {
+      await handleCreditDeduction('image_prompt');
+    }
+
+    if (promptUsed && advancedOptionsUsed && imageGuidanceUsed) {
+      await handleCreditDeduction('complete_prompt');
+    }
+
+    // Reset all tracking after successful generation
+    promptUsed = false;
+    advancedOptionsUsed = false;
+    imageGuidanceUsed = false;
+    advancedOptionsSelected.clear();
+
+    // Reset visual state of buttons
+    advancedOptionButtons.forEach(button => {
+      button.classList.remove('selected');
     });
+
+    // Clear the image upload input
+    document.getElementById('imageUpload').value = '';
+
+    // Final refresh of credits display
+    await updateCreditDisplay();
+  } catch (error) {
+    console.error('Error during credit deductions:', error);
+    // Refresh credits display even if there's an error
+    await updateCreditDisplay();
   }
-
-  if (imageGuidanceUsed) {
-    handleCreditDeduction('image_prompt');
-  }
-
-  if (promptUsed && advancedOptionsUsed && imageGuidanceUsed) {
-    handleCreditDeduction('complete_prompt');
-  }
-    
-
-  // Reset all tracking after generating
-  promptUsed = false;
-  advancedOptionsUsed = false;
-  imageGuidanceUsed = false;
-  advancedOptionsSelected.clear();
-
-  // Reset visual state of buttons
-  advancedOptionButtons.forEach(button => {
-    button.classList.remove('selected');
-  });
-
-  // Clear the image upload input
-  document.getElementById('imageUpload').value = '';
 });
+
+// Initial credit display update when page loads
+updateCreditDisplay();
 
 // Helper function to get selected advanced options count
 function getSelectedAdvancedOptionsCount() {
