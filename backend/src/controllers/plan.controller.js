@@ -87,7 +87,9 @@ const planController = {
                         plan_id: updatedUser.plan_id,
                         plan_name: updatedUser.plan_name,
                         token_received: updatedUser.token_received,
-                        cost: updatedUser.cost
+                        token_received_yearly: updatedUser.token_received_yearly,
+                        cost: updatedUser.cost,
+                        cost_yearly: updatedUser.cost_yearly
                     }
                 }
             });
@@ -129,7 +131,9 @@ const planController = {
                         plan_id: userPlan.plan_id,
                         plan_name: userPlan.plan_name,
                         token_received: userPlan.token_received,
-                        cost: userPlan.cost
+                        token_received_yearly: userPlan.token_received_yearly,
+                        cost: userPlan.cost,
+                        cost_yearly: userPlan.cost_yearly
                     }
                 }
             });

@@ -51,19 +51,19 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(adjustPopupSize, 100); // Allow time for transition
   });
 
-  // fetch('http://localhost:5000/get_categories')
-  //   .then(response => response.json())
-  //   .then(categories => {
-  //     console.log('Categories:', categories);
-  //     categories.forEach(category => {
-  //       const categoryCard = createCategoryCard(category);
-  //       categoriesContainer.appendChild(categoryCard);
-  //     });
-  //   })
-  //   .catch(error => {
-  //     console.error('Error fetching categories:', error);
-  //     categoriesContainer.textContent = `Failed to load categories. Error: ${error.message}`;
-  //   });
+  fetch('http://localhost:5000/get_categories')
+    .then(response => response.json())
+    .then(categories => {
+      console.log('Categories:', categories);
+      categories.forEach(category => {
+        const categoryCard = createCategoryCard(category);
+        categoriesContainer.appendChild(categoryCard);
+      });
+    })
+    .catch(error => {
+      console.error('Error fetching categories:', error);
+      categoriesContainer.textContent = `Failed to load categories. Error: ${error.message}`;
+    });
 
   imageUpload.addEventListener('change', function (event) {
     const fileName = event.target.files[0]?.name;
@@ -767,23 +767,35 @@ const advancedOptionButtons = document.querySelectorAll('.dropdown-card');
 advancedOptionButtons.forEach(button => {
   button.addEventListener('click', function () {
     const optionId = this.querySelector('.dropdown-card-select').innerText; // Use button text as unique identifier
+    console.log(`Advanced option clicked: ${optionId}`); // Log button click
+    advancedOptionsUsed = true;
 
+    // Toggle the selected option
     if (!advancedOptionsSelected.has(optionId)) {
       // Add option to the selected set
       advancedOptionsSelected.add(optionId);
-
       // Mark the option as selected visually
       this.classList.add('selected');
     } else {
       // Remove option from the selected set
       advancedOptionsSelected.delete(optionId);
-
       // Remove the selected state visually
       this.classList.remove('selected');
     }
 
-    // Update the advancedOptionsUsed flag based on selections
+    // Update the flag for advanced options usage based on the size of the set
     advancedOptionsUsed = advancedOptionsSelected.size > 0;
+
+    // Log the state of advancedOptionsUsed and the selected set
+    console.log('Advanced options selected:', Array.from(advancedOptionsSelected));
+    console.log('Advanced options used:', advancedOptionsUsed);
+
+    // Debugging: Verify if the flag is correctly updated
+    if (advancedOptionsUsed) {
+      console.log('At least one advanced option is selected');
+    } else {
+      console.log('No advanced options are selected');
+    }
   });
 });
 
@@ -811,21 +823,39 @@ document.getElementById('imageUpload').addEventListener('change', function () {
 // Event listener for generate button
 document.getElementById('sendButton').addEventListener('click', async function () {
   try {
+    // Disable the input area while processing
+    document.getElementById('promptInput').disabled = true;
+
+    // Log the current usage status
+    console.log('Generating with the following options:');
+    console.log('Prompt used:', promptUsed);
+    console.log('Advanced options used:', advancedOptionsUsed);
+    console.log('Image guidance used:', imageGuidanceUsed);
+
+    // Check if the basic prompt is used
     if (promptUsed) {
+      console.log('Deducting credit for basic prompt');
       await handleCreditDeduction('basic_prompt');
     }
 
+    // If any advanced options are selected, deduct credits for each
     if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
+      // Loop through the selected advanced options and deduct credits
       for (const optionId of advancedOptionsSelected) {
+        console.log(`Deducting credit for: advanced_prompt_${optionId}`);
         await handleCreditDeduction(`advanced_prompt_${optionId}`);
       }
     }
 
+    // Check if image guidance is used
     if (imageGuidanceUsed) {
+      console.log('Deducting credit for image guidance');
       await handleCreditDeduction('image_prompt');
     }
 
+    // If all options are used, deduct credits for the complete prompt
     if (promptUsed && advancedOptionsUsed && imageGuidanceUsed) {
+      console.log('Deducting credit for complete prompt');
       await handleCreditDeduction('complete_prompt');
     }
 
@@ -845,10 +875,20 @@ document.getElementById('sendButton').addEventListener('click', async function (
 
     // Final refresh of credits display
     await updateCreditDisplay();
+
+    // Enable the input area after processing
+    document.getElementById('promptInput').disabled = false;
+
+    // Reset the prompt input field after generating prompts
+    document.getElementById('promptInput').value = '';
+
   } catch (error) {
     console.error('Error during credit deductions:', error);
     // Refresh credits display even if there's an error
     await updateCreditDisplay();
+
+    // Enable the input area in case of error
+    document.getElementById('promptInput').disabled = false;
   }
 });
 
@@ -859,6 +899,8 @@ updateCreditDisplay();
 function getSelectedAdvancedOptionsCount() {
   return advancedOptionsSelected.size;
 }
+
+
 
 
 

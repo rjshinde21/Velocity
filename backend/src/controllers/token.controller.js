@@ -58,27 +58,54 @@ const tokenController = {
         try {
             const id = parseInt(req.params.id);
             const { token_received, tokens_used } = req.body;
-
+    
+            // Validate if ID is a valid number
             if (isNaN(id)) {
                 return res.status(400).json({
                     success: false,
                     message: 'Invalid token ID format'
                 });
             }
-
-            // Update the tokens
+    
+            // Validate token_received and tokens_used
+            if (token_received < 0 || tokens_used < 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Token values must be non-negative'
+                });
+            }
+    
+            // Calculate tokens left
+            const tokensLeft = token_received - tokens_used;
+    
+            // Ensure tokens_used does not exceed tokens_received
+            if (tokensLeft < 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid token values: tokens used cannot exceed tokens received'
+                });
+            }
+    
+            // Update the tokens in the database
             const result = await Token.updateTokens(id, token_received, tokens_used);
-
+    
+            // If no rows were affected, it means the update failed
             if (result.affectedRows === 0) {
                 return res.status(404).json({
                     success: false,
                     message: `Token with ID ${id} not found`
                 });
             }
-
+    
+            // Respond with a success message and updated data
             res.status(200).json({
                 success: true,
-                message: `Tokens updated for ID ${id}`
+                message: `Tokens updated for ID ${id}`,
+                data: {
+                    token_received,
+                    tokens_used,
+                    tokens_left: tokensLeft // Include tokens left in the response
+                }
             });
         } catch (error) {
             console.error('Error updating tokens:', error);
@@ -88,7 +115,7 @@ const tokenController = {
                 error: error.message
             });
         }
-    }
+    }    
 };
 
 module.exports = tokenController;

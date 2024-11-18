@@ -8,7 +8,9 @@ class Plan {
                     plan_id,
                     plan_name,
                     token_received,
-                    cost
+                    token_received_yearly,
+                    cost,
+                    cost_yearly
                 FROM plantable
                 ORDER BY cost ASC
             `;
@@ -27,7 +29,9 @@ class Plan {
                     plan_id,
                     plan_name,
                     token_received,
-                    cost
+                    token_received_yearly,
+                    cost,
+                    cost_yearly
                 FROM plantable
                 WHERE plan_id = ?
             `;
@@ -76,7 +80,9 @@ class Plan {
                     p.plan_id,
                     p.plan_name,
                     p.token_received,
-                    p.cost
+                    p.token_received_yearly,
+                    p.cost,
+                    p.cost_yearly
                 FROM usertable u
                 JOIN plantable p ON u.plan_id = p.plan_id
                 WHERE u.user_id = ?
@@ -117,7 +123,9 @@ class Plan {
                     p.plan_id,
                     p.plan_name,
                     p.token_received,
-                    p.cost
+                    p.token_received_yearly,
+                    p.cost,
+                    p.cost_yearly
                 FROM usertable u
                 JOIN plantable p ON u.plan_id = p.plan_id
                 WHERE u.user_id = ?
