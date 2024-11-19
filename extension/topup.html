@@ -90,115 +90,464 @@
         }
 
         .toggle-btn {
-        transition: background-color 0.3s ease, color 0.3s ease; /* Add transition for color change */
-        flex: 1; /* Allow buttons to grow equally */
-        padding: 0.5rem; /* Adjust padding as needed */
-        text-align: center; /* Center text inside buttons */
-        background-color: transparent; /* Default background */
-        color: white; /* Default text color */
-    }
+            transition: background-color 0.3s ease, color 0.3s ease;
+            flex: 1;
+            padding: 0.5rem;
+            text-align: center;
+            background-color: transparent;
+            color: white;
+        }
 
-    .toggle-btn.active {
-        border-radius: 12px;
-        background-color: rgba(255, 255, 255, 0.2); /* Highlight active button */
-        color: #1a1a1a; /* Change text color to match background */
-    }
+        .toggle-btn.active {
+            border-radius: 12px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #1a1a1a;
+        }
 
-    .toggle-btn:hover:not(.active) {
-        background-color: rgba(255, 255, 255, 0.1); /* Shade for hover effect on inactive buttons */
-    }
+        .toggle-btn:hover:not(.active) {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
 
-    .month {
-        width: 200px; /* Set the width of the container */
-        padding: 0.25rem; /* Add some padding */
-        display: flex; /* Use flex to arrange buttons */
-        border-radius: 12px;
-    }
-    .grid-container{
-        margin-bottom: 15px;
-    }
+        .month {
+            width: 200px;
+            padding: 0.25rem;
+            display: flex;
+            border-radius: 12px;
+        }
 
+        .grid-container {
+            margin-bottom: 15px;
+        }
 
+        .hidden2 {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-[#00131c] min-h-screen text-white p-8">
-    <div class="w-full bg-[#00131c] text-white text-lg font-normal font-amenti h-[50px] flex items-center justify-center px-2">
-        <!-- Velocity Logo Centered -->
-        <div class="flex items-center gap-2">
-            <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto">
-            <span>Velocity</span>
-        </div>
+    <button id="advancedOptionsButton" class="icon-button">
+        <span>Advanced Options</span>
+        <img src="./assets/Rectangle 33.png" alt="Advanced Options Icon" class="button-icon">
+    </button>
+    <div id="categories-container" class="hidden2">
+        <!-- Category cards will be dynamically inserted here -->
+    </div>
+    <div class="flex justify-center mt-4">
+        <button id="sendButton" class="generate-button flex justify-center items-center w-full">
+            <span class="mx-auto">Generate</span>
+        </button>
     </div>
 
-    <!-- Toggle Buttons -->
-    <div class="flex justify-center mt-6">
-    <div class="month bg-[#1a1a1a] rounded-full p-1 border border-gray-600" style="width: 200px;">
-        <button id="monthlyBtn" class="toggle-btn active">Monthly</button>
-        <button id="yearlyBtn" class="toggle-btn">Yearly</button>
-    </div>
-</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const sendButton = document.getElementById('sendButton');
+            const categoriesContainer = document.getElementById('categories-container');
+            const advancedOptionsButton = document.getElementById('advancedOptionsButton');
+
+            // Toggle advanced options visibility
+            advancedOptionsButton?.addEventListener('click', function () {
+                categoriesContainer.classList.toggle('hidden2');
+                setTimeout(adjustPopupSize, 100); // Allow time for transition
+            });
+
+            // Fetch categories from server
+            fetch('http://localhost:5000/get_categories')
+                .then(response => response.json())
+                .then(categories => {
+                    console.log('Categories:', categories);
+                    categories.forEach(category => {
+                        const categoryCard = createCategoryCard(category);
+                        categoriesContainer.appendChild(categoryCard);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching categories:', error);
+                    categoriesContainer.textContent = `Failed to load categories. Error: ${error.message}`;
+                });
+
+            // Button click functionality
+            sendButton.addEventListener('click', sendRequest);
+
+            // Create a category card
+            function createCategoryCard(category) {
+                const categoryCard = document.createElement('div');
+                categoryCard.className = 'category-card';
+                const categoryTitle = document.createElement('div');
+                categoryTitle.className = 'category-title';
+                categoryTitle.textContent = category.name;
+                categoryCard.appendChild(categoryTitle);
+                categoryCard.id = 'category-card';
+                const dropdownContainer = createDropdown(category);
+                categoryCard.appendChild(dropdownContainer);
+                return categoryCard;
+            }
+
+            // Create a dropdown for each category
+            function createDropdown(category) {
+                const dropdownContainer = document.createElement('div');
+                dropdownContainer.className = 'dropdown';
+
+                const dropdownButton = document.createElement('button');
+                dropdownButton.className = 'dropdown-button';
+                dropdownButton.innerHTML = `
+                    <div class="dropdown-button-content">
+                        <span>Select</span>
+                    </div>
+                `;
+
+                const dropdownContent = document.createElement('div');
+                dropdownContent.className = 'dropdown-content';
+
+                const horizontalContainer = document.createElement('div');
+                horizontalContainer.className = 'dropdown-horizontal-container';
+
+                category.items.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'dropdown-card';
+
+                    const selectButton = document.createElement('button');
+                    selectButton.className = 'dropdown-card-select';
+                    selectButton.textContent = item.name;
+
+                    card.appendChild(selectButton);
+
+                    selectButton.addEventListener('click', function (event) {
+                        event.stopPropagation();
+                        horizontalContainer.querySelectorAll('.dropdown-card').forEach(c =>
+                            c.classList.remove('selected')
+                        );
+                        card.classList.add('selected');
+                        updateDropdownButton(dropdownButton, card);
+                        dropdownContent.style.display = 'none';
+                    });
+
+                    horizontalContainer.appendChild(card);
+                });
+
+                dropdownContent.appendChild(horizontalContainer);
+                dropdownContainer.appendChild(dropdownButton);
+                dropdownContainer.appendChild(dropdownContent);
+
+                dropdownButton.addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    closeAllDropdowns();
+                    dropdownContent.style.display =
+                        dropdownContent.style.display === 'block' ? 'none' : 'block';
+                });
+
+                return dropdownContainer;
+            }
+
+            function updateDropdownButton(dropdownButton, selectedItem) {
+                const nameContainer = dropdownButton.querySelector('span');
+                nameContainer.textContent = selectedItem.querySelector('.dropdown-card-select').textContent;
+            }
+
+            function closeAllDropdowns() {
+                document.querySelectorAll('.dropdown-content').forEach(content => {
+                    content.style.display = 'none';
+                });
+            }
+
+            function adjustPopupSize() {
+                categoriesContainer.classList.remove('hidden2');
+                categoriesContainer.classList.add('popup-open');
+            }
+
+            // Send request to server
+            function sendRequest() {
+                const selectedCategory = document.querySelector('.category-card.selected');
+                const selectedCategoryName = selectedCategory ? selectedCategory.querySelector('.dropdown-card.selected')?.textContent : null;
+                if (!selectedCategoryName) {
+                    alert('Please select a category!');
+                    return;
+                }
+
+                fetch('http://localhost:5000/generate-token', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        category: selectedCategoryName,
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert('Token generated: ' + data.token);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Failed to generate token');
+                    });
+            }
+        });
+        const userId = localStorage.getItem('userId');
+const token = localStorage.getItem('userToken');
+console.log("token:" + token);
+// const userId = 'user123'; // Replace with the actual user ID (from session, localStorage, etc.)
+
+// Fetch User Profile data
+fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${token}` // Add the Authorization header with the token
+  }
+})
+  .then(response => response.json())
+  .then(data => {
+    // Assuming the API response has a 'name' field for the user's name
+    const userName = data.data.user.name;
+    console.log("data:" + data.data.user.name);
+    // Update the "Hii Nikhil" button with the user's name
+    document.getElementById('signupButton').textContent = `Hii ${userName}`; 
+    // signupButton
+    // document.getElementById('signupButton').textContent = ` ${userName}`;
+  })
+  .catch(error => console.error('Error fetching user profile:', error));
+
+// Function to fetch and update credit display
+async function updateCreditDisplay() {
+  try {
+    const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+    const data = await response.json();
+    const tokensReceived = data.data.token_received;
+    const tokensUsed = data.data.tokens_used;
+    document.getElementById('editButton').textContent = `${tokensReceived - tokensUsed} Credits`;
+  } catch (error) {
+    console.error('Error updating credit display:', error);
+  }
+}
+  
 
 
-    <!-- Pricing Cards Container -->
-    <div class="max-w-6xl mx-auto grid md:grid-cols-3 gap-4 mt-6 grid-container">
-        <!-- Explorer Pack -->
-        <div class="pricing-card explorer-pack relative bg-[#1a1a1a] p-4 rounded-lg hover:shadow-lg transition-shadow duration-300 flex flex-col">
-            <div class="flex items-center gap-2">
-                <div class="w-6 h-6">
-                    <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 0l2.868 8.827h9.132l-7.385 5.369 2.868 8.827-7.483-5.369-7.483 5.369 2.868-8.827-7.385-5.369h9.132z"/>
-                    </svg>
-                </div>
-                <h3 class="text-sm font-semibold">Explorer Pack</h3>
-            </div>
-            <div class="text-xs flex justify-between my-1">
-                <span>50 credits/month</span>
-                <span>5 Prompts/Day</span>
-            </div>
-            <p class="text-xs text-gray-400">No Bonus Credits</p>
-            <div class="text-xs text-gray-400 mt-auto">FREE</div>
-            <span class="tag bg-gray-700 text-xs px-2 py-1 rounded">Sign Up Required</span>
-        </div>
-    
-        <!-- Creator Pack -->
-        <div class="pricing-card creator-pack relative bg-[#1a1a1a] p-4 rounded-lg hover:shadow-lg transition-shadow duration-300">
-            <div class="flex items-center gap-2">
-                <div class="w-6 h-6">
-                    <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 2c5.514 0 10 4.486 10 10s-4.486 10-10 10-10-4.486-10-10 4.486-10 10-10z"/>
-                    </svg>
-                </div>
-                <h3 class="text-sm font-semibold">Creator Pack</h3>
-            </div>
-            <div class="text-xs flex justify-between my-1">
-                <span>300 credits/month</span>
-                <span>10 Prompts/Day</span>
-            </div>
-            <p class="text-xs text-gray-400">50 Bonus Credits</p>
-            <div class="text-xs text-gray-400 mt-auto">₹499</div>
-            <span class="tag bg-blue-900/50 text-xs px-2 py-1 rounded">New Launch</span>
-        </div>
-    
-        <!-- Master Mind Pack -->
-        <div class="pricing-card master-pack relative bg-[#1a1a1a] p-4 rounded-lg hover:shadow-lg transition-shadow duration-300">
-            <div class="flex items-center gap-2">
-                <div class="w-6 h-6">
-                    <svg class="w-4 h-4 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 0l3.597 7.282 8.403.612-6.088 5.929 1.435 8.377-7.347-3.859-7.347 3.859 1.435-8.377-6.088-5.929 8.403-.612z"/>
-                    </svg>
-                </div>
-                <h3 class="text-sm font-semibold">Master Mind Pack</h3>
-            </div>
-            <div class="text-xs flex justify-between my-1">
-                <span>1000 credits/month</span>
-                <span>Unlimited Prompts</span>
-            </div>
-            <p class="text-xs text-gray-400">150 Bonus Credits</p>
-            <div class="text-xs text-gray-400 mt-auto">₹999</div>
-            <span class="tag bg-yellow-900/50 text-xs px-2 py-1 rounded">Best Selling</span>
-        </div>
-    </div>
-          
-    <script src="popup.js"></script>
+
+// This is the function that will be triggered when the "Generate" button is clicked
+function handleCreditDeduction(feature) {
+  // First fetch available credits for the feature
+  fetch('http://127.0.0.1:3000/api/credit/credits', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}` // Add the Authorization header with the token
+    }
+  })
+    .then(response => response.json())
+    .then(data => {
+      // console.log("creditdata:"+data);
+      const featureCredit = data.data.find(credit => credit.feature === feature);
+      console.log("creditfeture:"+featureCredit);
+      if (!featureCredit) {
+        console.error('Feature not found');
+        return;
+      }
+
+      // Then check and update user's token balance
+      fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        }
+      })
+        .then(response => response.json())
+        .then(data => {
+          console.log("data recvd:"+data.data);
+          const tokensReceived = data.data.token_received;
+          const tokensUsed = data.data.tokens_used;
+
+          // document.getElementById('editButton').textContent = `${tokensReceived - tokensUsed} Credits`;
+
+          if (tokensReceived <= tokensUsed) {
+            alert("You are out of tokens!");
+            document.getElementById('sendButton').disabled = true; // Disable the send button
+            return;
+          }
+
+          if (tokensReceived - tokensUsed >= featureCredit.credits) {
+            const updatedTokensUsed = tokensUsed + featureCredit.credits;
+
+            fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                tokens_used: updatedTokensUsed,
+                token_received: tokensReceived
+              })
+            })
+              .then(updateResponse => updateResponse.json())
+              .then(async (updateData)  => {
+                console.log(`Credits deducted for ${feature}:`, featureCredit.credits);
+                // Re-enable the send button if tokens are sufficient
+                document.getElementById('sendButton').disabled = false;
+                //  Refresh credits display immediately after deduction
+                  await updateCreditDisplay();
+                  
+                  resolve('Success');
+              })
+              .catch(error => console.error('Error updating tokens:', error));
+          } else {
+            alert(`Not enough tokens for ${feature}`);
+          }
+        });
+    })
+    .catch(error => console.error('Error fetching credits:', error));
+}
+
+// Feature usage tracking
+let promptUsed = false;
+let advancedOptionsUsed = false;
+let imageGuidanceUsed = false;
+let advancedOptionsSelected = new Set();
+
+// Event listener for basic prompt
+document.getElementById('promptInput').addEventListener('change', function () {
+  promptUsed = true; // Mark basic prompt as used
+});
+
+// Event listeners for advanced option buttons
+const advancedOptionButtons = document.querySelectorAll('.dropdown-card');
+advancedOptionButtons.forEach(button => {
+  button.addEventListener('click', function () {
+    const optionId = this.querySelector('.dropdown-card-select').innerText; // Use button text as unique identifier
+    console.log(`Advanced option clicked: ${optionId}`); // Log button click
+    // advancedOptionsUsed = true;
+
+    // Toggle the selected option
+    if (!advancedOptionsSelected.has(optionId)) {
+      // Add option to the selected set
+      advancedOptionsSelected.add(optionId);
+      // Mark the option as selected visually
+      this.classList.add('selected');
+    } else {
+      // Remove option from the selected set
+      advancedOptionsSelected.delete(optionId);
+      // Remove the selected state visually
+      this.classList.remove('selected');
+    }
+
+    // Update the flag for advanced options usage based on the size of the set
+    advancedOptionsUsed = advancedOptionsSelected.size > 0;
+
+    // Log the state of advancedOptionsUsed and the selected set
+    console.log('Advanced options selected:', Array.from(advancedOptionsSelected));
+    console.log('Advanced options used:', advancedOptionsUsed);
+
+    // Debugging: Verify if the flag is correctly updated
+    if (advancedOptionsUsed) {
+      console.log('At least one advanced option is selected');
+    } else {
+      console.log('No advanced options are selected');
+    }
+  });
+});
+
+// Event listener for image upload
+document.getElementById('imageUpload').addEventListener('change', function () {
+  const allowedExtensions = ['jpg', 'jpeg', 'png'];
+
+  if (this.files.length > 0) {
+    const file = this.files[0];
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+
+    if (!allowedExtensions.includes(fileExtension)) {
+      alert('Only image files (jpg, jpeg, png) are allowed!');
+      this.value = ''; // Clear the file input
+      imageGuidanceUsed = false; // Reset usage tracking
+      return;
+    }
+
+    imageGuidanceUsed = true; // Mark image guidance as used
+  } else {
+    imageGuidanceUsed = false; // Reset if no files are selected
+  }
+});
+
+// Event listener for generate button
+document.getElementById('sendButton').addEventListener('click', async function () {
+  try {
+    // Disable the input area while processing
+    document.getElementById('promptInput').disabled = true;
+
+    // Log the current usage status
+    console.log('Generating with the following options:');
+    console.log('Prompt used:', promptUsed);
+    console.log('Advanced options used:', advancedOptionsUsed);
+    console.log('Image guidance used:', imageGuidanceUsed);
+
+    // Check if the basic prompt is used
+    if (promptUsed) {
+      console.log('Deducting credit for basic prompt');
+      await handleCreditDeduction('basic_prompt');
+    }
+
+    // If any advanced options are selected, deduct credits for each
+    if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
+      // Loop through the selected advanced options and deduct credits
+      for (const optionId of advancedOptionsSelected) {
+        console.log(`Deducting credit for: advanced_prompt_${optionId}`);
+        await handleCreditDeduction(`advanced_prompt_${optionId}`);
+      }
+    }
+
+    // Check if image guidance is used
+    if (imageGuidanceUsed) {
+      console.log('Deducting credit for image guidance');
+      await handleCreditDeduction('image_prompt');
+    }
+
+    // If all options are used, deduct credits for the complete prompt
+    if (promptUsed && advancedOptionsUsed && imageGuidanceUsed) {
+      console.log('Deducting credit for complete prompt');
+      await handleCreditDeduction('complete_prompt');
+    }
+
+    // Reset all tracking after successful generation
+    promptUsed = false;
+    advancedOptionsUsed = false;
+    imageGuidanceUsed = false;
+    advancedOptionsSelected.clear();
+
+    // Reset visual state of buttons
+    advancedOptionButtons.forEach(button => {
+      button.classList.remove('selected');
+    });
+
+    // Clear the image upload input
+    document.getElementById('imageUpload').value = '';
+
+    // Final refresh of credits display
+    await updateCreditDisplay();
+
+    // Enable the input area after processing
+    document.getElementById('promptInput').disabled = false;
+
+    // Reset the prompt input field after generating prompts
+    document.getElementById('promptInput').value = '';
+
+  } catch (error) {
+    console.error('Error during credit deductions:', error);
+    // Refresh credits display even if there's an error
+    await updateCreditDisplay();
+
+    // Enable the input area in case of error
+    document.getElementById('promptInput').disabled = false;
+  }
+});
+
+// Initial credit display update when page loads
+updateCreditDisplay();
+
+// Helper function to get selected advanced options count
+function getSelectedAdvancedOptionsCount() {
+  return advancedOptionsSelected.size;
+}
+    </script>
 </body>
 </html>

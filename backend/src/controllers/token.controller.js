@@ -56,14 +56,16 @@ const tokenController = {
 
     async updateTokens(req, res) {
         try {
+            // Extract the user ID from the request parameters
             const id = parseInt(req.params.id);
+            console.log("body:"+req.body);
             const { token_received, tokens_used } = req.body;
     
             // Validate if ID is a valid number
             if (isNaN(id)) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Invalid token ID format'
+                    message: 'Invalid token ID format',
                 });
             }
     
@@ -71,7 +73,7 @@ const tokenController = {
             if (token_received < 0 || tokens_used < 0) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Token values must be non-negative'
+                    message: 'Token values must be non-negative',
                 });
             }
     
@@ -82,18 +84,18 @@ const tokenController = {
             if (tokensLeft < 0) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Invalid token values: tokens used cannot exceed tokens received'
+                    message: 'Invalid token values: tokens used cannot exceed tokens received',
                 });
             }
     
             // Update the tokens in the database
             const result = await Token.updateTokens(id, token_received, tokens_used);
     
-            // If no rows were affected, it means the update failed
+            // Check if any rows were updated
             if (result.affectedRows === 0) {
                 return res.status(404).json({
                     success: false,
-                    message: `Token with ID ${id} not found`
+                    message: `Token with ID ${id} not found`,
                 });
             }
     
@@ -104,18 +106,19 @@ const tokenController = {
                 data: {
                     token_received,
                     tokens_used,
-                    tokens_left: tokensLeft // Include tokens left in the response
-                }
+                    tokens_left: tokensLeft, // Include tokens left in the response
+                },
             });
         } catch (error) {
             console.error('Error updating tokens:', error);
             res.status(500).json({
                 success: false,
                 message: 'Error updating tokens',
-                error: error.message
+                error: error.message,
             });
         }
-    }    
+    }
+        
 };
 
 module.exports = tokenController;

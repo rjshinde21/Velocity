@@ -220,10 +220,9 @@ const PremiumPlan = ({ planData, isMonthly }) => {
       const { token_received: planTokenReceived = 0 } = planTokenData.data;
       const { token_received_yearly: planTokenReceivedYearly = 0 } = planTokenData.data;
   
-      // Step 4: Calculate the updated token value based on plan type
-    const updatedTokenReceived = isMonthly
-    ? (token_received - tokens_used) + planTokenReceived
-    : (token_received - tokens_used) + planTokenReceivedYearly;
+      // Step 4: Calculate the updated token value
+    const additionalTokens = isMonthly ? planTokenReceived : planTokenReceivedYearly;
+    const updatedTokenReceived = token_received + additionalTokens;
   
       // Step 5: Update the token data with the new value
       const tokenResponse = await fetch(
@@ -236,7 +235,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
           },
           body: JSON.stringify({
             token_received: updatedTokenReceived,
-            // tokens_used: tokens_used
+            tokens_used: tokens_used, // Retain tokens_used as it is
           }),
         }
       );
@@ -295,7 +294,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
         </h5>
         </div>
         <div className="flex items-baseline text-[#ffffff]">
-          <span className="text-[32px] font-semibold">₹</span>
+          <span className="text-[32px] font-semibold">$</span>
           <span className="text-[32px] sm:text-[48px] tracking-tight">
             {/* {planData.price || '00'} */}
             {isMonthly ? planData.price : planData.price_yearly}

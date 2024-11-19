@@ -423,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Validate inputs
     if (!prompt && (!imageUpload || imageUpload.files.length === 0)) {
-      showError('Please enter a prompt first than upload an image.');
+      showError('Please enter a prompt first then upload an image.');
       return;
     }
 
@@ -768,7 +768,7 @@ advancedOptionButtons.forEach(button => {
   button.addEventListener('click', function () {
     const optionId = this.querySelector('.dropdown-card-select').innerText; // Use button text as unique identifier
     console.log(`Advanced option clicked: ${optionId}`); // Log button click
-    advancedOptionsUsed = true;
+    // advancedOptionsUsed = true;
 
     // Toggle the selected option
     if (!advancedOptionsSelected.has(optionId)) {
@@ -801,7 +801,7 @@ advancedOptionButtons.forEach(button => {
 
 // Event listener for image upload
 document.getElementById('imageUpload').addEventListener('change', function () {
-  const allowedExtensions = ['jpg', 'jpeg', 'png'];
+  const allowedExtensions = ['jpg', 'jpeg', 'png', 'svg'];
 
   if (this.files.length > 0) {
     const file = this.files[0];

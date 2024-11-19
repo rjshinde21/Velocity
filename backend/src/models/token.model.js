@@ -12,13 +12,15 @@ class Token {
         return rows[0];
     }
 
-    static async updateTokens(user_id, token_received, tokens_used) {
-        // Calculate tokens_left
+    static async updateTokens(id, token_received, tokens_used) {
+        // Calculate tokens left
         const tokens_left = token_received - tokens_used;
-    console.log("user id:"+ user_id);
-    console.log("token_received:"+ token_received);
-    console.log("tokens used:"+ tokens_used);
-    console.log("tokens left:"+ tokens_left);
+
+        console.log("ID:", id);
+        console.log("Token Received:", token_received);
+        console.log("Tokens Used:", tokens_used);
+        console.log("Tokens Left:", tokens_left);
+
         try {
             const [result] = await db.query(
                 `
@@ -27,19 +29,20 @@ class Token {
                 SET t.token_received = ?, t.tokens_used = ?, u.tokens = ?
                 WHERE t.user_id = ?
                 `,
-                [token_received, tokens_used, tokens_left, user_id]
+                [token_received, tokens_used, tokens_left, id]
             );
-            console.log('Update result:', result);
-    
+
+            console.log("Update Result:", result);
+
             // If no rows were updated, throw an error
             if (result.affectedRows === 0) {
-                throw new Error(`No record found for user_id ${user_id}`);
+                throw new Error(`No record found for user_id ${id}`);
             }
-    
+
             return result;
         } catch (error) {
-            console.error('Error updating tokens:', error);
-            throw error; // Rethrow the error to be handled by the calling function
+            console.error("Error updating tokens:", error.message);
+            throw error;
         }
     }
     

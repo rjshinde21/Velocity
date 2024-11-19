@@ -34,10 +34,10 @@ const Pricing = ({isLoggedIn}) => {
             "data": {
                 "plan_id": 2,
                 "plan_name": "Premium",
-                "token_received": 100,
-                "token_received_yearly": 500,
-                "cost": "149.00",
-                "cost_yearly": "599.00",
+                "token_received": 350,
+                "token_received_yearly": 4500,
+                "cost": "29.99",
+                "cost_yearly": "299.99",
                 "active_users": 14
             }
           } 
