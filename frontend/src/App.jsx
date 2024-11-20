@@ -11,6 +11,7 @@ import TokenDetails from "./components/TokenDetails";
 import Footer from "./components/Footer";
 import HowItWorks from "./components/HowItWorks";
 import ProfilePage from "./components/ProfilePage";
+import PrivacyPolicy from "./components/PrivacyPolicy";
 
 function App() {
   const [showLogin, setShowLogin] = useState(false);
@@ -160,6 +161,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+        <Route path="/privacypolicy" element={<PrivacyPolicy />} />
         </Routes>
         <Footer />
       </main>

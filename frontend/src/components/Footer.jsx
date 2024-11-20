@@ -1,6 +1,7 @@
 import React from "react";
 import velocitylogo from "../assets/velocitylogo.png";
 import { FaInstagram, FaLinkedin, FaYoutube } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
@@ -79,10 +80,10 @@ const Footer = () => {
                 Legal
               </h2>
               <ul class="text-gray-500 dark:text-gray-400 font-medium">
-                <li class="mb-4">
-                  <a href="#" class="hover:underline hover:text-gray-100">
+                <li class="mb-4" onClick={()=>window.scrollTo({top: 0, behavior: 'smooth'})}>
+                  <Link to="/privacypolicy" class="hover:underline hover:text-gray-100">
                     Privacy Policy
-                  </a>
+                  </Link>
                 </li>
                 <li>
                   <a href="#" class="hover:underline hover:text-gray-100">
