@@ -131,22 +131,28 @@ const ProfilePage = () => {
         }
     };
 
-    function handleLogout() {
+    const handleLogout = () => {
+        console.log('Logout button clicked');
         try {
-          // Clear all stored data
-          localStorage.clear();
-          sessionStorage.clear();
-          // Clear cookies
-          document.cookie.split(";").forEach(function (c) {
-            document.cookie = c.replace(/^ +/, "")
-              .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-          });
-          navigate('/login');
+            // Clear local storage
+            localStorage.clear();
+            sessionStorage.clear();
+    
+            // Clear cookies
+            document.cookie.split(";").forEach((cookie) => {
+                const name = cookie.split("=")[0].trim();
+                document.cookie = `${name}=;expires=${new Date(0).toUTCString()};path=/;`;
+            });
+    
+            console.log('All data cleared. Redirecting...');
+            window.location.href = '/login';
         } catch (error) {
-          console.error('Logout failed:', error);
-          alert('Logout failed. Please try again.');
+            console.error('Logout failed:', error);
+            alert('Logout failed. Please try again.');
         }
-      }
+    };
+    
+    
     // Credits section component to avoid duplication
     const CreditsSection = () => (
         <div className="flex flex-col justify-between h-full px-6 sm:px-4 py-6 md:py-10 ">
@@ -190,9 +196,13 @@ const ProfilePage = () => {
                 </p>
                 <p className="text-[#FFFFFF]/80 my-3 italic font-normal font-[Inter]">Running out of daily credits?</p>
                 <div className='flex sm:flex-col gap-10 sm:gap-0'>
-            <button onClick={handleLogout} className="w-full max-w-sm flex justify-center text-lg px-7 py-4 sm:px-36 sm:py-5 text-[#BEBEBE] border border-[#ECECEC] transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]">
-                Logout
-            </button>
+                <button 
+    onClick={handleLogout} 
+    className="w-full max-w-sm flex justify-center text-lg px-7 py-4 sm:px-36 sm:py-5 text-[#BEBEBE] border border-[#ECECEC] transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]"
+>
+    Logout
+</button>
+
                 </div>
             </div>
         </div>

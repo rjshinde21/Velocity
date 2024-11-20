@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import velocitylogo from "../assets/velocitylogo.png";
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -15,6 +15,8 @@ const Register = () => {
     password: '',
     confirmPassword: ''
   });
+
+  const navigate = useNavigate(); // Initialize navigate hook
 
   const validateField = (field, value) => {
     let error = '';
@@ -119,9 +121,9 @@ const Register = () => {
       if (response.ok) {
         setMessage(<span style={{ color: 'green' }}>Registration successful! Now you can login into extension using this credentials</span>);
         localStorage.setItem('registrationSuccess', 'true');
-        // setTimeout(() => {
-        //   window.location.href = 'login.html';
-        // }, 2000);
+        setTimeout(() => {
+          navigate('/login'); // Redirect to login page
+        }, 2000);
       } else {
         switch (response.status) {
           case 400:

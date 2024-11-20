@@ -23,7 +23,7 @@ const Pricing = ({isLoggedIn}) => {
             "success": true,
             "data": {
                 "plan_id": 1,
-                "plan_name": "freeee plan",
+                "plan_name": "Basic",
                 "token_received": 100,
                 "cost": "0.00",
                 "active_users": 4
@@ -33,12 +33,24 @@ const Pricing = ({isLoggedIn}) => {
             "success": true,
             "data": {
                 "plan_id": 2,
-                "plan_name": "premium plannn",
-                "token_received": 100,
-                "cost": "299.00",
-                "active_users": 6
+                "plan_name": "Premium",
+                "token_received": 350,
+                "token_received_yearly": 4500,
+                "cost": "29.99",
+                "cost_yearly": "299.99",
+                "active_users": 14
             }
-        }    
+          } 
+      //   const premiumResponse1 = {  
+      //     "success": true,
+      //     "data": {
+      //         "plan_id": 3,
+      //         "plan_name": "Premium Yearly",
+      //         "token_received": 500,
+      //         "cost": "499.00",
+      //         "active_users": 0
+      //     }
+      // }
         const customResponse = 
           {
             "success": true,
@@ -74,6 +86,7 @@ const Pricing = ({isLoggedIn}) => {
         const transformedPremiumPlan = {
           name: premiumData.plan_name,
           price: premiumData.cost,
+          price_yearly: premiumData.cost_yearly,
           tokens: premiumData.token_received,
           features: [
             "Unlimited usage",

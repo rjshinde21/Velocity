@@ -5,6 +5,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [tokenInfo, setTokenInfo] = useState(null);
   const navigate = useNavigate();
 
   // Decode JWT token to retrieve user information
@@ -131,14 +132,14 @@ const PremiumPlan = ({ planData, isMonthly }) => {
   const handleUpgrade = async () => {
     if (!userData?.user_id) {
       setError("Please login to upgrade your plan");
-      alert("Please login to upgrade your plan Redirecting to login...");
+      alert("Please login to upgrade your plan. Redirecting to login...");
       setTimeout(() => {
         navigate("/login");
       }, 2000);
       return;
     }
   
-    setLoading(true);
+    setLoading(true);  // Start loading when the upgrade process begins
     setError(null);
   
     try {
@@ -147,7 +148,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
         throw new Error("Authentication required");
       }
   
-      // First update the plan
+      // Step 1: Update the plan
       const planResponse = await fetch(
         `http://127.0.0.1:3000/api/plans/${userData.user_id}`,
         {
@@ -158,7 +159,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
             Accept: "application/json",
           },
           body: JSON.stringify({
-            plan_id: 2
+            plan_id: 2, // Set the plan_id to Premium
           }),
         }
       );
@@ -174,7 +175,56 @@ const PremiumPlan = ({ planData, isMonthly }) => {
         throw new Error(planData.message || "Failed to upgrade plan");
       }
   
-      // Then update the token received
+      // Step 2: Fetch the current token data
+      const currentDataResponse = await fetch(
+        `http://127.0.0.1:3000/api/token-types/${userData.user_id}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+  
+      if (!currentDataResponse.ok) {
+        const errorData = await currentDataResponse.json();
+        throw new Error(errorData.message || "Failed to fetch current token data");
+      }
+  
+      const currentData = await currentDataResponse.json();
+      console.log("Current Token Data:", currentData); // Debug log
+  
+      const { token_received = 0, tokens_used = 0 } = currentData.data;
+  
+      // Step 3: Fetch the plan's token_received value (100 for Premium plan)
+      const planTokenReceivedResponse = await fetch(
+        `http://127.0.0.1:3000/api/plans/2`, // Assuming `2` is the Premium plan
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+  
+      const planTokenData = await planTokenReceivedResponse.json();
+      console.log("planTokenData:"+planTokenData);
+  
+      if (!planTokenReceivedResponse.ok) {
+        const errorData = await planTokenReceivedResponse.json();
+        throw new Error(errorData.message || "Failed to fetch plan data");
+      }
+  
+      const { token_received: planTokenReceived = 0 } = planTokenData.data;
+      const { token_received_yearly: planTokenReceivedYearly = 0 } = planTokenData.data;
+  
+      // Step 4: Calculate the updated token value
+    const additionalTokens = isMonthly ? planTokenReceived : planTokenReceivedYearly;
+    const updatedTokenReceived = token_received + additionalTokens;
+  
+      // Step 5: Update the token data with the new value
       const tokenResponse = await fetch(
         `http://127.0.0.1:3000/api/token-types/${userData.user_id}`,
         {
@@ -184,7 +234,8 @@ const PremiumPlan = ({ planData, isMonthly }) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            token_received: 100 // Premium plan token amount
+            token_received: updatedTokenReceived,
+            tokens_used: tokens_used, // Retain tokens_used as it is
           }),
         }
       );
@@ -197,10 +248,12 @@ const PremiumPlan = ({ planData, isMonthly }) => {
   
       setError(null);
       alert("Plan and tokens upgraded successfully!");
-      window.location.reload();
+      window.location.reload(); // Reload the page to reflect the changes
+  
     } catch (err) {
       console.error("Upgrade error:", err);
       setError(err.message);
+  
       if (
         err.message.includes("authentication") ||
         err.message.includes("Session expired")
@@ -208,10 +261,14 @@ const PremiumPlan = ({ planData, isMonthly }) => {
         localStorage.clear();
         navigate("/login");
       }
+  
     } finally {
-      setLoading(false);
+      setLoading(false); // Stop loading once the process is completed
     }
   };
+  
+  
+  
 
   if (!planData) return null;
 
@@ -237,10 +294,10 @@ const PremiumPlan = ({ planData, isMonthly }) => {
         </h5>
         </div>
         <div className="flex items-baseline text-[#ffffff]">
-          <span className="text-[32px] font-semibold">₹</span>
+          <span className="text-[32px] font-semibold">$</span>
           <span className="text-[32px] sm:text-[48px] tracking-tight">
-            {planData.price || '00'}
-            {/* {isMonthly ? 149 : 149 * 12} */}
+            {/* {planData.price || '00'} */}
+            {isMonthly ? planData.price : planData.price_yearly}
           </span>
           <span className="ms-1 text-sm font-normal text-gray-500 dark:text-gray-400">
             /{isMonthly ? "month" : "year"}

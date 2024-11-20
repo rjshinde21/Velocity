@@ -17,7 +17,7 @@ const Footer = () => {
               />
             </a>
             <p class="self-center text-2xl font-semibold whitespace-nowrap font-[Inter] my-4 bg-gradient-text">
-              We grow up your business <br /> with personal AI manager.
+            Transform ideas into  <br /> impactful prompts with ease!
             </p>
             <p className="text-md bg-gradient-text mb-8 sm:mb-0">
               Velocity, 2024
@@ -34,14 +34,14 @@ const Footer = () => {
                     Velocity
                   </a>
                 </li>
-                <li>
+                {/* <li>
                   <a
                     href="https://tailwindcss.com/"
                     class="hover:underline hover:text-gray-100"
                   >
                     Tailwind CSS
                   </a>
-                </li>
+                </li> */}
               </ul>
             </div>
             <div>
@@ -86,7 +86,7 @@ const Footer = () => {
                   </Link>
                 </li>
                 <li>
-                  <a href="#" class="hover:underline hover:text-gray-100">
+                  <a href="" class="hover:underline hover:text-gray-100">
                     Terms &amp; Conditions
                   </a>
                 </li>

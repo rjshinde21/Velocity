@@ -54,7 +54,7 @@ const FreePlan = ({ planData, isLoggedIn }) => {
         </div>
       </div>
       {
-isLoggedIn?(<a href="https://chromewebstore.google.com/category/extensions?hl=en-US&utm_source=ext_sidebar">
+isLoggedIn?
 <button
         type="button"
         className="text-white my-4 sm:my-10 font-medium rounded-xl text-sm px-5 py-2.5 inline-flex justify-center  w-full text-center transition-colors duration-500 ease-in-out border border-[#ffffff]/10"
@@ -65,7 +65,7 @@ isLoggedIn?(<a href="https://chromewebstore.google.com/category/extensions?hl=en
         {/* {planData.buttonText || (isLoggedIn ? 'Current Plan' : 'Get Started')} */}
         {planData.buttonText || 'Current Plan'}
       </button>
-</a>):(
+:(
         <button
         type="button"
         className="text-white my-4 sm:my-10 font-medium rounded-xl text-sm px-5 py-2.5 inline-flex justify-center  w-full text-center transition-colors duration-500 ease-in-out border border-[#ffffff]/10"
