@@ -51,19 +51,19 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(adjustPopupSize, 100); // Allow time for transition
   });
 
-  // fetch('http://localhost:5000/get_categories')
-  //   .then(response => response.json())
-  //   .then(categories => {
-  //     console.log('Categories:', categories);
-  //     categories.forEach(category => {
-  //       const categoryCard = createCategoryCard(category);
-  //       categoriesContainer.appendChild(categoryCard);
-  //     });
-  //   })
-  //   .catch(error => {
-  //     console.error('Error fetching categories:', error);
-  //     categoriesContainer.textContent = `Failed to load categories. Error: ${error.message}`;
-  //   });
+  fetch('http://localhost:5000/get_categories')
+    .then(response => response.json())
+    .then(categories => {
+      console.log('Categories:', categories);
+      categories.forEach(category => {
+        const categoryCard = createCategoryCard(category);
+        categoriesContainer.appendChild(categoryCard);
+      });
+    })
+    .catch(error => {
+      console.error('Error fetching categories:', error);
+      categoriesContainer.textContent = `Failed to load categories. Error: ${error.message}`;
+    });
 
   imageUpload.addEventListener('change', function (event) {
     const fileName = event.target.files[0]?.name;
