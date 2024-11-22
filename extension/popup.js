@@ -12,6 +12,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Placeholder image path
   const placeholderImagePath = 'path/to/your/placeholder-image.png';
+  const categoryStructure = [
+    {
+      name: "Style & Appearance",
+      col1: 0,  // First column index for this category
+      col2: 1   // Second column index for this category
+    },
+    {
+      name: "Content & Format",
+      col1: 2,
+      col2: 3
+    },
+    {
+      name: "Setting & Context",
+      col1: 4,
+      col2: 5
+    },
+    {
+      name: "Elements & Details",
+      col1: 6,
+      col2: 7
+    }
+  ];
 
   const radioGroup = document.querySelector('.radio-group');
 
@@ -51,18 +73,35 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(adjustPopupSize, 100); // Allow time for transition
   });
 
-  fetch('http://localhost:5000/get_categories')
+  fetch(`${API_BASE_URL}/get_categories`)
     .then(response => response.json())
-    .then(categories => {
-      console.log('Categories:', categories);
-      categories.forEach(category => {
-        const categoryCard = createCategoryCard(category);
-        categoriesContainer.appendChild(categoryCard);
+    .then(data => {
+      categoriesContainer.innerHTML = ''; // Clear existing content
+      
+      // Group the data into column pairs
+      const columnPairs = [];
+      for (let i = 0; i < data.length; i += 2) {
+        columnPairs.push([
+          data[i]?.items || [],
+          data[i + 1]?.items || []
+        ]);
+      }
+      
+      // Create category cards
+      categoryStructure.forEach((category, index) => {
+        if (columnPairs[index]) {
+          const card = createCategoryCard(category, columnPairs[index]);
+          categoriesContainer.appendChild(card);
+        }
       });
     })
     .catch(error => {
       console.error('Error fetching categories:', error);
-      categoriesContainer.textContent = `Failed to load categories. Error: ${error.message}`;
+      categoriesContainer.innerHTML = `
+        <div class="text-red-500 p-4">
+          Failed to load categories. Please try again later.
+        </div>
+      `;
     });
 
   imageUpload.addEventListener('change', function (event) {
@@ -94,99 +133,108 @@ document.addEventListener('DOMContentLoaded', function () {
 
   initializeRadioGroup();
 
-  function createCategoryCard(category) {
+  function createCategoryCard(categoryInfo, columnData) {
     const categoryCard = document.createElement('div');
-    categoryCard.className = 'category-card';
+    categoryCard.className = 'category-card bg-black/40 rounded-2xl border border-[#444444] p-4 mb-4';
+    
     const categoryTitle = document.createElement('div');
-    categoryTitle.className = 'category-title';
-    categoryTitle.textContent = category.name;
+    categoryTitle.className = 'category-title text-white font-medium mb-3';
+    categoryTitle.textContent = categoryInfo.name;
+    
+    const dropdownsContainer = document.createElement('div');
+    dropdownsContainer.className = 'flex gap-4';
+
+    // Create the two dropdowns for this category
+    [categoryInfo.col1, categoryInfo.col2].forEach((colIndex) => {
+      const items = columnData[colIndex] || [];
+      const dropdownContainer = createDropdown(items, colIndex);
+      dropdownsContainer.appendChild(dropdownContainer);
+    });
+
     categoryCard.appendChild(categoryTitle);
-    categoryCard.id = 'category-card'
-    const dropdownContainer = createDropdown(category);
-    categoryCard.appendChild(dropdownContainer);
+    categoryCard.appendChild(dropdownsContainer);
 
     return categoryCard;
   }
+
+
 
   function updateDropdownButton(dropdownButton, selectedItem) {
     const nameContainer = dropdownButton.querySelector('span');
     nameContainer.textContent = selectedItem.querySelector('.dropdown-card-select').textContent;
   }
 
-  function createDropdown(category) {
+  function createDropdown(items, colIndex) {
     const dropdownContainer = document.createElement('div');
-    dropdownContainer.className = 'dropdown';
+    dropdownContainer.className = 'dropdown flex-1';
 
     const dropdownButton = document.createElement('button');
-    dropdownButton.className = 'dropdown-button';
+    dropdownButton.className = 'dropdown-button w-full bg-black/60 text-white rounded-lg p-2 flex justify-between items-center border border-[#444444] hover:bg-black/80 transition-colors';
     dropdownButton.innerHTML = `
-        <div class="dropdown-button-content">
-            <span>Select</span>
-        </div>
+      <div class="dropdown-button-content">
+        <span>Select Option</span>
+      </div>
+      <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+      </svg>
     `;
 
     const dropdownContent = document.createElement('div');
-    dropdownContent.className = 'dropdown-content';
+    dropdownContent.className = 'dropdown-content hidden absolute z-10 w-full mt-1 bg-black/95 rounded-lg border border-[#444444] max-h-48 overflow-y-auto';
 
-    const horizontalContainer = document.createElement('div');
-    horizontalContainer.className = 'dropdown-horizontal-container';
+    const itemsContainer = document.createElement('div');
+    itemsContainer.className = 'p-2';
 
-    category.items.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'dropdown-card';
+    items.forEach(item => {
+      const option = document.createElement('div');
+      option.className = 'dropdown-item p-2 text-white hover:bg-white/10 rounded cursor-pointer transition-colors';
+      option.textContent = item.name; // Using the 'name' property from your CSV structure
+      
+      option.addEventListener('click', function() {
+        const buttonText = dropdownButton.querySelector('span');
+        buttonText.textContent = item.name;
+        dropdownContent.classList.add('hidden');
+        
+        // Remove selected class from all items in this dropdown
+        itemsContainer.querySelectorAll('.dropdown-item').forEach(el => {
+          el.classList.remove('selected', 'bg-white/20');
+        });
+        
+        // Add selected class to clicked item
+        option.classList.add('selected', 'bg-white/20');
+      });
 
-      const selectButton = document.createElement('button');
-      selectButton.className = 'dropdown-card-select';
-      selectButton.textContent = item.name;
-
-      card.appendChild(selectButton);
-
-      // Toggle the selected state on single and double clicks
-      let isSelected = false;
-
-      selectButton.addEventListener('click', function (event) {
-        event.stopPropagation();
-        if (isSelected) {
-            // Unselect the item if it's already selected
-            card.classList.remove('selected');
-            updateDropdownButton(dropdownButton, { querySelector: () => ({ textContent: 'Select' }) }); // Reset button text
-            isSelected = false;
-        } else {
-            // Select the item if it's not selected
-            horizontalContainer.querySelectorAll('.dropdown-card').forEach(c =>
-                c.classList.remove('selected')
-            );
-            card.classList.add('selected');
-            updateDropdownButton(dropdownButton, card);
-            isSelected = true;
-        }
-        dropdownContent.style.display = 'none'; // Close dropdown on selection
+      itemsContainer.appendChild(option);
     });
 
-    selectButton.addEventListener('dblclick', function (event) {
-        event.stopPropagation();
-        // Unselect the item on double-click
-        card.classList.remove('selected');
-        updateDropdownButton(dropdownButton, { querySelector: () => ({ textContent: 'Select' }) }); // Reset button text
-        isSelected = false;
-    });
-
-    horizontalContainer.appendChild(card);
-});
-
-    dropdownContent.appendChild(horizontalContainer);
+    dropdownContent.appendChild(itemsContainer);
     dropdownContainer.appendChild(dropdownButton);
     dropdownContainer.appendChild(dropdownContent);
 
-    dropdownButton.addEventListener('click', function (event) {
-      event.stopPropagation();
-      closeAllDropdowns();
-      dropdownContent.style.display =
-        dropdownContent.style.display === 'block' ? 'none' : 'block';
+    // Toggle dropdown
+    dropdownButton.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const isHidden = dropdownContent.classList.contains('hidden');
+      
+      // Hide all dropdowns first
+      document.querySelectorAll('.dropdown-content').forEach(content => {
+        content.classList.add('hidden');
+      });
+      
+      // Toggle current dropdown
+      if (isHidden) {
+        dropdownContent.classList.remove('hidden');
+      }
     });
 
     return dropdownContainer;
   }
+
+  document.addEventListener('click', function() {
+    document.querySelectorAll('.dropdown-content').forEach(content => {
+      content.classList.add('hidden');
+    });
+  });
 
 
   function closeAllDropdowns() {
@@ -339,7 +387,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Add necessary styles
     const style = document.createElement('style');
-    style.textContent = `
+    style.textContent = `.
+    .dropdown-content {
+      scrollbar-width: thin;
+      scrollbar-color: #666 #333;
+    }
+    
+    .dropdown-content::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .dropdown-content::-webkit-scrollbar-track {
+      background: #333;
+      border-radius: 3px;
+    }
+    
+    .dropdown-content::-webkit-scrollbar-thumb {
+      background: #666;
+      border-radius: 3px;
+    }
+    
+    .dropdown-button:focus {
+      outline: none;
+      ring-2 ring-white/20;
+    }
+    
+    .dropdown-item.selected {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
       .responses-container {
           max-height: 400px;
           overflow-y: auto;
