@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const validate = require('../middleware/validation.middleware');
 
 const userValidation = {
+    
     register: [
         body('name')
             .trim()

@@ -9,8 +9,10 @@ const INITIAL_TOKEN_AMOUNT = 50;
 
 const userController = {
     async register(req, res) {
+        console.log("hellooo");
         // console.log("Registration body:", req.body);
         // console.log("INITIAL_TOKEN_AMOUNT:", INITIAL_TOKEN_AMOUNT);
+        console.log(req.body);
         try {
             const { name, email, password } = req.body;
             
@@ -229,7 +231,7 @@ const userController = {
                         user_id: user.user_id,                         
                         name: user.name,                         
                         email: user.email,
-                        // plan_id: user.plan_id,                         
+                        plan_id: user.plan_id,                         
                         tokens: user.tokens                     
                     },                     
                     tokenInfo: tokenInfo                 
