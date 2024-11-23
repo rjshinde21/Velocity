@@ -1,3 +1,65 @@
+async function checkFeatureAccess(featureId) {
+  try {
+    const userId = localStorage.getItem('userId');
+    const response = await fetch(`http://127.0.0.1:3000/api/credit/credits/${featureId}/access`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+      },
+      body: JSON.stringify({ userId })
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error checking feature access:', error);
+    throw error;
+  }
+}
+
+async function recordFeatureUsage(featureId) {
+  try {
+    const userId = localStorage.getItem('userId');
+    const response = await fetch(`http://127.0.0.1:3000/api/credit/use/${featureId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+      },
+      body: JSON.stringify({ userId })
+    });
+
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.message);
+    }
+    return data;
+  } catch (error) {
+    console.error('Error recording feature usage:', error);
+    throw error;
+  }
+}
+function showError(message) {
+  console.error(message);
+  // Show error to user (you might want to modify this based on your UI)
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'error-message bg-red-100 text-red-800 p-3 rounded-lg';
+  errorDiv.textContent = message;
+  
+  // Remove after 3 seconds
+  setTimeout(() => {
+      errorDiv.remove();
+  }, 3000);
+
+  // Insert at the top of your response container
+  const responseContainer = document.querySelector('.responses-container');
+  if (responseContainer) {
+      responseContainer.insertBefore(errorDiv, responseContainer.firstChild);
+  }
+}
+
+
 document.addEventListener('DOMContentLoaded', function () {
   const sendButton = document.getElementById('sendButton');
   const promptInput = document.getElementById('promptInput');
@@ -10,6 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const iconImage = document.getElementById('generateIcon');
   const logoutButton = document.querySelector('button[onclick="logout()"]');
 
+  
   // Placeholder image path
   const placeholderImagePath = 'path/to/your/placeholder-image.png';
 
@@ -212,8 +275,9 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function getSelectedRadioValue() {
-    const selectedRadio = radioGroup ? radioGroup.querySelector('.radio-button.selected') : null;
-    return selectedRadio ? selectedRadio.textContent.trim() : null;
+    const selectedRadio = document.querySelector('input[name="option"]:checked');
+    console.log('Selected radio value:', selectedRadio?.value); // Debug log
+    return selectedRadio ? selectedRadio.value : 'General'; // Provide default value
   }
 
   function getSelectedCategories() {
@@ -309,19 +373,67 @@ document.addEventListener('DOMContentLoaded', function () {
         // Add copy functionality
         copyButton.addEventListener('click', async () => {
           try {
-            const textToCopy = typeof promptObj === 'string' ? promptObj : promptObj.prompt;
-            await navigator.clipboard.writeText(textToCopy);
-
-            // Visual feedback
-            copyButton.classList.add('copied');
-            setTimeout(() => {
-              copyButton.classList.remove('copied');
-            }, 2000);
+              const textToCopy = typeof promptObj === 'string' ? promptObj : promptObj.prompt;
+              const userId = localStorage.getItem('userId');
+              const selectedAIType = getSelectedRadioValue();
+              
+              console.log('Copy request data:', {
+                  user_id: userId,
+                  prompt_text: textToCopy,
+                  original_prompt_id: lastSavedPromptId,
+                  ai_type: selectedAIType,
+                  tokens_used: lastTokensUsed
+              });
+  
+              // First copy to clipboard
+              await navigator.clipboard.writeText(textToCopy);
+  
+              // Validate we have all required data before making the request
+              if (!userId || !lastSavedPromptId || !selectedAIType) {
+                  console.error('Missing required data for saving copied response:', {
+                      userId,
+                      lastSavedPromptId,
+                      selectedAIType
+                  });
+                  throw new Error('Missing required data for saving response');
+              }
+  
+              // Then save the copied response with the tokens used
+              const saveResponseResponse = await fetch('http://127.0.0.1:3000/api/history/responses', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+                  },
+                  body: JSON.stringify({
+                      user_id: userId,
+                      prompt_text: textToCopy,
+                      original_prompt_id: lastSavedPromptId,
+                      ai_type: selectedAIType,
+                      tokens_used: lastTokensUsed || 0
+                  })
+              });
+  
+              const responseData = await saveResponseResponse.json();
+              
+              if (!responseData.success) {
+                  console.error('Save response error:', responseData);
+                  throw new Error(responseData.message || 'Failed to save response');
+              }
+  
+              // Visual feedback for successful copy and save
+              copyButton.classList.add('copied');
+              setTimeout(() => {
+                  copyButton.classList.remove('copied');
+              }, 2000);
+  
+              console.log('Successfully saved copied response:', responseData);
+  
           } catch (error) {
-            console.error('Failed to copy text:', error);
-            showError('Failed to copy text to clipboard');
+              console.error('Failed to handle copy operation:', error);
+              showError(`Failed to copy: ${error.message}`);
           }
-        });
+      });
 
         // Assemble the response
         responseBox.appendChild(responseText);
@@ -387,103 +499,134 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Helper function to show errors
-  function showError(message) {
-    const responseDiv = document.getElementById('response');
-    if (responseDiv) {
-      responseDiv.innerHTML = `
-          <div class="error-message bg-red-100 text-red-800 p-3 rounded-lg border border-red-300">
-              ${message}
-          </div>
-      `;
-    }
-  }
+  
+
   // Updated sendRequest function
-  function sendRequest() {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    // Debug logging
-    console.log('Send request initiated');
-
-    // Check if elements exist
-    const promptInput = document.getElementById('promptInput');
-    if (!promptInput) {
-      showError('Error: Prompt input element not found');
-      return;
-    }
-
-    const prompt = promptInput.value.trim();
-    const selectedCategories = getSelectedCategories();
-    const selectedAIType = getSelectedRadioValue();
-
-    // Log the data being sent
-    console.log('Sending data:', {
-      prompt,
-      selectedCategories,
-      selectedAIType
-    });
-
-    // Validate inputs
-    if (!prompt && (!imageUpload || imageUpload.files.length === 0)) {
-      showError('Please enter a prompt first then upload an image.');
-      return;
-    }
-
-    showLoading('Processing request...');
-
-    const formData = new FormData();
-
-    // Add data with error checking
+  async function sendRequest() {
     try {
-      const requestData = {
-        prompt: prompt || '',
-        category: selectedCategories || {},
-        AIType: selectedAIType || 'default'
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const promptInput = document.getElementById('promptInput');
+        if (!promptInput) {
+            showError('Error: Prompt input element not found');
+            return;
+        }
+
+        const prompt = promptInput.value.trim();
+        const selectedAIType = getSelectedRadioValue();
+        const userId = localStorage.getItem('userId');
+
+        if (!prompt) {
+            showError('Please enter a prompt first');
+            return;
+        }
+        const requestBody = {
+          user_id: userId,
+          prompt_text: prompt,
+          ai_type: selectedAIType,
+          tokens_used: 0
       };
+      
+      console.log('Saving prompt with data:', requestBody); // Debug log
+      
+        // First save the prompt
+        try {
+          console.log("token:"+localStorage.getItem('userToken'));
+            const savePromptResponse = await fetch('http://127.0.0.1:3000/api/history/prompts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    prompt_text: prompt,
+                    ai_type: selectedAIType,
+                    tokens_used: 0 // Will be updated after credit deduction
+                })
+            });
 
-      formData.append('data', JSON.stringify(requestData));
+            const promptData = await savePromptResponse.json();
+            console.log('Response from save prompt:', promptData); // Debug log
 
-      if (imageUpload && imageUpload.files.length > 0) {
-        formData.append('image', imageUpload.files[0]);
-      }
-    } catch (error) {
-      showError('Error preparing request data: ' + error.message);
-      return;
-    }
+            if (promptData.success) {
+                lastSavedPromptId = promptData.data.history_id;
+            } else {
+                console.error('Failed to save prompt:', promptData.message);
+            }
+        } catch (error) {
+            console.error('Error saving prompt:', error);
+        }
 
-    // Send request with detailed error handling
-    fetch(`${API_BASE_URL}/process`, {
-      method: 'POST',
-      body: formData,
-    })
-      .then(async response => {
+        // Process credits before generation
+        await handleCreditDeduction('basic_prompt');
+
+        // Your existing generation code
+        showLoading('Processing request...');
+
+        const formData = new FormData();
+        const requestData = {
+            prompt: prompt,
+            category: getSelectedCategories() || {},
+            AIType: selectedAIType || 'default'
+        };
+
+        formData.append('data', JSON.stringify(requestData));
+
+        if (imageUpload && imageUpload.files.length > 0) {
+            formData.append('image', imageUpload.files[0]);
+        }
+
+        // Your existing fetch call to /process
+        const response = await fetch(`${API_BASE_URL}/process`, {
+            method: 'POST',
+            body: formData,
+        });
+
         if (!response.ok) {
-          // Try to get error details from response
-          const errorText = await response.text();
-          console.error('Server error details:', errorText);
+            const errorText = await response.text();
+            throw new Error(
+                response.status === 500
+                    ? `Server error (500): ${errorText}`
+                    : `Server returned ${response.status}: ${errorText}`
+            );
+        }
 
-          throw new Error(
-            response.status === 500
-              ? `Server error (500): ${errorText}`
-              : `Server returned ${response.status}: ${errorText}`
-          );
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log('Received response:', data);
+        const data = await response.json();
         if (data.error) {
-          throw new Error(data.error);
+            throw new Error(data.error);
         }
+
+        // Update the prompt with actual tokens used
+        if (lastSavedPromptId && lastTokensUsed > 0) {
+            try {
+                await fetch(`http://127.0.0.1:3000/api/history/prompts/${lastSavedPromptId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+                    },
+                    body: JSON.stringify({
+                        tokens_used: lastTokensUsed
+                    })
+                });
+            } catch (error) {
+                console.error('Error updating tokens used:', error);
+            }
+        }
+
         handleParsedResponse(data.response);
-      })
-      .catch(error => {
+
+    } catch (error) {
         console.error('Request failed:', error);
-        if (error.message.includes('Failed to fetch')) {
-          showError('Unable to connect to server. Please make sure the backend is running.');
-        } else {
-          showError(`Error: ${error.message}`);
-        }
-      });
-  }
+        showError(error.message.includes('Failed to fetch')
+            ? 'Unable to connect to server. Please make sure the backend is running.'
+            : `Error: ${error.message}`);
+    } finally {
+        document.getElementById('promptInput').disabled = false;
+    }
+}
+
+
 
   // Helper functions
   function showError(message) {
@@ -574,12 +717,6 @@ document.getElementById('editButton1').addEventListener('click', function () {
 });
 
 
-
-
-
-
-
-
 // pricing.js
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -633,6 +770,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 // Assuming the user ID is available, otherwise you can retrieve it from localStorage, cookies, etc.
+let lastSavedPromptId = null;
+let lastTokensUsed = 0; // To track tokens used in the last operation
 const userId = localStorage.getItem('userId');
 const token = localStorage.getItem('userToken');
 console.log("token:" + token);
@@ -680,75 +819,65 @@ async function updateCreditDisplay() {
 
 // This is the function that will be triggered when the "Generate" button is clicked
 function handleCreditDeduction(feature) {
-  // First fetch available credits for the feature
-  fetch('http://127.0.0.1:3000/api/credit/credits', {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}` // Add the Authorization header with the token
-    }
-  })
-    .then(response => response.json())
-    .then(data => {
-      // console.log("creditdata:"+data);
-      const featureCredit = data.data.find(credit => credit.feature === feature);
-      console.log("creditfeture:"+featureCredit);
-      if (!featureCredit) {
-        console.error('Feature not found');
-        return;
-      }
-
-      // Then check and update user's token balance
-      fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        }
+  return new Promise((resolve, reject) => {
+      fetch('http://127.0.0.1:3000/api/credit/credits', {
+          method: 'GET',
+          headers: {
+              'Authorization': `Bearer ${token}`
+          }
       })
-        .then(response => response.json())
-        .then(data => {
-          console.log("data recvd:"+data.data);
-          const tokensReceived = data.data.token_received;
-          const tokensUsed = data.data.tokens_used;
-
-          // document.getElementById('editButton').textContent = `${tokensReceived - tokensUsed} Credits`;
-
-          if (tokensReceived <= tokensUsed) {
-            alert("You are out of tokens!");
-            document.getElementById('sendButton').disabled = true; // Disable the send button
-            return;
+      .then(response => response.json())
+      .then(data => {
+          const featureCredit = data.data.find(credit => credit.feature === feature);
+          if (!featureCredit) {
+              reject('Feature not found');
+              return;
           }
 
-          if (tokensReceived - tokensUsed >= featureCredit.credits) {
-            const updatedTokensUsed = tokensUsed + featureCredit.credits;
-
-            fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
-              method: 'PUT',
+          fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+              method: 'GET',
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                tokens_used: updatedTokensUsed,
-                token_received: tokensReceived
-              })
-            })
-              .then(updateResponse => updateResponse.json())
-              .then(async (updateData)  => {
-                console.log(`Credits deducted for ${feature}:`, featureCredit.credits);
-                // Re-enable the send button if tokens are sufficient
-                document.getElementById('sendButton').disabled = false;
-                //  Refresh credits display immediately after deduction
-                  await updateCreditDisplay();
-                  
-                  resolve('Success');
-              })
-              .catch(error => console.error('Error updating tokens:', error));
-          } else {
-            alert(`Not enough tokens for ${feature}`);
-          }
-        });
-    })
-    .catch(error => console.error('Error fetching credits:', error));
+                  'Authorization': `Bearer ${token}`,
+              }
+          })
+          .then(response => response.json())
+          .then(data => {
+              const tokensReceived = data.data.token_received;
+              const tokensUsed = data.data.tokens_used;
+
+              if (tokensReceived <= tokensUsed) {
+                  reject('Out of tokens');
+                  return;
+              }
+
+              if (tokensReceived - tokensUsed >= featureCredit.credits) {
+                  const updatedTokensUsed = tokensUsed + featureCredit.credits;
+                  lastTokensUsed = featureCredit.credits; // Track tokens used
+
+                  fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+                      method: 'PUT',
+                      headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({
+                          tokens_used: updatedTokensUsed,
+                          token_received: tokensReceived
+                      })
+                  })
+                  .then(updateResponse => updateResponse.json())
+                  .then(async (updateData) => {
+                      await updateCreditDisplay();
+                      resolve(featureCredit.credits);
+                  })
+                  .catch(error => reject(error));
+              } else {
+                  reject('Not enough tokens');
+              }
+          });
+      })
+      .catch(error => reject(error));
+  });
 }
 
 // Feature usage tracking
@@ -834,31 +963,113 @@ document.getElementById('sendButton').addEventListener('click', async function (
 
     // Check if the basic prompt is used
     if (promptUsed) {
-      console.log('Deducting credit for basic prompt');
-      await handleCreditDeduction('basic_prompt');
+      try {
+        // Check access and record usage for basic prompt
+        const basicAccess = await checkFeatureAccess('1'); // Assuming '1' is basic_prompt
+        if (!basicAccess.data.canUse) {
+          showError(basicAccess.data.reason === 'timeout' 
+            ? `Basic features locked until ${new Date(basicAccess.data.timeoutUntil).toLocaleTimeString()}`
+            : `Daily limit reached for basic features (${basicAccess.data.usageCount}/${basicAccess.data.dailyLimit})`
+          );
+          return;
+        }
+        
+        // Record usage and deduct credits for basic prompt
+        await recordFeatureUsage('1');
+        await handleCreditDeduction('basic_prompt');
+      } catch (error) {
+        showError(`Error with basic features: ${error.message}`);
+        return;
+      }
     }
+
 
     // If any advanced options are selected, deduct credits for each
     if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
-      // Loop through the selected advanced options and deduct credits
-      for (const optionId of advancedOptionsSelected) {
-        console.log(`Deducting credit for: advanced_prompt_${optionId}`);
-        await handleCreditDeduction(`advanced_prompt_${optionId}`);
+      try {
+        // Check access for advanced features
+        const advancedAccess = await checkFeatureAccess('2');
+        if (!advancedAccess.data.canUse) {
+          showError(advancedAccess.data.reason === 'timeout' 
+            ? `Advanced features locked until ${new Date(advancedAccess.data.timeoutUntil).toLocaleTimeString()}`
+            : `Daily limit reached for advanced features (${advancedAccess.data.usageCount}/${advancedAccess.data.dailyLimit})`
+          );
+          return;
+        }
+
+        // Record usage for advanced features
+        await recordFeatureUsage('2');
+
+        // Loop through selected advanced options and deduct credits
+        for (const optionId of advancedOptionsSelected) {
+          console.log(`Deducting credit for: advanced_prompt_${optionId}`);
+          await handleCreditDeduction(`advanced_prompt_${optionId}`);
+        }
+      } catch (error) {
+        showError(`Error with advanced features: ${error.message}`);
+        return;
       }
     }
 
     // Check if image guidance is used
     if (imageGuidanceUsed) {
-      console.log('Deducting credit for image guidance');
-      await handleCreditDeduction('image_prompt');
+      try {
+        // Check access for image features
+        const imageAccess = await checkFeatureAccess('3');
+        if (!imageAccess.data.canUse) {
+          showError(imageAccess.data.reason === 'timeout'
+            ? `Image features locked until ${new Date(imageAccess.data.timeoutUntil).toLocaleTimeString()}`
+            : `Daily limit reached for image features (${imageAccess.data.usageCount}/${imageAccess.data.dailyLimit})`
+          );
+          return;
+        }
+
+        // Record usage and deduct credits for image features
+        await recordFeatureUsage('3');
+        await handleCreditDeduction('image_prompt');
+      } catch (error) {
+        showError(`Error with image features: ${error.message}`);
+        return;
+      }
     }
 
     // If all options are used, deduct credits for the complete prompt
     if (promptUsed && advancedOptionsUsed && imageGuidanceUsed) {
-      console.log('Deducting credit for complete prompt');
-      await handleCreditDeduction('complete_prompt');
-    }
+      try {
+        // Check access for complete features
+        const completeAccess = await checkFeatureAccess('4');
+        if (!completeAccess.data.canUse) {
+          showError(completeAccess.data.reason === 'timeout'
+            ? `Complete features locked until ${new Date(completeAccess.data.timeoutUntil).toLocaleTimeString()}`
+            : `Daily limit reached for complete features (${completeAccess.data.usageCount}/${completeAccess.data.dailyLimit})`
+          );
+          return;
+        }
 
+        // Record usage and deduct credits for complete features
+        await recordFeatureUsage('4');
+        await handleCreditDeduction('complete_prompt');
+      } catch (error) {
+        showError(`Error with complete features: ${error.message}`);
+        return;
+      }
+    }
+    // window.scrollTo({ top: 0, behavior: 'smooth' });
+    // const promptInput = document.getElementById('promptInput');
+    // if (!promptInput) {
+    //   showError('Error: Prompt input element not found');
+    //   return;
+    // }
+
+    // const prompt = promptInput.value.trim();
+    // const selectedAIType = getSelectedRadioValue();
+    // const userId = localStorage.getItem('userId');
+
+    // if (!prompt) {
+    //   showError('Please enter a prompt first');
+    //   return;
+    // }
+ 
     // Reset all tracking after successful generation
     promptUsed = false;
     advancedOptionsUsed = false;
@@ -883,12 +1094,11 @@ document.getElementById('sendButton').addEventListener('click', async function (
     document.getElementById('promptInput').value = '';
 
   } catch (error) {
-    console.error('Error during credit deductions:', error);
-    // Refresh credits display even if there's an error
-    await updateCreditDisplay();
-
-    // Enable the input area in case of error
+    console.error('Error during processing:', error);
+    showError(`Error: ${error.message}`);
+  } finally {
     document.getElementById('promptInput').disabled = false;
+    await updateCreditDisplay();
   }
 });
 

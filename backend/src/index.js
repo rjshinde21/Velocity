@@ -5,6 +5,8 @@ const userRoutes = require('./routes/user.routes');
 const tokenRoutes = require('./routes/token.routes');
 const planRoutes = require('./routes/plan.routes');
 const creditRoutes = require('./routes/credit.route');
+const historyRoutes = require('./routes/history.routes');
+
 require('dotenv').config();
 
 const app = express();
@@ -45,8 +47,10 @@ app.use(express.json());
 const connection = mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'velocity@321',
-    database: process.env.DB_NAME || 'velocitydb'
+    password: '',
+    database: process.env.DB_NAME || 'velocitydb',
+    port: 3306
+
 });
 
 // Routes
@@ -54,6 +58,8 @@ app.use('/api/users', userRoutes);
 app.use('/api', tokenRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/credit', creditRoutes);
+app.use('/api/history', historyRoutes);
+
 
 const PORT = process.env.PORT || 3000;
 
