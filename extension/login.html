@@ -3,48 +3,44 @@
 <head>
     <title>Velocity Login</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+    <script src="http://www.google.com/recaptcha/api.js?onload=myCallBack&render=explicit" async defer></script>
     <style>
+        /* Previous CSS remains the same */
         body {
             width: 600px;
             height: 350px;
             font-family: Arial, sans-serif;
-            /* padding: 15px; */
             margin: 0;
             background-color: #f5f5f5;
         }
         .form-container {
             background: linear-gradient(to bottom, #000000 20%, #00131c 80%);
-            /* padding: 20px; */
-            /* border-radius: 8px; */
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             padding: 0px 160px;
         }
         .form-group {
             margin-bottom: 15px;
         }
-
-        .header{
+        .header {
             background-color: #00141D;
             padding: 18px 0px;
             color: #ffffff;
             margin: 0;
             text-align: center;
-            /* font-family: 'Amenti'; */
             font-family: 'Amenti', sans-serif;
         }
-        .topText{
+        .topText {
             margin: 0;
             padding: 10px 0px;
             text-align: center;
             font-size: 32px;
-            line-height: 2.25rem; 
-            font-weight: 400; 
-            text-align: center; 
+            line-height: 2.25rem;
+            font-weight: 400;
+            text-align: center;
             color: #ffffff;
             padding-top: 60px;
         }
-
-        .topText2{
+        .topText2 {
             color: #808080;
             text-align: center;
             font-weight: 400;
@@ -52,30 +48,25 @@
             font-size: 14px;
             padding-bottom: 40px;
         }
-
-        .forgot-password-container{
+        .forgot-password-container {
             margin: 20px 0px;
             display: flex;
             justify-content: center;
         }
-
-        .forgot-password{
+        .forgot-password {
             font-size: 14px;
             color: #008ACB;
             cursor: pointer;
         }
-
-        .no-account-container{
+        .no-account-container {
             text-align: center;
             padding: 40px 0px;
         }
-
-        .no-account{
+        .no-account {
             font-size: 14px;
             color: #808080;
             text-align: center;
         }
-
         label {
             display: block;
             margin-bottom: 5px;
@@ -87,7 +78,6 @@
             width: 100%;
             padding: 8px;
             color: #ffffff;
-            /* margin-bottom: 10px; */
             border: 1px solid #808080;
             border-radius: 4px;
             box-sizing: border-box;
@@ -105,7 +95,7 @@
             font-size: 14px;
             transition: background-color 0.3s;
         }
-        #loginButton2{
+        #loginButton2 {
             background-color: transparent;
             display: flex;
             gap: 5px;
@@ -168,16 +158,14 @@
             <input type="password" id="password" name="password" placeholder="Enter your password" required>
         </div>
         <div class='forgot-password-container'>
-            <span class='forgot-password'>Forgot password?</span>
-          </div>
+            <span class='forgot-password' id="forgotPassword">Forgot password?</span>
+        </div>
         <button id="loginButton">Sign in</button>
         <button id="loginButton2"><img src="./assets/googlelogo.png" alt="Google logo">Sign in with Google</button>
         <div class="no-account-container">
-            <span class="no-account">
-              Don't have an account?
-            </span>
-                <span class="signup-button" id="signupButton">Sign up</span>
-          </div>
+            <span class="no-account">Don't have an account?</span>
+            <span class="signup-button" id="signupButton">Sign up</span>
+        </div>
         <div id="loading" class="loading">Logging in...</div>
     </div>
     <script src="login.js"></script>

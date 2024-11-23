@@ -85,10 +85,10 @@ const Footer = () => {
                     Privacy Policy
                   </Link>
                 </li>
-                <li>
-                  <a href="" class="hover:underline hover:text-gray-100">
+                <li onClick={()=>window.scrollTo({top: 0, behavior: 'smooth'})}>
+                  <Link to="/terms-and-conditions" class="hover:underline hover:text-gray-100">
                     Terms &amp; Conditions
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>

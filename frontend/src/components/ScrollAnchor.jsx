@@ -11,13 +11,13 @@ const ScrollAnchor = ({ howItWorksRef, freeTrialRef, pricingRef, carouselRef }) 
     },
     {
       id: 2,
-      label: "Free Trial",
-      ref: freeTrialRef,
+      label: "Pricing",
+      ref: pricingRef,
     },
     {
       id: 3,
-      label: "Pricing",
-      ref: pricingRef,
+      label: "Free Trial",
+      ref: freeTrialRef,
     },
     {
       id: 4,

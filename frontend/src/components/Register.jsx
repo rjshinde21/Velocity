@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import velocitylogo from "../assets/velocitylogo.png";
 import { useNavigate, Link } from 'react-router-dom';
+import ThreeDLogo from './3dLogo/ThreeDLogo';
+import supabase from '../config/supabaseClient';
+import googleLogo from '../assets/googleLogo.png'
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -15,6 +18,13 @@ const Register = () => {
     password: '',
     confirmPassword: ''
   });
+  const [animate, setAnimate] = useState(false);
+
+  console.log('supabase', supabase)
+
+  useEffect(() => {
+    setAnimate(true);
+  }, []);
 
   const navigate = useNavigate(); // Initialize navigate hook
 
@@ -82,7 +92,19 @@ const Register = () => {
     event.preventDefault();
     setMessage('');
 
-    // Validate all fields
+    try{   
+      const { data, error } = await supabase.auth.signUp({
+      name:name,
+      email: email,
+      password: password,
+      confirmPassword: confirmPassword
+    })
+    if (error) throw error
+    alert("Check your email for verification link")
+  } catch(error){
+    console.log(error)
+  }
+
     const errors = {
       name: validateField('name', name),
       email: validateField('email', email),
@@ -92,7 +114,6 @@ const Register = () => {
 
     setFieldErrors(errors);
 
-    // Check if there are any errors
     if (Object.values(errors).some(error => error)) {
       setMessage(<span style={{ color: 'red' }}>Please fix the errors before submitting</span>);
       return;
@@ -122,7 +143,7 @@ const Register = () => {
         setMessage(<span style={{ color: 'green' }}>Registration successful! Now you can login into extension using this credentials</span>);
         localStorage.setItem('registrationSuccess', 'true');
         setTimeout(() => {
-          navigate('/login'); // Redirect to login page
+          navigate('/login'); 
         }, 2000);
       } else {
         switch (response.status) {
@@ -147,9 +168,88 @@ const Register = () => {
     }
   };
 
+  const handleGoogleSignUp = async (e) => {
+    e.preventDefault();
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        }
+      }); 
+      if(data) console.log('data', data)
+  
+      if (error) throw error;
+  
+      // Set up auth state listener to capture user data after successful sign-in
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('Auth Event:', event);
+        
+        if (event === 'SIGNED_IN') {
+          // Get user data
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          
+          if (userError) {
+            console.error('Error fetching user data:', userError);
+          } else {
+            // Log detailed user information
+            console.log('User Data:', {
+              id: user.id,
+              email: user.email,
+              emailVerified: user.email_confirmed_at,
+              lastSignIn: user.last_sign_in_at,
+              createdAt: user.created_at,
+              updatedAt: user.updated_at,
+              userMetadata: user.user_metadata,
+              appMetadata: user.app_metadata,
+            });
+  
+            // Log Google-specific profile information
+            console.log('Google Profile:', {
+              name: user.user_metadata?.full_name,
+              avatar: user.user_metadata?.avatar_url,
+              email: user.user_metadata?.email,
+            });
+  
+            // Log session information
+            console.log('Session Info:', {
+              accessToken: session?.access_token,
+              tokenType: session?.token_type,
+              expiresAt: session?.expires_at,
+            });
+  
+            // Store user data in localStorage if needed
+            localStorage.setItem('user', JSON.stringify({
+              id: user.id,
+              email: user.email,
+              name: user.user_metadata?.full_name,
+              avatar: user.user_metadata?.avatar_url
+            }));
+  
+            // Navigate to home page
+            navigate('/');
+          }
+        }
+      });
+  
+    } catch (error) {
+      console.error('Google Sign Up Error:', {
+        message: error.message,
+        hint: error.hint,
+        status: error.status,
+        details: error.details,
+      });
+      alert(error.message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0C0C0C] sm:bg-black absolute h-full w-full flex justify-center items-center sm:flex-row flex-col z-30 sm:gap-0 gap-12">
-      <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm px-6 sm:px-36 sm:w-1/2 w-full">
+      <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm px-6 sm:px-36 sm:w-1/2 w-full" style={{zIndex: 2}}>
       <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-8">Create an account</h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
@@ -231,6 +331,13 @@ const Register = () => {
               Register
             </button>
             </div>
+
+            <div className='w-full flex justify-center'>
+            <button onClick={handleGoogleSignUp} className='bg-[#000000] border-[#989898] border text-primary rounded-md w-full py-3 flex gap-2 justify-center items-center' content="Register" disabled={isLoading}>
+              <img src={googleLogo} alt="Google" />Sign up with Google
+            </button>
+            </div>
+            
           </div>
 
           {/* Message Area */}
@@ -246,7 +353,7 @@ const Register = () => {
           </p>
         </div>
       </div>
-      <div className="flex justify-center order-1 sm:order-2 items-center w-1/2 h-auto sm:h-screen bg-[#0C0C0C]">
+      <div className="flex justify-center order-1 sm:order-2 items-center w-1/2 h-[20vh] sm:h-screen bg-[#0C0C0C]">
 
       <Link
             to="/"
@@ -255,17 +362,23 @@ const Register = () => {
             <img
               src={velocitylogo}
               className="h-10 sm:h-14"
-              alt="Velocity Logo"
+              alt="Velocity Logo" 
             />
           </Link>
 
-      <div className="relative">
-        {/* Blue Circle */}
-        <div className="w-24 h-24 sm:w-64 sm:h-64 bg-blue-500 rounded-full"></div>
+          <div className="relative">
+      {/* <div
+        className={`w-24 h-24 sm:w-64 sm:h-64 bg-[#008ACB] rounded-full transform transition-opacity duration-700 ${
+          animate ? "animate-slideUp opacity-100" : "opacity-0"
+        }`}
+        style={{
+          animation: animate ? "circleSlideUp 2s ease-out" : "none",
+        }}
+      ></div>
 
-        {/* Backdrop blur effect on the lower half */}
-        <div className="absolute top-1/2 sm:left-[-40px] w-40 h-20 left-[-35px] sm:w-96 sm:h-40 backdrop-blur-md bg-[#0C0C0C]/40"></div>
-      </div>
+      <div className="absolute top-1/2 sm:left-[-60px] w-40 h-32 left-[-35px] sm:w-96 sm:h-96 backdrop-blur-md bg-[#0C0C0C]/40"></div> */}
+      <ThreeDLogo />
+    </div>
     </div>
     </div>
   );

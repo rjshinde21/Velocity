@@ -3,7 +3,7 @@ import {Link, useNavigate} from 'react-router-dom';
 import velocitylogo from '../assets/velocitylogo.png';
 import PromptGrid from './PromptGrid';
 
-const ProfilePage = () => {
+const ProfilePage = ({pricingRef}) => {
     const [name, setName] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [isPremium, setIsPremium] = useState(false);
@@ -119,16 +119,17 @@ const ProfilePage = () => {
             setIsUpdating(false);
         }
     };
+    const handleUpgrade = () => {
+        if (pricingRef && pricingRef.current) {
+          pricingRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      };
+      
     const handleClick = () => {
         setIsEditing(!isEditing);
     };
     const handleChange = (e) => {
         setName(e.target.value);
-    };
-    const scrollToPricing = () => {
-        if (pricingRef && pricingRef.current) {
-            pricingRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
     };
 
     const handleLogout = () => {
@@ -196,9 +197,15 @@ const ProfilePage = () => {
                 </p>
                 <p className="text-[#FFFFFF]/80 my-3 italic font-normal font-[Inter]">Running out of daily credits?</p>
                 <div className='flex sm:flex-col gap-10 sm:gap-0'>
-                <button 
+                <button onClick={()=>handleUpgrade(pricingRef)}
+     
+    className="w-full max-w-sm flex justify-center text-lg px-7 py-4 sm:px-36 sm:py-5 text-[#BEBEBE] border border-[#F7AA1C] shadow-[0_0_9px_rgba(247,170,28,0.3)] transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_12px_rgba(247,170,28,0.7)]"
+>
+    Upgrade
+</button>
+<button 
     onClick={handleLogout} 
-    className="w-full max-w-sm flex justify-center text-lg px-7 py-4 sm:px-36 sm:py-5 text-[#BEBEBE] border border-[#ECECEC] transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]"
+    className="w-fit flex justify-center text-sm px-6 py-2 sm:px-6 sm:py-2 mt-4 text-[#ffffff]/30 border border-[#ffffff]/30 transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]"
 >
     Logout
 </button>

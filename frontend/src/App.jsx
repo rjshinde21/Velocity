@@ -12,6 +12,7 @@ import Footer from "./components/Footer";
 import HowItWorks from "./components/HowItWorks";
 import ProfilePage from "./components/ProfilePage";
 import PrivacyPolicy from "./components/PrivacyPolicy";
+import TermsConditions from "./components/TermsConditions";
 
 function App() {
   const [showLogin, setShowLogin] = useState(false);
@@ -139,11 +140,11 @@ function App() {
                 <div ref={howItWorksRef}>
                   <HowItWorks />
                 </div>
-                <div ref={freeTrialRef}>
-                  <FreeTrial />
-                </div>
                 <div ref={pricingRef}>
                   <Pricing isLoggedIn={isLoggedIn} />
+                </div>
+                <div ref={freeTrialRef}>
+                  <FreeTrial />
                 </div>
                 <div ref={carouselRef}>
                   <Carousel />
@@ -157,11 +158,12 @@ function App() {
             path="/profile"
             element={
               <ProtectedRoute>
-                <ProfilePage />
+                <ProfilePage pricingRef={pricingRef}/>
               </ProtectedRoute>
             }
           />
         <Route path="/privacypolicy" element={<PrivacyPolicy />} />
+        <Route path="/terms-and-conditions" element={<TermsConditions />} />
         </Routes>
         <Footer />
       </main>

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import velocitylogo from "../assets/velocitylogo.png";
 import { Link } from 'react-router-dom';
 import ProfilePage from './ProfilePage';
+import ThreeDLogo from './3dLogo/ThreeDLogo';
+import supabase from '../config/supabaseClient';
+import googleLogo from '../assets/googleLogo.png'
 
 const Login = ({setIsLoggedIn}) => {
   const [email, setEmail] = useState('');
@@ -13,6 +16,13 @@ const Login = ({setIsLoggedIn}) => {
     email: '',
     password: '',
   });
+  // const [animate, setAnimate] = useState(false);
+
+  // useEffect(() => {
+  //   setAnimate(true);
+  // }, []);
+
+  
 
   // Session management
   const SESSION_DURATION = 60 * 1000; // 1 minute in milliseconds
@@ -251,15 +261,44 @@ const Login = ({setIsLoggedIn}) => {
     }
   };
 
+  const handleGoogleSignIn = async (e) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: '/',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        }
+      }); 
+  
+      if (error) {
+        throw error;
+      }
+
+    } catch (error) {
+      console.error('\n=== Google Sign In Error ===', {
+        message: error.message,
+        hint: error.hint,
+        status: error.status,
+        details: error.details,
+        stack: error.stack,
+      });
+      alert(error.message);
+    }
+  };
+
   if (showTokenDetails) {
     return <ProfilePage />;
   }
 
   return (
     <div className="min-h-screen bg-[#0C0C0C] sm:bg-black absolute h-full w-full flex justify-center items-center z-30 flex-col sm:flex-row sm:gap-0 gap-12" >
-      <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm py-6 px-6 sm:px-36 sm:w-1/2 w-full">
-        <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-4">Welcome back</h2>
-        <h2 className="text-left text-[16px] font-normal text-[#808080] mb-10">Welcome back! Please enter your details.</h2>
+      <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm py-6 px-6 sm:px-36 sm:w-1/2 w-full" style={{zIndex: 2}}>
+        <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-4">Welcome back!</h2>
+        <h2 className="text-left text-[16px] font-normal text-[#808080] mb-10">Please enter your details.</h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
@@ -310,6 +349,12 @@ const Login = ({setIsLoggedIn}) => {
                 disabled={isLoading} 
               >Sign in</button>
             </div>
+
+            <div className='w-full flex justify-center'>
+            <button onClick={handleGoogleSignIn} className='bg-[#000000] border-[#989898] border text-primary rounded-md w-full py-3 flex gap-2 justify-center items-center' content="Register" disabled={isLoading}>
+              <img src={googleLogo} alt="Google" />Sign in with Google
+            </button>
+            </div>
           </div>
 
           <div id="message" className="mt-4 text-center text-sm text-gray-600">
@@ -326,7 +371,7 @@ const Login = ({setIsLoggedIn}) => {
           </p>
         </div>
       </div>
-      <div className="flex justify-center order-1 sm:order-2 items-center w-1/2 h-auto sm:h-screen bg-[#0C0C0C]">
+      <div className="flex justify-center order-1 sm:order-2 items-center w-1/2 h-[20vh] sm:h-screen bg-[#0C0C0C]">
       <Link
             to="/"
             className={'flex items-center space-x-3 sm:w-auto w-auto absolute top-16 right-16 '}
@@ -337,13 +382,19 @@ const Login = ({setIsLoggedIn}) => {
               alt="Velocity Logo"
             />
           </Link>
-      <div className="relative">
-        {/* Blue Circle */}
-        <div className="w-24 h-24 sm:w-64 sm:h-64 bg-blue-500 rounded-full"></div>
+          <div className="relative">
+      {/* <div
+        className={`w-24 h-24 sm:w-64 sm:h-64 bg-[#008ACB] rounded-full transform transition-opacity duration-700 ${
+          animate ? "animate-slideUp opacity-100" : "opacity-0"
+        }`}
+        style={{
+          animation: animate ? "circleSlideUp 2s ease-out" : "none",
+        }}
+      ></div>
 
-        {/* Backdrop blur effect on the lower half */}
-        <div className="absolute top-1/2 sm:left-[-40px] w-40 h-20 left-[-35px] sm:w-96 sm:h-40 backdrop-blur-md bg-[#0C0C0C]/40"></div>
-      </div>
+      <div className="absolute top-1/2 sm:left-[-60px] w-40 h-32 left-[-35px] sm:w-96 sm:h-96 backdrop-blur-md bg-[#0C0C0C]/40"></div> */}
+      <ThreeDLogo />
+    </div>
     </div>
     </div>
   );

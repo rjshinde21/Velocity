@@ -10,6 +10,11 @@
   font-style: normal;
 }
 
+canvas{
+  /* height: 200px; */
+  width: 500px;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -267,6 +272,18 @@ body{
   }
 }
 
+@keyframes circleSlideUp {
+  from {
+    transform: translateY(70px); /* Start from below */
+    opacity: 0; /* Optional fade-in effect */
+  }
+  to {
+    transform: translateY(0); /* End at the original position */
+    opacity: 1;
+  }
+}
+
+
 /* Apply the animation on hover */
 button:hover .chevron-icon {
   animation: bounce 0.6s ease-in-out infinite;
@@ -290,6 +307,21 @@ button:hover .chevron-icon {
   }
   .inner1 {
     height: 27rem;
+  }
+
+  canvas{
+    height: 200px;
+  }
+
+  @keyframes circleSlideUp {
+    from {
+      transform: translateY(30px); /* Start from below */
+      opacity: 0; /* Optional fade-in effect */
+    }
+    to {
+      transform: translateY(0); /* End at the original position */
+      opacity: 1;
+    }
   }
 }
 

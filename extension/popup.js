@@ -14,22 +14,22 @@ document.addEventListener('DOMContentLoaded', function () {
   const placeholderImagePath = 'path/to/your/placeholder-image.png';
   const categoryStructure = [
     {
-      name: "Style & Appearance",
+      name: "Craft your vision with the perfect subject and style",
       col1: 0,  // First column index for this category
       col2: 1   // Second column index for this category
     },
     {
-      name: "Content & Format",
+      name: "Set the stage with your ideal background and setting",
       col1: 2,
       col2: 3
     },
     {
-      name: "Setting & Context",
+      name: "Illuminate your scene with the perfect lighting and colors",
       col1: 4,
       col2: 5
     },
     {
-      name: "Elements & Details",
+      name: "Capture the essence with the right mood and details",
       col1: 6,
       col2: 7
     }
@@ -77,14 +77,17 @@ document.addEventListener('DOMContentLoaded', function () {
     .then(response => response.json())
     .then(data => {
       categoriesContainer.innerHTML = ''; // Clear existing content
-      
-      // Group the data into column pairs
+      console.log("data:"+data[0].items);
       const columnPairs = [];
       for (let i = 0; i < data.length; i += 2) {
         columnPairs.push([
           data[i]?.items || [],
           data[i + 1]?.items || []
         ]);
+        for(let i=0;i<columnPairs.length;i++)
+        {
+          console.log("columncolumnPairs:"+columnPairs[i][1][0].name);
+        }
       }
       
       // Create category cards
@@ -166,65 +169,68 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function createDropdown(items, colIndex) {
     const dropdownContainer = document.createElement('div');
-    dropdownContainer.className = 'dropdown flex-1';
+    dropdownContainer.className = 'dropdown flex-1 relative'; 
 
     const dropdownButton = document.createElement('button');
     dropdownButton.className = 'dropdown-button w-full bg-black/60 text-white rounded-lg p-2 flex justify-between items-center border border-[#444444] hover:bg-black/80 transition-colors';
+    const selectedCategory = items[0]?.name || 'Select';
+
     dropdownButton.innerHTML = `
-      <div class="dropdown-button-content">
-        <span>Select Option</span>
-      </div>
-      <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-      </svg>
+        <span>${selectedCategory}</span>
+        <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
     `;
 
     const dropdownContent = document.createElement('div');
-    dropdownContent.className = 'dropdown-content hidden absolute z-10 w-full mt-1 bg-black/95 rounded-lg border border-[#444444] max-h-48 overflow-y-auto';
-
+    dropdownContent.className = 'dropdown-content hidden absolute z-50 w-full mt-1 bg-black/95 rounded-lg border border-[#444444] max-h-48 overflow-y-auto';
+    // Set explicit positioning
+    dropdownContent.style.top = '100%';
+    dropdownContent.style.left = '0';
+    
     const itemsContainer = document.createElement('div');
     itemsContainer.className = 'p-2';
 
     items.forEach(item => {
-      const option = document.createElement('div');
-      option.className = 'dropdown-item p-2 text-white hover:bg-white/10 rounded cursor-pointer transition-colors';
-      option.textContent = item.name; // Using the 'name' property from your CSV structure
-      
-      option.addEventListener('click', function() {
-        const buttonText = dropdownButton.querySelector('span');
-        buttonText.textContent = item.name;
-        dropdownContent.classList.add('hidden');
+        const option = document.createElement('div');
+        option.className = 'dropdown-item p-2 text-white hover:bg-white/10 rounded cursor-pointer transition-colors';
+        option.textContent = item.name;
         
-        // Remove selected class from all items in this dropdown
-        itemsContainer.querySelectorAll('.dropdown-item').forEach(el => {
-          el.classList.remove('selected', 'bg-white/20');
+        option.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const buttonText = dropdownButton.querySelector('span');
+            buttonText.textContent = item.name;
+            dropdownContent.classList.add('hidden');
+            
+            // Remove selected class from all items
+            itemsContainer.querySelectorAll('.dropdown-item').forEach(el => {
+                el.classList.remove('selected', 'bg-white/20');
+            });
+            
+            // Add selected class to clicked item
+            option.classList.add('selected', 'bg-white/20');
         });
-        
-        // Add selected class to clicked item
-        option.classList.add('selected', 'bg-white/20');
-      });
 
-      itemsContainer.appendChild(option);
+        itemsContainer.appendChild(option);
     });
 
     dropdownContent.appendChild(itemsContainer);
     dropdownContainer.appendChild(dropdownButton);
     dropdownContainer.appendChild(dropdownContent);
 
-    // Toggle dropdown
+    // Toggle dropdown with improved visibility handling
     dropdownButton.addEventListener('click', function(e) {
-      e.stopPropagation();
-      const isHidden = dropdownContent.classList.contains('hidden');
-      
-      // Hide all dropdowns first
-      document.querySelectorAll('.dropdown-content').forEach(content => {
-        content.classList.add('hidden');
-      });
-      
-      // Toggle current dropdown
-      if (isHidden) {
-        dropdownContent.classList.remove('hidden');
-      }
+        e.stopPropagation();
+        console.log('first')
+        // Close all other dropdowns first
+        document.querySelectorAll('.dropdown-content').forEach(content => {
+            if (content !== dropdownContent) {
+                content.classList.add('hidden');
+            }
+        });
+        
+        // Toggle current dropdown
+        dropdownContent.classList.toggle('hidden');
     });
 
     return dropdownContainer;
@@ -273,6 +279,7 @@ document.addEventListener('DOMContentLoaded', function () {
         selectedCategories[categoryName] = selectedItem.querySelector('.dropdown-card-select').textContent.trim();
       }
     });
+    console.log('selectedCategories', selectedCategories)
     return selectedCategories;
   }
 
@@ -459,6 +466,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (typeof adjustPopupSize === 'function') {
       adjustPopupSize();
     }
+
+    return dropdownContainer
   }
 
   // Helper function to show errors
@@ -488,6 +497,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const prompt = promptInput.value.trim();
     const selectedCategories = getSelectedCategories();
     const selectedAIType = getSelectedRadioValue();
+
+    console.log('selectedCategories', selectedCategories)
 
     // Log the data being sent
     console.log('Sending data:', {
@@ -974,16 +985,6 @@ updateCreditDisplay();
 function getSelectedAdvancedOptionsCount() {
   return advancedOptionsSelected.size;
 }
-
-
-
-
-
-
-
-
-
-
 
     // Define logout function
     function logout() {

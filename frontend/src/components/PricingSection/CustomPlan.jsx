@@ -15,6 +15,10 @@ const CustomPlan = ({ planData }) => {
     </svg>
   );
 
+  function handleFooterScroll(){
+    window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})
+  }
+
   const renderFeatureItem = (feature, isStrikethrough = false) => (
     <li className={`flex sm:block md:flex items-center ${isStrikethrough ? 'line-through decoration-gray-500' : ''}`}>
       <PlanDot />
@@ -24,7 +28,7 @@ const CustomPlan = ({ planData }) => {
     </li>
   );
 
-  const listItems = ["Customized usage and features tailored to business needs", "Advanced integrations available upon request"]
+  const listItems = ["Customized usage and features tailored to business needs", "Advanced integrations available upon request", "Prioritized response from our support team", "Excessive storage for all your prompts", "Access upto 3 users on one account"]
 
   return (
     <div className="w-full max-w-xs p-6 font-[Inter] rounded-[32px] shadow sm:p-8 hover:scale-105 transition-all duration-200" style={{
@@ -58,7 +62,7 @@ const CustomPlan = ({ planData }) => {
         style={{
           backgroundImage: 'linear-gradient(to bottom, #008ACB1A 0%, #000000 100%)',
         }}
-        onClick={planData.onSignUp}
+        onClick={handleFooterScroll}
       >
         {planData.buttonText || 'Contact Sales'}
       </button>

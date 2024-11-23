@@ -281,7 +281,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
   ];
 
   return (
-    <div className="w-full max-w-sm border border-[#008ACB52] p-6 font-[Inter] rounded-[32px] shadow sm:p-8 hover:scale-105 transition-all duration-200 bg-gradient-to-t from-[rgba(0,138,203,0.12)] via-[rgba(0,138,203,0.04)] to-[rgba(0,138,203,0.14)] backdrop-blur-[84px] ">
+    <div className="w-full max-w-sm border border-[#EFBF0452]/50 p-6 font-[Inter] rounded-[32px] shadow sm:p-8 hover:scale-105 transition-all duration-200 bg-gradient-to-b from-[#EFBF041F]/10 via-[#EFBF041F]/5 to-[#EFBF041F]/10 backdrop-blur-[84px] ">
       <div className="flex md:flex-col justify-between md:justify-start items-center md:items-start">
       <div className="flex flex-col">
         <h5 className="mb-0 sm:mb-1 text-xl font-[Inter] text-[#ffffff]">
@@ -297,10 +297,10 @@ const PremiumPlan = ({ planData, isMonthly }) => {
           <span className="text-[32px] font-semibold">$</span>
           <span className="text-[32px] sm:text-[48px] tracking-tight">
             {/* {planData.price || '00'} */}
-            {isMonthly ? planData.price : planData.price_yearly}
+            {isMonthly ? planData.price : Math.floor(planData.price_yearly/12).toFixed(2)}
           </span>
           <span className="ms-1 text-sm font-normal text-gray-500 dark:text-gray-400">
-            /{isMonthly ? "month" : "year"}
+            /month
           </span>
         </div>
       </div>
@@ -309,7 +309,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
         className="text-white my-4 sm:my-9 font-medium rounded-xl text-sm px-5 py-2.5 inline-flex justify-center w-full text-center transition-colors duration-500 ease-in-out"
         style={{
           backgroundImage:
-            "linear-gradient(to bottom, #008ACB 0%, #005076 100%)",
+            "linear-gradient(to bottom, rgba(247, 170, 28, 0.95), rgba(247, 170, 28, 0.45))",
         }}
         onClick={handleUpgrade}
       >

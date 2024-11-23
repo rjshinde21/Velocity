@@ -164,7 +164,7 @@ const Pricing = ({isLoggedIn}) => {
         ) : error ? (
           <div className="text-red-500 text-center">{error}</div>
         ) : (
-          <div className="flex flex-col lg:flex-row gap-4 sm:gap-8">
+          <div className="flex flex-col lg:flex-row gap-4 sm:gap-8 items-center">
             <div className="flex-grow-0">
               <FreePlan planData={freePlanData} isLoggedIn={isLoggedIn}/>
             </div>
