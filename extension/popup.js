@@ -1224,7 +1224,7 @@ async function verifyAndRecordFeatures(hasImage) {
       }
     }
 
-    // Check basic prompt access
+    // Check basic prompt access first
     if (promptUsed) {
       const basicAccess = await checkFeatureAccess('1');
       if (!basicAccess.data.canUse) {
@@ -1232,20 +1232,6 @@ async function verifyAndRecordFeatures(hasImage) {
           ? `Basic features locked until ${new Date(basicAccess.data.timeoutUntil).toLocaleTimeString()}`
           : `Daily limit reached for basic features (${basicAccess.data.usageCount}/${basicAccess.data.dailyLimit})`);
         return false;
-      }
-      // Try to use credits
-      try {
-        await recordFeatureUsage('1');
-        await handleCredits('basic_prompt');
-      } catch (error) {
-        if (error.type === 'credit_error') {
-          const errorDiv = document.createElement('div');
-          errorDiv.className = 'flex flex-col items-center gap-2';
-          
-          showError("Top up now you are out of credits");
-          return false;
-        }
-        throw error;
       }
     }
 
@@ -1258,19 +1244,9 @@ async function verifyAndRecordFeatures(hasImage) {
           : `Daily limit reached for image features (${imageAccess.data.usageCount}/${imageAccess.data.dailyLimit})`);
         return false;
       }
-      try {
-        await recordFeatureUsage('3');
-        await handleCredits('image_prompt');
-      } catch (error) {
-        if (error.type === 'credit_error') {
-          showError("Top up now you are out of credits"); 
-          return false;
-        }
-        throw error;
-      }
     }
 
-    // Check advanced features
+    // Check advanced features access
     if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
       const advancedAccess = await checkFeatureAccess('2');
       if (!advancedAccess.data.canUse) {
@@ -1279,28 +1255,48 @@ async function verifyAndRecordFeatures(hasImage) {
           : `Daily limit reached for advanced features (${advancedAccess.data.usageCount}/${advancedAccess.data.dailyLimit})`);
         return false;
       }
-      try {
+    }
+
+    // After all access checks pass, proceed with credit deductions and usage recording
+    try {
+      // Handle basic prompt
+      if (promptUsed) {
+        await recordFeatureUsage('1');
+        await handleCredits('basic_prompt');
+      }
+
+      // Handle image feature
+      if (hasImage) {
+        await recordFeatureUsage('3');
+        await handleCredits('image_prompt');
+      }
+
+      // Handle advanced features
+      if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
         await recordFeatureUsage('2');
         for (const optionId of advancedOptionsSelected) {
           await handleCredits(`advanced_prompt_${optionId}`);
         }
-      } catch (error) {
-        if (error.type === 'credit_error') {
-          showError("Top up now you are out of credits"); 
-          return false;
-        }
-        throw error;
       }
+
+      return true; // All operations successful
+
+    } catch (error) {
+      if (error.type === 'credit_error') {
+        showError("Top up now you are out of credits");
+      } else {
+        showError(`Error processing request: ${error.message}`);
+      }
+      return false;
     }
 
-    return true; // All verifications passed
   } catch (error) {
-    if (error.type === 'credit_error') {
-      showError("Top up now you are out of credits"); 
-       } 
+    console.error('Error in verifyAndRecordFeatures:', error);
+    showError("An error occurred while processing your request");
     return false;
   }
 }
+
 
 function resetInterface() {
   // Enable input
