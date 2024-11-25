@@ -6,6 +6,35 @@
   <title>Extension Popup</title>
   <link rel="stylesheet" href="src/output.css">
   <style>
+    #logoutButton {
+    background: transparent;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#logoutButton:hover {
+    background-color: rgba(0, 138, 203, 0.1);
+}
+
+#logoutButton img {
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+#logoutButton:hover img {
+    opacity: 1;
+}
+
+.vlc {
+    margin-left: 0; /* Remove the old margin */
+}
+
 	.hidden2 {
         display: none !important;
       }
@@ -598,7 +627,12 @@
   </style>
 </head>
 <body>
-  <div class="w-full bg-[#00131c] flex items-center justify-center text-white text-lg font-normal font-amenti h-[50px] relative px-2">
+  <div class="w-full bg-[#00131c] flex items-center justify-between text-white text-lg font-normal font-amenti h-[50px] relative px-4">
+    <button id="logoutButton" class="flex items-center gap-2 text-white text-sm hover:text-[#008ACB] transition-colors">
+      <img src="./assets/logout.png" alt="Logout" class="h-4 w-4">
+      <span>Log Out</span>
+  </button>
+
     <div class="vlc flex items-center justify-center flex-grow gap-2">
         <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto mr-2">
         <span>Velocity</span>

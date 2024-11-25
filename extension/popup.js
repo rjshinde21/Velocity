@@ -551,7 +551,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.head.appendChild(style);
 
 
-  fetch('http://localhost:5000/get_categories')
+  fetch('http://localhost:2000/get_categories')
     .then(response => response.json())
     .then(categories => {
       console.log('Categories:', categories);
@@ -789,6 +789,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const signupButton = document.getElementById('signupButton');
   const dropdownMenu = document.getElementById('dropdownMenu');
   const editButton = document.getElementById('editButton');
+  const logoutButton = document.getElementById('logoutButton');
   const editDropdownMenu = document.getElementById('editDropdownMenu');
   const accountButton = document.getElementById('accountButton');
   const editDeleteButtons = document.getElementById('editDeleteButtons');
@@ -808,14 +809,18 @@ function updateHeaderUI() {
       // Add click event listener for login redirect
       signupButton.addEventListener('click', navigateToLogin);
       
-      // Hide credits button
+      // Hide credits button and logout button
       if (editButton) editButton.style.display = 'none';
+      if (logoutButton) logoutButton.style.display = 'none';
   } else {
+      // User is logged in
+      // Show logout button
+      if (logoutButton) logoutButton.style.display = 'flex';
+      
       // Remove the login redirect listener
       signupButton.classList.remove('not-logged-in');
-      signupButton.removeEventListener('click', navigateToLogin);
       
-      // Fetch and display user info if logged in
+      // Fetch and display user info
       fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
           method: 'GET',
           headers: {
@@ -836,19 +841,41 @@ function updateHeaderUI() {
 }
 
 
+if (logoutButton) {
+  logoutButton.addEventListener('click', function(e) {
+      e.preventDefault();
+      try {
+          localStorage.clear();
+          sessionStorage.clear();
+          
+          // Clear cookies
+          document.cookie.split(";").forEach(function(c) {
+              document.cookie = c.replace(/^ +/, "")
+                  .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+          });
+          
+          window.location.replace('login.html');
+      } catch (error) {
+          console.error('Logout failed:', error);
+          showError('Logout failed. Please try again.');
+      }
+  });
+}
+
+
   // Initially hide the dropdowns
   dropdownMenu.style.display = 'none';
   editDropdownMenu.style.display = 'none';
   editDeleteButtons.style.display = 'none';
 
   // Toggle Sign Up dropdown
-  signupButton.addEventListener('click', function (e) {
-    if(userId && token){
-    e.stopPropagation();
-    dropdownMenu.style.display = dropdownMenu.style.display === 'none' ? 'block' : 'none';
-    editDropdownMenu.style.display = 'none'; // Hide Edit dropdown when Sign Up is clicked
-    }
-  });
+  // signupButton.addEventListener('click', function (e) {
+  //   if(userId && token){
+  //   e.stopPropagation();
+  //   dropdownMenu.style.display = dropdownMenu.style.display === 'none' ? 'block' : 'none';
+  //   editDropdownMenu.style.display = 'none'; // Hide Edit dropdown when Sign Up is clicked
+  //   }
+  // });
 
   // Toggle Edit dropdown
   editButton.addEventListener('click', function (e) {
