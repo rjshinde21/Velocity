@@ -1,0 +1,39 @@
+category,column1,column2
+Style & Appearance,Main Subject,Style
+Scene & Setting,Background,Setting
+Lighting & Color,Lighting,Colors
+Elements & Details,Mood,Details
+
+Main Subject,Human,Alien
+Main Subject,Animal,Environment
+Main Subject,Mythical Beast,
+
+Style,Realistic,Digital painting
+Style,Cartoon,Minimalist
+Style,Sketch,Abstract
+Style,Watercolor,Impressionist
+Style,3D render,
+
+Background,A bustling city street,A snowy mountain
+Background,A tranquil forest,A medieval village
+Background,A sunny beach,A space station
+
+Setting,Indoors,Urban
+Setting,Outdoors,Rural
+Setting,Fantasy world,
+
+Lighting,Bright daylight,Moonlight
+Lighting,Soft morning light,Candlelight
+Lighting,Golden hour,
+
+Colors,Vibrant and colorful,Cool tones
+Colors,Monochrome,Warm tones
+Colors,Pastel shades,
+
+Mood,Vibrant and colorful,Cool tones
+Mood,Monochrome,Warm tones
+Mood,Pastel shades,
+
+Details,Textured fabric,Facial expressions
+Details,Intricate patterns,Background elements
+Details,Specific accessories,

@@ -108,41 +108,76 @@ def process_request():
 @app.route('/get_categories', methods=['GET'])
 def get_categories():
     try:
-        # Get the absolute path to the categories file
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        csv_file_path = os.path.join(current_dir, 'assets', 'categories_1.csv')
-        
-        logger.debug(f"Looking for categories file at: {csv_file_path}")
+        csv_file_path = os.path.join(current_dir, 'assets', 'categoriesNew.csv')
         
         if not os.path.exists(csv_file_path):
             logger.error(f"Categories file not found at {csv_file_path}")
             return jsonify({"error": "Categories file not found"}), 404
-            
+
+        # Read CSV and organize data
         with open(csv_file_path, 'r', encoding='utf-8') as file:
-            csv_reader = csv.DictReader(file)
-            categories = defaultdict(list)
+            csv_reader = csv.reader(file)
+            next(csv_reader)  # Skip header row
             
-            for row in csv_reader:
-                category_name = row['category']
-                item_name = row['item']
-                categories[category_name].append({
-                    "name": item_name
+            # Read category structure (first 4 rows)
+            category_structure = []
+            for _ in range(4):
+                row = next(csv_reader)
+                category_structure.append({
+                    'name': row[0],
+                    'column1': row[1],
+                    'column2': row[2]
                 })
             
-            formatted_data = [
-                {
-                    "name": category,
-                    "items": items
-                }
-                for category, items in categories.items()
-            ]
+            # Read the remaining data
+            remaining_data = list(csv_reader)
             
+            # Organize items by category type
+            category_items = {}
+            for row in remaining_data:
+                if row and len(row) >= 3:  # Ensure row has enough columns
+                    category_type = row[0]
+                    if category_type not in category_items:
+                        category_items[category_type] = []
+                    # Add non-empty items
+                    if row[1]:
+                        category_items[category_type].append({"name": row[1]})
+                    if row[2]:
+                        category_items[category_type].append({"name": row[2]})
+
+            # Format the final data structure
+            formatted_data = []
+            for structure in category_structure:
+                card = {
+                    "name": structure['name'],
+                    "dropdowns": [
+                        {
+                            "name": structure['column1'],
+                            "items": category_items.get(structure['column1'], [])
+                        },
+                        {
+                            "name": structure['column2'],
+                            "items": category_items.get(structure['column2'], [])
+                        }
+                    ]
+                }
+                formatted_data.append(card)
+
+            logger.debug(f"Formatted categories data: {formatted_data}")
             return jsonify(formatted_data)
             
     except Exception as e:
         logger.error(f"Error getting categories: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+def get_items_for_category(data, category):
+    items = []
+    for row in data:
+        if row[0] == category:
+            items.extend([item for item in row[1:] if item])
+    return items
 
 if __name__ == '__main__':
     # Ensure the assets directory exists
@@ -151,7 +186,7 @@ if __name__ == '__main__':
     os.makedirs(assets_dir, exist_ok=True)
     
     # Check if categories.csv exists
-    csv_file_path = os.path.join(assets_dir, 'categories_1.csv')
+    csv_file_path = os.path.join(assets_dir, 'categoriesNew.csv')
     if not os.path.exists(csv_file_path):
         logger.warning(f"Categories file not found at {csv_file_path}")
         # Create a sample categories file if it doesn't exist

@@ -473,10 +473,83 @@ document.addEventListener('DOMContentLoaded', function () {
   resizeObserver.observe(document.body);
 
   // Event Listeners
-  advancedOptionsButton?.addEventListener('click', function () {
-    categoriesContainer.classList.toggle('hidden2');
-    setTimeout(adjustPopupSize, 100); // Allow time for transition
-  });
+  if (advancedOptionsButton && categoriesContainer) {
+    // Remove any existing listeners first
+    advancedOptionsButton.replaceWith(advancedOptionsButton.cloneNode(true));
+    
+    // Get the fresh reference
+    const newAdvancedOptionsButton = document.getElementById('advancedOptionsButton');
+    
+    // Add the click listener
+    newAdvancedOptionsButton.addEventListener('click', function() {
+        // Toggle the hidden2 class
+        categoriesContainer.classList.toggle('hidden2');
+        
+        // Log the current state
+        const isHidden = categoriesContainer.classList.contains('hidden2');
+        console.log('Advanced options panel toggled:', !isHidden);
+        
+        // Make sure your hidden2 class is properly defined in CSS
+        if (!isHidden) {
+            categoriesContainer.style.display = 'grid'; // or 'block' depending on your layout
+        } else {
+            categoriesContainer.style.display = 'none';
+        }
+        
+        // Adjust popup size after toggle
+        setTimeout(adjustPopupSize, 100);
+    });
+} else {
+    console.error('Advanced options elements not found:', {
+        button: !!advancedOptionsButton,
+        container: !!categoriesContainer
+    });
+  }
+  const style = document.createElement('style');
+  style.textContent = `
+     .hidden2 {
+    display: none !important;
+}
+
+#categories-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    padding: 15px;
+    transition: all 0.3s ease;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#categories-container.hidden2 {
+    display: none !important;
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+#advancedOptionsButton {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#advancedOptionsButton:hover {
+    opacity: 0.8;
+}
+
+.category-card {
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 0.3s ease;
+}
+
+.hidden2 .category-card {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+  `;
+  document.head.appendChild(style);
+
 
   fetch('http://localhost:5000/get_categories')
     .then(response => response.json())
@@ -524,93 +597,83 @@ document.addEventListener('DOMContentLoaded', function () {
   function createCategoryCard(category) {
     const categoryCard = document.createElement('div');
     categoryCard.className = 'category-card';
+    
     const categoryTitle = document.createElement('div');
     categoryTitle.className = 'category-title';
     categoryTitle.textContent = category.name;
     categoryCard.appendChild(categoryTitle);
-    categoryCard.id = 'category-card'
-    const dropdownContainer = createDropdown(category);
-    categoryCard.appendChild(dropdownContainer);
 
+    // Create container for dropdowns
+    const dropdownsContainer = document.createElement('div');
+    dropdownsContainer.className = 'dropdowns-container flex gap-4';
+
+    // Create both dropdowns
+    category.dropdowns.forEach(dropdown => {
+        const dropdownContainer = createDropdown(dropdown);
+        dropdownsContainer.appendChild(dropdownContainer);
+    });
+
+    categoryCard.appendChild(dropdownsContainer);
     return categoryCard;
-  }
+}
+
+
 
   function updateDropdownButton(dropdownButton, selectedItem) {
     const nameContainer = dropdownButton.querySelector('span');
     nameContainer.textContent = selectedItem.querySelector('.dropdown-card-select').textContent;
   }
 
-  function createDropdown(category) {
+  function createDropdown(dropdown) {
     const dropdownContainer = document.createElement('div');
-    dropdownContainer.className = 'dropdown';
+    dropdownContainer.className = 'dropdown flex-1';
 
     const dropdownButton = document.createElement('button');
     dropdownButton.className = 'dropdown-button';
     dropdownButton.innerHTML = `
         <div class="dropdown-button-content">
-            <span>Select</span>
+            <span>${dropdown.name}</span>
         </div>
     `;
 
     const dropdownContent = document.createElement('div');
     dropdownContent.className = 'dropdown-content';
+    dropdownContent.style.display = 'none';
 
     const horizontalContainer = document.createElement('div');
     horizontalContainer.className = 'dropdown-horizontal-container';
 
-    category.items.forEach(item => {
+    dropdown.items.forEach(item => {
         const card = document.createElement('div');
         card.className = 'dropdown-card';
-
-        const selectButton = document.createElement('button');
-        selectButton.className = 'dropdown-card-select';
-        selectButton.textContent = item.name;
-
-        card.appendChild(selectButton);
-
-        // Attach event listeners for advanced options tracking
-        selectButton.addEventListener('click', function(event) {
+        
+        const button = document.createElement('button');
+        button.className = 'dropdown-card-select';
+        button.textContent = item.name;
+        
+        let isSelected = false;
+        
+        button.addEventListener('click', function(event) {
             event.stopPropagation();
-            const optionId = this.textContent; // Use button text as identifier
-            console.log(`Advanced option clicked: ${optionId}`);
-
-            // Toggle selection state
-            if (!advancedOptionsSelected.has(optionId)) {
-                // Add option to the selected set
-                advancedOptionsSelected.add(optionId);
+            
+            // Toggle selection
+            isSelected = !isSelected;
+            
+            if (isSelected) {
+                // Select this item
                 card.classList.add('selected');
-                console.log('Option selected:', optionId);
+                dropdownButton.querySelector('span').textContent = item.name;
             } else {
-                // Remove option from the selected set
-                advancedOptionsSelected.delete(optionId);
+                // Unselect this item
                 card.classList.remove('selected');
-                console.log('Option deselected:', optionId);
+                dropdownButton.querySelector('span').textContent = dropdown.name;
             }
-
-            // Update advanced options usage flag
-            advancedOptionsUsed = advancedOptionsSelected.size > 0;
-            console.log('Advanced options used:', advancedOptionsUsed);
-            console.log('Current selected options:', Array.from(advancedOptionsSelected));
-
-            // Update dropdown button text
-            updateDropdownButton(dropdownButton, card);
-
-            // Close dropdown after selection
-            dropdownContent.style.display = 'none';
+            
+            // Don't close dropdown on selection
+            event.preventDefault();
         });
-
-        // Double click handler for deselection
-        selectButton.addEventListener('dblclick', function(event) {
-            event.stopPropagation();
-            const optionId = this.textContent;
-            advancedOptionsSelected.delete(optionId);
-            card.classList.remove('selected');
-            updateDropdownButton(dropdownButton, { querySelector: () => ({ textContent: 'Select' }) });
-            advancedOptionsUsed = advancedOptionsSelected.size > 0;
-            console.log('Option deselected (double click):', optionId);
-            console.log('Advanced options used:', advancedOptionsUsed);
-        });
-
+        
+        card.appendChild(button);
         horizontalContainer.appendChild(card);
     });
 
@@ -618,11 +681,16 @@ document.addEventListener('DOMContentLoaded', function () {
     dropdownContainer.appendChild(dropdownButton);
     dropdownContainer.appendChild(dropdownContent);
 
-    // Dropdown toggle
-    dropdownButton.addEventListener('click', function(event) {
-        event.stopPropagation();
+    // Toggle dropdown visibility
+    dropdownButton.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const isVisible = dropdownContent.style.display === 'block';
+        
+        // Close all other dropdowns
         closeAllDropdowns();
-        dropdownContent.style.display = dropdownContent.style.display === 'block' ? 'none' : 'block';
+        
+        // Toggle this dropdown
+        dropdownContent.style.display = isVisible ? 'none' : 'block';
     });
 
     return dropdownContainer;
@@ -631,11 +699,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-  function closeAllDropdowns() {
-    document.querySelectorAll('.dropdown-content').forEach(content => {
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.dropdown-content').forEach(content => {
       content.style.display = 'none';
-    });
-  }
+  });
+}
+function getSelectedValues() {
+  const selected = {};
+  document.querySelectorAll('.category-card').forEach(card => {
+      const categoryName = card.querySelector('.category-title').textContent;
+      const selectedItems = Array.from(card.querySelectorAll('.dropdown-card.selected'))
+          .map(card => card.textContent.trim());
+      if (selectedItems.length > 0) {
+          selected[categoryName] = selectedItems;
+      }
+  });
+  return selected;
+}
+// document.addEventListener('click', function(e) {
+//   if (!e.target.closest('.dropdown')) {
+//       closeAllDropdowns();
+//   }
+// });
 
   function adjustDropdownWidth(dropdownContent) {
     if (!dropdownContent) return;
@@ -755,12 +841,11 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 
-document.getElementById('advancedOptionsButton')?.addEventListener('click', function() {
-  const categoriesContainer = document.getElementById('categories-container');
-  const isHidden = categoriesContainer.classList.toggle('hidden2');
-  console.log('Advanced options panel toggled:', !isHidden);
+advancedOptionsButton?.addEventListener('click', function () {
+  categoriesContainer.classList.toggle('hidden2');
   setTimeout(adjustPopupSize, 100);
 });
+
 function areAdvancedOptionsSelected() {
   return advancedOptionsSelected.size > 0;
 }
