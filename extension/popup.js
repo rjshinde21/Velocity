@@ -40,26 +40,408 @@ async function recordFeatureUsage(featureId) {
     throw error;
   }
 }
-function showError(message) {
-  console.error(message);
-  // Show error to user (you might want to modify this based on your UI)
-  const errorDiv = document.createElement('div');
-  errorDiv.className = 'error-message bg-red-100 text-red-800 p-3 rounded-lg';
-  errorDiv.textContent = message;
-  
-  // Remove after 3 seconds
-  setTimeout(() => {
-      errorDiv.remove();
-  }, 3000);
 
-  // Insert at the top of your response container
-  const responseContainer = document.querySelector('.responses-container');
-  if (responseContainer) {
-      responseContainer.insertBefore(errorDiv, responseContainer.firstChild);
+function getSelectedRadioValue() {
+  const selectedRadio = document.querySelector('input[name="option"]:checked');
+  console.log('Selected radio value:', selectedRadio?.value); // Debug log
+  return selectedRadio ? selectedRadio.value : 'General'; // Provide default value
+}
+function showError(message) {
+  console.error(message); // Keep console logging for debugging
+  
+  // Create error div with styling
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'error-message bg-black/40 rounded-2xl border border-red-500 p-4 mb-4';
+  errorDiv.style.color = 'white';
+  errorDiv.style.textAlign = 'center';
+  
+  // Create error content
+  const errorContent = document.createElement('div');
+  errorContent.className = 'flex items-center justify-center gap-2';
+  
+  // Add error icon (optional)
+  const errorIcon = document.createElement('span');
+  errorIcon.innerHTML = '⚠️';
+  errorIcon.className = 'text-xl';
+  
+  // Add error text
+  const errorText = document.createElement('span');
+  errorText.textContent = message;
+  
+  // Assemble error message
+  errorContent.appendChild(errorIcon);
+  errorContent.appendChild(errorText);
+  errorDiv.appendChild(errorContent);
+  
+  // Find and clear the response div
+  const responseDiv = document.getElementById('response');
+  if (responseDiv) {
+    responseDiv.innerHTML = '';
+    responseDiv.appendChild(errorDiv);
+  }
+  
+  // Remove error message after 5 seconds
+  setTimeout(() => {
+    if (responseDiv && responseDiv.contains(errorDiv)) {
+      errorDiv.remove();
+    }
+  }, 5000);
+
+  // Adjust popup size if needed
+  if (typeof adjustPopupSize === 'function') {
+    adjustPopupSize();
+  }
+}
+async function sendRequest() {
+  try {
+      const promptInput = document.getElementById('promptInput');
+      const imageUpload = document.getElementById('imageUpload');
+      const prompt = promptInput.value.trim();
+      const selectedAIType = getSelectedRadioValue();
+      const userId = localStorage.getItem('userId');
+
+      showLoading('Processing request...');
+
+      // Save prompt to history
+      try {
+          const promptData = await savePromptToHistory(userId, prompt, selectedAIType);
+          if (promptData.success) {
+              lastSavedPromptId = promptData.data.history_id;
+              console.log('Prompt saved with ID:', lastSavedPromptId);
+          }
+      } catch (error) {
+          console.error('Error saving prompt:', error);
+          // Continue with generation even if history saving fails
+      }
+
+      // Create and send request
+      const formData = new FormData();
+      const requestData = {
+          prompt: prompt,
+          category: getSelectedCategories(),
+          AIType: selectedAIType || 'default'
+      };
+
+      formData.append('data', JSON.stringify(requestData));
+
+      if (imageUpload && imageUpload.files.length > 0) {
+          formData.append('image', imageUpload.files[0]);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/process`, {
+          method: 'POST',
+          body: formData,
+      });
+
+      if (!response.ok) {
+          throw new Error(response.status === 500 
+              ? `Server error (500): ${await response.text()}`
+              : `Server returned ${response.status}: ${await response.text()}`);
+      }
+
+      const data = await response.json();
+      if (data.error) {
+          throw new Error(data.error);
+      }
+
+      // Update tokens used if necessary
+      if (lastSavedPromptId && lastTokensUsed > 0) {
+          try {
+              await updatePromptTokens(lastSavedPromptId, lastTokensUsed);
+              console.log('Updated tokens used:', lastTokensUsed);
+          } catch (error) {
+              console.error('Error updating tokens:', error);
+              // Continue even if token update fails
+          }
+      }
+
+      handleParsedResponse(data.response);
+
+  } catch (error) {
+      console.error('Request failed:', error);
+      showError(error.message.includes('Failed to fetch')
+          ? 'Unable to connect to server. Please make sure the backend is running.'
+          : `Error: ${error.message}`);
   }
 }
 
+function showLoading(message) {
+  const responseDiv = document.getElementById('response');
+  if (responseDiv) {
+    responseDiv.innerHTML = `
+      <div class="loading-message">
+        ${message}
+        <div class="loading-spinner"></div>
+      </div>
+    `;
+    adjustPopupSize();
+  }
+}
+function adjustPopupSize() {
+  const popupHeight = document.body.scrollHeight;
+  const popupWidth = document.body.scrollWidth;
 
+  // Check if we're in a Chrome extension context
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+    chrome.runtime.sendMessage({
+      action: 'adjustSize',
+      height: popupHeight,
+      width: popupWidth
+    }).catch(error => {
+      console.log('Size adjustment not available:', error);
+    });
+  }
+
+  // Fallback: Set size directly if possible
+  document.documentElement.style.width = `${popupWidth}px`;
+  document.documentElement.style.height = `${popupHeight}px`;
+}
+async function savePromptToHistory(userId, promptText, aiType) {
+  try {
+      const response = await fetch('http://127.0.0.1:3000/api/history/prompts', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+          },
+          body: JSON.stringify({
+              user_id: userId,
+              prompt_text: promptText,
+              ai_type: aiType,
+              tokens_used: 0  // Will be updated after generation
+          })
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+          console.error('Failed to save prompt:', data.message);
+          throw new Error(data.message);
+      }
+
+      return data;
+  } catch (error) {
+      console.error('Error saving prompt to history:', error);
+      throw error;
+  }
+}
+async function updatePromptTokens(promptId, tokensUsed) {
+  try {
+      const response = await fetch(`http://127.0.0.1:3000/api/history/prompts/${promptId}`, {
+          method: 'PATCH',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+          },
+          body: JSON.stringify({
+              tokens_used: tokensUsed
+          })
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+          console.error('Failed to update tokens:', data.message);
+          throw new Error(data.message);
+      }
+
+      return data;
+  } catch (error) {
+      console.error('Error updating prompt tokens:', error);
+      throw error;
+  }
+}
+
+function getSelectedCategories() {
+  const selectedCategories = {};
+  document.querySelectorAll('.category-card').forEach(card => {
+    const categoryName = card.querySelector('.category-title').textContent;
+    const selectedItem = card.querySelector('.dropdown-card.selected');
+    if (selectedItem) {
+      selectedCategories[categoryName] = selectedItem.querySelector('.dropdown-card-select').textContent.trim();
+    }
+  });
+  return selectedCategories;
+}
+function handleParsedResponse(parsedResponse) {
+  const responseDiv = document.getElementById('response');
+  if (!responseDiv) {
+    console.error('Response div not found');
+    return;
+  }
+
+  responseDiv.innerHTML = '';  // Clear previous responses
+
+  try {
+    let prompts;
+    // Handle different response formats
+    if (typeof parsedResponse === 'string') {
+      try {
+        prompts = JSON.parse(parsedResponse).prompts;
+      } catch (e) {
+        // If it's not JSON, treat it as a single response
+        prompts = [{ prompt: parsedResponse }];
+      }
+    } else if (parsedResponse.prompts) {
+      prompts = parsedResponse.prompts;
+    } else if (Array.isArray(parsedResponse)) {
+      prompts = parsedResponse;
+    } else {
+      prompts = [{ prompt: String(parsedResponse) }];
+    }
+
+    // Create container for responses
+    const responsesContainer = document.createElement('div');
+    responsesContainer.className = 'responses-container';
+
+    // Create and append each prompt response
+    prompts.forEach((promptObj, index) => {
+      const container = document.createElement('div');
+      container.className = 'response-container bg-black/40 rounded-2xl border border-[#444444] p-4 mb-4';
+
+      const responseBox = document.createElement('div');
+      responseBox.className = 'response-box flex justify-between items-center';
+
+      const responseText = document.createElement('p');
+      responseText.className = 'response-text text-white flex-1 mr-4';
+      responseText.textContent = typeof promptObj === 'string' ? promptObj : promptObj.prompt;
+
+      // Create copy button
+      const copyButton = document.createElement('button');
+      copyButton.className = 'copy-button flex items-center justify-center';
+      copyButton.innerHTML = `
+            <img src="./assets/copy 1.png" 
+                 alt="Copy" 
+                 class="w-6 h-6 cursor-pointer"
+                 title="Copy to clipboard">
+        `;
+
+      // Add copy functionality
+      copyButton.addEventListener('click', async () => {
+        try {
+            const textToCopy = typeof promptObj === 'string' ? promptObj : promptObj.prompt;
+            const userId = localStorage.getItem('userId');
+            const selectedAIType = getSelectedRadioValue();
+            
+            console.log('Copy request data:', {
+                user_id: userId,
+                prompt_text: textToCopy,
+                original_prompt_id: lastSavedPromptId,
+                ai_type: selectedAIType,
+                tokens_used: lastTokensUsed
+            });
+
+            // First copy to clipboard
+            await navigator.clipboard.writeText(textToCopy);
+
+            // Validate we have all required data before making the request
+            if (!userId || !lastSavedPromptId || !selectedAIType) {
+                console.error('Missing required data for saving copied response:', {
+                    userId,
+                    lastSavedPromptId,
+                    selectedAIType
+                });
+                throw new Error('Missing required data for saving response');
+            }
+
+            // Then save the copied response with the tokens used
+            const saveResponseResponse = await fetch('http://127.0.0.1:3000/api/history/responses', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    prompt_text: textToCopy,
+                    original_prompt_id: lastSavedPromptId,
+                    ai_type: selectedAIType,
+                    tokens_used: lastTokensUsed || 0
+                })
+            });
+
+            const responseData = await saveResponseResponse.json();
+            
+            if (!responseData.success) {
+                console.error('Save response error:', responseData);
+                throw new Error(responseData.message || 'Failed to save response');
+            }
+
+            // Visual feedback for successful copy and save
+            copyButton.classList.add('copied');
+            setTimeout(() => {
+                copyButton.classList.remove('copied');
+            }, 2000);
+
+            console.log('Successfully saved copied response:', responseData);
+
+        } catch (error) {
+            console.error('Failed to handle copy operation:', error);
+            showError(`Failed to copy: ${error.message}`);
+        }
+    });
+
+      // Assemble the response
+      responseBox.appendChild(responseText);
+      responseBox.appendChild(copyButton);
+      container.appendChild(responseBox);
+      responsesContainer.appendChild(container);
+    });
+
+    responseDiv.appendChild(responsesContainer);
+
+  } catch (error) {
+    console.error('Error handling response:', error);
+    showError('Error: Could not process the response from the server.');
+  }
+
+  // Add necessary styles
+  const style = document.createElement('style');
+  style.textContent = `
+    .responses-container {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 10px;
+    }
+    
+    .response-container {
+        transition: all 0.3s ease;
+    }
+    
+    .response-container:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .copy-button {
+        opacity: 0.7;
+        transition: opacity 0.3s ease;
+    }
+    
+    .copy-button:hover {
+        opacity: 1;
+    }
+    
+    .copy-button.copied::after {
+        content: 'Copied!';
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        pointer-events: none;
+    }
+`;
+  document.head.appendChild(style);
+
+  // Adjust popup size after adding content
+  if (typeof adjustPopupSize === 'function') {
+    adjustPopupSize();
+  }
+}
+const API_BASE_URL = 'http://127.0.0.1:5000';
 document.addEventListener('DOMContentLoaded', function () {
   const sendButton = document.getElementById('sendButton');
   const promptInput = document.getElementById('promptInput');
@@ -68,59 +450,19 @@ document.addEventListener('DOMContentLoaded', function () {
   const advancedOptionsButton = document.getElementById('advancedOptionsButton');
   const imageUpload = document.getElementById('imageUpload');
   const imageUploadText = document.querySelector('.image-upload-text');
-  const API_BASE_URL = 'http://localhost:5000';
+  
   const iconImage = document.getElementById('generateIcon');
   const logoutButton = document.querySelector('button[onclick="logout()"]');
 
   
   // Placeholder image path
   const placeholderImagePath = 'path/to/your/placeholder-image.png';
-  const categoryStructure = [
-    {
-      name: "Craft your vision with the perfect subject and style",
-      col1: 0,  // First column index for this category
-      col2: 1   // Second column index for this category
-    },
-    {
-      name: "Set the stage with your ideal background and setting",
-      col1: 2,
-      col2: 3
-    },
-    {
-      name: "Illuminate your scene with the perfect lighting and colors",
-      col1: 4,
-      col2: 5
-    },
-    {
-      name: "Capture the essence with the right mood and details",
-      col1: 6,
-      col2: 7
-    }
-  ];
 
   const radioGroup = document.querySelector('.radio-group');
 
   categoriesContainer.classList.add('hidden2');
 
-  function adjustPopupSize() {
-    const popupHeight = document.body.scrollHeight;
-    const popupWidth = document.body.scrollWidth;
-
-    // Check if we're in a Chrome extension context
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-      chrome.runtime.sendMessage({
-        action: 'adjustSize',
-        height: popupHeight,
-        width: popupWidth
-      }).catch(error => {
-        console.log('Size adjustment not available:', error);
-      });
-    }
-
-    // Fallback: Set size directly if possible
-    document.documentElement.style.width = `${popupWidth}px`;
-    document.documentElement.style.height = `${popupHeight}px`;
-  }
+ 
 
   // Set up resize observer for dynamic content
   const resizeObserver = new ResizeObserver(() => {
@@ -136,38 +478,18 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(adjustPopupSize, 100); // Allow time for transition
   });
 
-  fetch(`${API_BASE_URL}/get_categories`)
+  fetch('http://localhost:5000/get_categories')
     .then(response => response.json())
-    .then(data => {
-      categoriesContainer.innerHTML = ''; // Clear existing content
-      console.log("data:"+data[0].items);
-      const columnPairs = [];
-      for (let i = 0; i < data.length; i += 2) {
-        columnPairs.push([
-          data[i]?.items || [],
-          data[i + 1]?.items || []
-        ]);
-        for(let i=0;i<columnPairs.length;i++)
-        {
-          console.log("columncolumnPairs:"+columnPairs[i][1][0].name);
-        }
-      }
-      
-      // Create category cards
-      categoryStructure.forEach((category, index) => {
-        if (columnPairs[index]) {
-          const card = createCategoryCard(category, columnPairs[index]);
-          categoriesContainer.appendChild(card);
-        }
+    .then(categories => {
+      console.log('Categories:', categories);
+      categories.forEach(category => {
+        const categoryCard = createCategoryCard(category);
+        categoriesContainer.appendChild(categoryCard);
       });
     })
     .catch(error => {
       console.error('Error fetching categories:', error);
-      categoriesContainer.innerHTML = `
-        <div class="text-red-500 p-4">
-          Failed to load categories. Please try again later.
-        </div>
-      `;
+      categoriesContainer.textContent = `Failed to load categories. Error: ${error.message}`;
     });
 
   imageUpload.addEventListener('change', function (event) {
@@ -175,8 +497,8 @@ document.addEventListener('DOMContentLoaded', function () {
     imageUploadText.textContent = fileName || 'Upload Image';
   });
 
-  sendButton.addEventListener('click', sendRequest);
-  iconImage.addEventListener('click', sendRequest);  // Add this line to make the icon work as a generate button
+ // sendButton.addEventListener('click', sendRequest);
+  //iconImage.addEventListener('click', sendRequest);  // Add this line to make the icon work as a generate button
 
   document.addEventListener('click', closeAllDropdowns);
 
@@ -199,111 +521,114 @@ document.addEventListener('DOMContentLoaded', function () {
 
   initializeRadioGroup();
 
-  function createCategoryCard(categoryInfo, columnData) {
+  function createCategoryCard(category) {
     const categoryCard = document.createElement('div');
-    categoryCard.className = 'category-card bg-black/40 rounded-2xl border border-[#444444] p-4 mb-4';
-    
+    categoryCard.className = 'category-card';
     const categoryTitle = document.createElement('div');
-    categoryTitle.className = 'category-title text-white font-medium mb-3';
-    categoryTitle.textContent = categoryInfo.name;
-    
-    const dropdownsContainer = document.createElement('div');
-    dropdownsContainer.className = 'flex gap-4';
-
-    // Create the two dropdowns for this category
-    [categoryInfo.col1, categoryInfo.col2].forEach((colIndex) => {
-      const items = columnData[colIndex] || [];
-      const dropdownContainer = createDropdown(items, colIndex);
-      dropdownsContainer.appendChild(dropdownContainer);
-    });
-
+    categoryTitle.className = 'category-title';
+    categoryTitle.textContent = category.name;
     categoryCard.appendChild(categoryTitle);
-    categoryCard.appendChild(dropdownsContainer);
+    categoryCard.id = 'category-card'
+    const dropdownContainer = createDropdown(category);
+    categoryCard.appendChild(dropdownContainer);
 
     return categoryCard;
   }
-
-
 
   function updateDropdownButton(dropdownButton, selectedItem) {
     const nameContainer = dropdownButton.querySelector('span');
     nameContainer.textContent = selectedItem.querySelector('.dropdown-card-select').textContent;
   }
 
-  function createDropdown(items, colIndex) {
+  function createDropdown(category) {
     const dropdownContainer = document.createElement('div');
-    dropdownContainer.className = 'dropdown flex-1 relative'; 
+    dropdownContainer.className = 'dropdown';
 
     const dropdownButton = document.createElement('button');
-    dropdownButton.className = 'dropdown-button w-full bg-black/60 text-white rounded-lg p-2 flex justify-between items-center border border-[#444444] hover:bg-black/80 transition-colors';
-    const selectedCategory = items[0]?.name || 'Select';
-
+    dropdownButton.className = 'dropdown-button';
     dropdownButton.innerHTML = `
-        <span>${selectedCategory}</span>
-        <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-        </svg>
+        <div class="dropdown-button-content">
+            <span>Select</span>
+        </div>
     `;
 
     const dropdownContent = document.createElement('div');
-    dropdownContent.className = 'dropdown-content hidden absolute z-50 w-full mt-1 bg-black/95 rounded-lg border border-[#444444] max-h-48 overflow-y-auto';
-    // Set explicit positioning
-    dropdownContent.style.top = '100%';
-    dropdownContent.style.left = '0';
-    
-    const itemsContainer = document.createElement('div');
-    itemsContainer.className = 'p-2';
+    dropdownContent.className = 'dropdown-content';
 
-    items.forEach(item => {
-        const option = document.createElement('div');
-        option.className = 'dropdown-item p-2 text-white hover:bg-white/10 rounded cursor-pointer transition-colors';
-        option.textContent = item.name;
-        
-        option.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const buttonText = dropdownButton.querySelector('span');
-            buttonText.textContent = item.name;
-            dropdownContent.classList.add('hidden');
-            
-            // Remove selected class from all items
-            itemsContainer.querySelectorAll('.dropdown-item').forEach(el => {
-                el.classList.remove('selected', 'bg-white/20');
-            });
-            
-            // Add selected class to clicked item
-            option.classList.add('selected', 'bg-white/20');
+    const horizontalContainer = document.createElement('div');
+    horizontalContainer.className = 'dropdown-horizontal-container';
+
+    category.items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'dropdown-card';
+
+        const selectButton = document.createElement('button');
+        selectButton.className = 'dropdown-card-select';
+        selectButton.textContent = item.name;
+
+        card.appendChild(selectButton);
+
+        // Attach event listeners for advanced options tracking
+        selectButton.addEventListener('click', function(event) {
+            event.stopPropagation();
+            const optionId = this.textContent; // Use button text as identifier
+            console.log(`Advanced option clicked: ${optionId}`);
+
+            // Toggle selection state
+            if (!advancedOptionsSelected.has(optionId)) {
+                // Add option to the selected set
+                advancedOptionsSelected.add(optionId);
+                card.classList.add('selected');
+                console.log('Option selected:', optionId);
+            } else {
+                // Remove option from the selected set
+                advancedOptionsSelected.delete(optionId);
+                card.classList.remove('selected');
+                console.log('Option deselected:', optionId);
+            }
+
+            // Update advanced options usage flag
+            advancedOptionsUsed = advancedOptionsSelected.size > 0;
+            console.log('Advanced options used:', advancedOptionsUsed);
+            console.log('Current selected options:', Array.from(advancedOptionsSelected));
+
+            // Update dropdown button text
+            updateDropdownButton(dropdownButton, card);
+
+            // Close dropdown after selection
+            dropdownContent.style.display = 'none';
         });
 
-        itemsContainer.appendChild(option);
+        // Double click handler for deselection
+        selectButton.addEventListener('dblclick', function(event) {
+            event.stopPropagation();
+            const optionId = this.textContent;
+            advancedOptionsSelected.delete(optionId);
+            card.classList.remove('selected');
+            updateDropdownButton(dropdownButton, { querySelector: () => ({ textContent: 'Select' }) });
+            advancedOptionsUsed = advancedOptionsSelected.size > 0;
+            console.log('Option deselected (double click):', optionId);
+            console.log('Advanced options used:', advancedOptionsUsed);
+        });
+
+        horizontalContainer.appendChild(card);
     });
 
-    dropdownContent.appendChild(itemsContainer);
+    dropdownContent.appendChild(horizontalContainer);
     dropdownContainer.appendChild(dropdownButton);
     dropdownContainer.appendChild(dropdownContent);
 
-    // Toggle dropdown with improved visibility handling
-    dropdownButton.addEventListener('click', function(e) {
-        e.stopPropagation();
-        console.log('first')
-        // Close all other dropdowns first
-        document.querySelectorAll('.dropdown-content').forEach(content => {
-            if (content !== dropdownContent) {
-                content.classList.add('hidden');
-            }
-        });
-        
-        // Toggle current dropdown
-        dropdownContent.classList.toggle('hidden');
+    // Dropdown toggle
+    dropdownButton.addEventListener('click', function(event) {
+        event.stopPropagation();
+        closeAllDropdowns();
+        dropdownContent.style.display = dropdownContent.style.display === 'block' ? 'none' : 'block';
     });
 
     return dropdownContainer;
-  }
+}
 
-  document.addEventListener('click', function() {
-    document.querySelectorAll('.dropdown-content').forEach(content => {
-      content.classList.add('hidden');
-    });
-  });
+
 
 
   function closeAllDropdowns() {
@@ -328,25 +653,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  function getSelectedRadioValue() {
-    const selectedRadio = document.querySelector('input[name="option"]:checked');
-    console.log('Selected radio value:', selectedRadio?.value); // Debug log
-    return selectedRadio ? selectedRadio.value : 'General'; // Provide default value
-  }
+  
 
-  function getSelectedCategories() {
-    const selectedCategories = {};
-    document.querySelectorAll('.category-card').forEach(card => {
-      const categoryName = card.querySelector('.category-title').textContent;
-      const selectedItem = card.querySelector('.dropdown-card.selected');
-      if (selectedItem) {
-        selectedCategories[categoryName] = selectedItem.querySelector('.dropdown-card-select').textContent.trim();
-      }
-    });
-    console.log('selectedCategories', selectedCategories)
-    return selectedCategories;
-  }
-
+  
+  
   //   // Updated fetch for categories
   // function fetchCategories() {
   //   return fetch(`${API_BASE_URL}/get_categories`, {
@@ -372,367 +682,18 @@ document.addEventListener('DOMContentLoaded', function () {
   // }
 
   // Add this function at the appropriate scope level (same level as sendRequest)
-  function handleParsedResponse(parsedResponse) {
-    const responseDiv = document.getElementById('response');
-    if (!responseDiv) {
-      console.error('Response div not found');
-      return;
-    }
-
-    responseDiv.innerHTML = '';  // Clear previous responses
-
-    try {
-      let prompts;
-      // Handle different response formats
-      if (typeof parsedResponse === 'string') {
-        try {
-          prompts = JSON.parse(parsedResponse).prompts;
-        } catch (e) {
-          // If it's not JSON, treat it as a single response
-          prompts = [{ prompt: parsedResponse }];
-        }
-      } else if (parsedResponse.prompts) {
-        prompts = parsedResponse.prompts;
-      } else if (Array.isArray(parsedResponse)) {
-        prompts = parsedResponse;
-      } else {
-        prompts = [{ prompt: String(parsedResponse) }];
-      }
-
-      // Create container for responses
-      const responsesContainer = document.createElement('div');
-      responsesContainer.className = 'responses-container';
-
-      // Create and append each prompt response
-      prompts.forEach((promptObj, index) => {
-        const container = document.createElement('div');
-        container.className = 'response-container bg-black/40 rounded-2xl border border-[#444444] p-4 mb-4';
-
-        const responseBox = document.createElement('div');
-        responseBox.className = 'response-box flex justify-between items-center';
-
-        const responseText = document.createElement('p');
-        responseText.className = 'response-text text-white flex-1 mr-4';
-        responseText.textContent = typeof promptObj === 'string' ? promptObj : promptObj.prompt;
-
-        // Create copy button
-        const copyButton = document.createElement('button');
-        copyButton.className = 'copy-button flex items-center justify-center';
-        copyButton.innerHTML = `
-              <img src="./assets/copy 1.png" 
-                   alt="Copy" 
-                   class="w-6 h-6 cursor-pointer"
-                   title="Copy to clipboard">
-          `;
-
-        // Add copy functionality
-        copyButton.addEventListener('click', async () => {
-          try {
-              const textToCopy = typeof promptObj === 'string' ? promptObj : promptObj.prompt;
-              const userId = localStorage.getItem('userId');
-              const selectedAIType = getSelectedRadioValue();
-              
-              console.log('Copy request data:', {
-                  user_id: userId,
-                  prompt_text: textToCopy,
-                  original_prompt_id: lastSavedPromptId,
-                  ai_type: selectedAIType,
-                  tokens_used: lastTokensUsed
-              });
   
-              // First copy to clipboard
-              await navigator.clipboard.writeText(textToCopy);
-  
-              // Validate we have all required data before making the request
-              if (!userId || !lastSavedPromptId || !selectedAIType) {
-                  console.error('Missing required data for saving copied response:', {
-                      userId,
-                      lastSavedPromptId,
-                      selectedAIType
-                  });
-                  throw new Error('Missing required data for saving response');
-              }
-  
-              // Then save the copied response with the tokens used
-              const saveResponseResponse = await fetch('http://127.0.0.1:3000/api/history/responses', {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-                  },
-                  body: JSON.stringify({
-                      user_id: userId,
-                      prompt_text: textToCopy,
-                      original_prompt_id: lastSavedPromptId,
-                      ai_type: selectedAIType,
-                      tokens_used: lastTokensUsed || 0
-                  })
-              });
-  
-              const responseData = await saveResponseResponse.json();
-              
-              if (!responseData.success) {
-                  console.error('Save response error:', responseData);
-                  throw new Error(responseData.message || 'Failed to save response');
-              }
-  
-              // Visual feedback for successful copy and save
-              copyButton.classList.add('copied');
-              setTimeout(() => {
-                  copyButton.classList.remove('copied');
-              }, 2000);
-  
-              console.log('Successfully saved copied response:', responseData);
-  
-          } catch (error) {
-              console.error('Failed to handle copy operation:', error);
-              showError(`Failed to copy: ${error.message}`);
-          }
-      });
-
-        // Assemble the response
-        responseBox.appendChild(responseText);
-        responseBox.appendChild(copyButton);
-        container.appendChild(responseBox);
-        responsesContainer.appendChild(container);
-      });
-
-      responseDiv.appendChild(responsesContainer);
-
-    } catch (error) {
-      console.error('Error handling response:', error);
-      showError('Error: Could not process the response from the server.');
-    }
-
-    // Add necessary styles
-    const style = document.createElement('style');
-    style.textContent = `.
-    .dropdown-content {
-      scrollbar-width: thin;
-      scrollbar-color: #666 #333;
-    }
-    
-    .dropdown-content::-webkit-scrollbar {
-      width: 6px;
-    }
-    
-    .dropdown-content::-webkit-scrollbar-track {
-      background: #333;
-      border-radius: 3px;
-    }
-    
-    .dropdown-content::-webkit-scrollbar-thumb {
-      background: #666;
-      border-radius: 3px;
-    }
-    
-    .dropdown-button:focus {
-      outline: none;
-      ring-2 ring-white/20;
-    }
-    
-    .dropdown-item.selected {
-      background-color: rgba(255, 255, 255, 0.2);
-    }
-      .responses-container {
-          max-height: 400px;
-          overflow-y: auto;
-          padding: 10px;
-      }
-      
-      .response-container {
-          transition: all 0.3s ease;
-      }
-      
-      .response-container:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      }
-      
-      .copy-button {
-          opacity: 0.7;
-          transition: opacity 0.3s ease;
-      }
-      
-      .copy-button:hover {
-          opacity: 1;
-      }
-      
-      .copy-button.copied::after {
-          content: 'Copied!';
-          position: absolute;
-          bottom: 100%;
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(0, 0, 0, 0.8);
-          color: white;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 12px;
-          pointer-events: none;
-      }
-  `;
-    document.head.appendChild(style);
-
-    // Adjust popup size after adding content
-    if (typeof adjustPopupSize === 'function') {
-      adjustPopupSize();
-    }
-
-    return dropdownContainer
-  }
 
   // Helper function to show errors
   
 
   // Updated sendRequest function
-  async function sendRequest() {
-    try {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        const promptInput = document.getElementById('promptInput');
-        if (!promptInput) {
-            showError('Error: Prompt input element not found');
-            return;
-        }
-
-        const prompt = promptInput.value.trim();
-        const selectedAIType = getSelectedRadioValue();
-        const userId = localStorage.getItem('userId');
-
-        if (!prompt) {
-            showError('Please enter a prompt first');
-            return;
-        }
-        const requestBody = {
-          user_id: userId,
-          prompt_text: prompt,
-          ai_type: selectedAIType,
-          tokens_used: 0
-      };
-      
-      console.log('Saving prompt with data:', requestBody); // Debug log
-      
-        // First save the prompt
-        try {
-          console.log("token:"+localStorage.getItem('userToken'));
-            const savePromptResponse = await fetch('http://127.0.0.1:3000/api/history/prompts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-                },
-                body: JSON.stringify({
-                    user_id: userId,
-                    prompt_text: prompt,
-                    ai_type: selectedAIType,
-                    tokens_used: 0 // Will be updated after credit deduction
-                })
-            });
-
-            const promptData = await savePromptResponse.json();
-            console.log('Response from save prompt:', promptData); // Debug log
-
-            if (promptData.success) {
-                lastSavedPromptId = promptData.data.history_id;
-            } else {
-                console.error('Failed to save prompt:', promptData.message);
-            }
-        } catch (error) {
-            console.error('Error saving prompt:', error);
-        }
-
-        // Process credits before generation
-        await handleCreditDeduction('basic_prompt');
-
-        // Your existing generation code
-        showLoading('Processing request...');
-
-        const formData = new FormData();
-        const requestData = {
-            prompt: prompt,
-            category: getSelectedCategories() || {},
-            AIType: selectedAIType || 'default'
-        };
-
-        formData.append('data', JSON.stringify(requestData));
-
-        if (imageUpload && imageUpload.files.length > 0) {
-            formData.append('image', imageUpload.files[0]);
-        }
-
-        // Your existing fetch call to /process
-        const response = await fetch(`${API_BASE_URL}/process`, {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(
-                response.status === 500
-                    ? `Server error (500): ${errorText}`
-                    : `Server returned ${response.status}: ${errorText}`
-            );
-        }
-
-        const data = await response.json();
-        if (data.error) {
-            throw new Error(data.error);
-        }
-
-        // Update the prompt with actual tokens used
-        if (lastSavedPromptId && lastTokensUsed > 0) {
-            try {
-                await fetch(`http://127.0.0.1:3000/api/history/prompts/${lastSavedPromptId}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-                    },
-                    body: JSON.stringify({
-                        tokens_used: lastTokensUsed
-                    })
-                });
-            } catch (error) {
-                console.error('Error updating tokens used:', error);
-            }
-        }
-
-        handleParsedResponse(data.response);
-
-    } catch (error) {
-        console.error('Request failed:', error);
-        showError(error.message.includes('Failed to fetch')
-            ? 'Unable to connect to server. Please make sure the backend is running.'
-            : `Error: ${error.message}`);
-    } finally {
-        document.getElementById('promptInput').disabled = false;
-    }
-}
-
+  
 
 
   // Helper functions
-  function showError(message) {
-    const responseDiv = document.getElementById('response');
-    if (responseDiv) {
-      responseDiv.innerHTML = `<div class="error-message">${message}</div>`;
-      adjustPopupSize();
-    }
-  }
 
-  function showLoading(message) {
-    const responseDiv = document.getElementById('response');
-    if (responseDiv) {
-      responseDiv.innerHTML = `
-        <div class="loading-message">
-          ${message}
-          <div class="loading-spinner"></div>
-        </div>
-      `;
-      adjustPopupSize();
-    }
-  }
+  
 });
 
 
@@ -794,61 +755,71 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 
-
-
-document.getElementById('editButton1').addEventListener('click', function () {
-  window.location.href = 'topup.html'; // Replace 'topup.html' with your URL
+document.getElementById('advancedOptionsButton')?.addEventListener('click', function() {
+  const categoriesContainer = document.getElementById('categories-container');
+  const isHidden = categoriesContainer.classList.toggle('hidden2');
+  console.log('Advanced options panel toggled:', !isHidden);
+  setTimeout(adjustPopupSize, 100);
 });
+function areAdvancedOptionsSelected() {
+  return advancedOptionsSelected.size > 0;
+}
+
+
+
+// document.getElementById('editButton1').addEventListener('click', function () {
+//   window.location.href = 'topup.html'; // Replace 'topup.html' with your URL
+// });
 
 
 // pricing.js
 
-document.addEventListener('DOMContentLoaded', function () {
-  const monthlyBtn = document.getElementById('monthlyBtn');
-  const yearlyBtn = document.getElementById('yearlyBtn');
+// document.addEventListener('DOMContentLoaded', function () {
+//   const monthlyBtn = document.getElementById('monthlyBtn');
+//   const yearlyBtn = document.getElementById('yearlyBtn');
 
-  // Toggle between monthly and yearly
-  monthlyBtn.addEventListener('click', function () {
-    monthlyBtn.classList.add('active');
-    yearlyBtn.classList.remove('active');
-    updatePrices('monthly');
-  });
+//   // Toggle between monthly and yearly
+//   monthlyBtn.addEventListener('click', function () {
+//     monthlyBtn.classList.add('active');
+//     yearlyBtn.classList.remove('active');
+//     updatePrices('monthly');
+//   });
 
-  yearlyBtn.addEventListener('click', function () {
-    yearlyBtn.classList.add('active');
-    monthlyBtn.classList.remove('active');
-    updatePrices('yearly');
-  });
+//   yearlyBtn.addEventListener('click', function () {
+//     yearlyBtn.classList.add('active');
+//     monthlyBtn.classList.remove('active');
+//     updatePrices('yearly');
+//   });
 
-  // Function to update prices based on billing period
-  function updatePrices(period) {
-    const prices = {
-      monthly: {
-        creator: '₹499',
-        masterMind: '₹999'
-      },
-      yearly: {
-        creator: '₹4,999',
-        masterMind: '₹9,999'
-      }
-    };
+//   // Function to update prices based on billing period
+//   function updatePrices(period) {
+//     const prices = {
+//       monthly: {
+//         creator: '₹499',
+//         masterMind: '₹999'
+//       },
+//       yearly: {
+//         creator: '₹4,999',
+//         masterMind: '₹9,999'
+//       }
+//     };
 
-    // Update prices on the cards
-    const creatorPrice = document.querySelector('.pricing-card:nth-child(2) .text-2xl');
-    const masterPrice = document.querySelector('.pricing-card:nth-child(3) .text-2xl');
+//     // Update prices on the cards
+//     const creatorPrice = document.querySelector('.pricing-card:nth-child(2) .text-2xl');
+//     const masterPrice = document.querySelector('.pricing-card:nth-child(3) .text-2xl');
 
-    creatorPrice.textContent = prices[period].creator;
-    masterPrice.textContent = prices[period].masterMind;
+//     creatorPrice.textContent = prices[period].creator;
+//     masterPrice.textContent = prices[period].masterMind;
 
-    // Add a small animation to price changes
-    [creatorPrice, masterPrice].forEach(el => {
-      el.style.transform = 'scale(1.1)';
-      setTimeout(() => {
-        el.style.transform = 'scale(1)';
-      }, 200);
-    });
-  }
-});
+//     // Add a small animation to price changes
+//     [creatorPrice, masterPrice].forEach(el => {
+//       el.style.transform = 'scale(1.1)';
+//       setTimeout(() => {
+//         el.style.transform = 'scale(1)';
+//       }, 200);
+//     });
+//   }
+// });
 
 
 
@@ -978,7 +949,7 @@ document.getElementById('promptInput').addEventListener('change', function () {
 // Event listeners for advanced option buttons
 const advancedOptionButtons = document.querySelectorAll('.dropdown-card');
 advancedOptionButtons.forEach(button => {
-  button.addEventListener('click', function () {
+    button.addEventListener('click', function() {
     const optionId = this.querySelector('.dropdown-card-select').innerText; // Use button text as unique identifier
     console.log(`Advanced option clicked: ${optionId}`); // Log button click
     // advancedOptionsUsed = true;
@@ -1036,155 +1007,137 @@ document.getElementById('imageUpload').addEventListener('change', function () {
 // Event listener for generate button
 document.getElementById('sendButton').addEventListener('click', async function () {
   try {
-    // Disable the input area while processing
     document.getElementById('promptInput').disabled = true;
-
-    // Log the current usage status
+    
     console.log('Generating with the following options:');
     console.log('Prompt used:', promptUsed);
     console.log('Advanced options used:', advancedOptionsUsed);
     console.log('Image guidance used:', imageGuidanceUsed);
 
-    // Check if the basic prompt is used
-    if (promptUsed) {
-      try {
-        // Check access and record usage for basic prompt
-        const basicAccess = await checkFeatureAccess('1'); // Assuming '1' is basic_prompt
-        if (!basicAccess.data.canUse) {
-          showError(basicAccess.data.reason === 'timeout' 
-            ? `Basic features locked until ${new Date(basicAccess.data.timeoutUntil).toLocaleTimeString()}`
-            : `Daily limit reached for basic features (${basicAccess.data.usageCount}/${basicAccess.data.dailyLimit})`
-          );
-          return;
-        }
-        
-        // Record usage and deduct credits for basic prompt
-        await recordFeatureUsage('1');
-        await handleCreditDeduction('basic_prompt');
-      } catch (error) {
-        showError(`Error with basic features: ${error.message}`);
-        return;
-      }
+    // First check if user has entered text
+    const promptInput = document.getElementById('promptInput');
+    if (!promptInput || !promptInput.value.trim()) {
+      showError('Please enter a prompt text');
+      return;
     }
 
+    // Check if image is attached
+    const imageUpload = document.getElementById('imageUpload');
+    const hasImage = imageUpload && imageUpload.files.length > 0;
 
-    // If any advanced options are selected, deduct credits for each
-    if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
-      try {
-        // Check access for advanced features
-        const advancedAccess = await checkFeatureAccess('2');
-        if (!advancedAccess.data.canUse) {
-          showError(advancedAccess.data.reason === 'timeout' 
-            ? `Advanced features locked until ${new Date(advancedAccess.data.timeoutUntil).toLocaleTimeString()}`
-            : `Daily limit reached for advanced features (${advancedAccess.data.usageCount}/${advancedAccess.data.dailyLimit})`
-          );
-          return;
-        }
-
-        // Record usage for advanced features
-        await recordFeatureUsage('2');
-
-        // Loop through selected advanced options and deduct credits
-        for (const optionId of advancedOptionsSelected) {
-          console.log(`Deducting credit for: advanced_prompt_${optionId}`);
-          await handleCreditDeduction(`advanced_prompt_${optionId}`);
-        }
-      } catch (error) {
-        showError(`Error with advanced features: ${error.message}`);
-        return;
-      }
+    // Verify all feature access and record usage
+    const canProceed = await verifyAndRecordFeatures(hasImage);
+    if (!canProceed) {
+      return; // Stop if any feature verification failed
     }
 
-    // Check if image guidance is used
-    if (imageGuidanceUsed) {
-      try {
-        // Check access for image features
-        const imageAccess = await checkFeatureAccess('3');
-        if (!imageAccess.data.canUse) {
-          showError(imageAccess.data.reason === 'timeout'
-            ? `Image features locked until ${new Date(imageAccess.data.timeoutUntil).toLocaleTimeString()}`
-            : `Daily limit reached for image features (${imageAccess.data.usageCount}/${imageAccess.data.dailyLimit})`
-          );
-          return;
-        }
-
-        // Record usage and deduct credits for image features
-        await recordFeatureUsage('3');
-        await handleCreditDeduction('image_prompt');
-      } catch (error) {
-        showError(`Error with image features: ${error.message}`);
-        return;
-      }
-    }
-
-    // If all options are used, deduct credits for the complete prompt
-    if (promptUsed && advancedOptionsUsed && imageGuidanceUsed) {
-      try {
-        // Check access for complete features
-        const completeAccess = await checkFeatureAccess('4');
-        if (!completeAccess.data.canUse) {
-          showError(completeAccess.data.reason === 'timeout'
-            ? `Complete features locked until ${new Date(completeAccess.data.timeoutUntil).toLocaleTimeString()}`
-            : `Daily limit reached for complete features (${completeAccess.data.usageCount}/${completeAccess.data.dailyLimit})`
-          );
-          return;
-        }
-
-        // Record usage and deduct credits for complete features
-        await recordFeatureUsage('4');
-        await handleCreditDeduction('complete_prompt');
-      } catch (error) {
-        showError(`Error with complete features: ${error.message}`);
-        return;
-      }
-    }
-    // window.scrollTo({ top: 0, behavior: 'smooth' });
-    // const promptInput = document.getElementById('promptInput');
-    // if (!promptInput) {
-    //   showError('Error: Prompt input element not found');
-    //   return;
-    // }
-
-    // const prompt = promptInput.value.trim();
-    // const selectedAIType = getSelectedRadioValue();
-    // const userId = localStorage.getItem('userId');
-
-    // if (!prompt) {
-    //   showError('Please enter a prompt first');
-    //   return;
-    // }
- 
-    // Reset all tracking after successful generation
-    promptUsed = false;
-    advancedOptionsUsed = false;
-    imageGuidanceUsed = false;
-    advancedOptionsSelected.clear();
-
-    // Reset visual state of buttons
-    advancedOptionButtons.forEach(button => {
-      button.classList.remove('selected');
-    });
-
-    // Clear the image upload input
-    document.getElementById('imageUpload').value = '';
-
-    // Final refresh of credits display
-    await updateCreditDisplay();
-
-    // Enable the input area after processing
-    document.getElementById('promptInput').disabled = false;
-
-    // Reset the prompt input field after generating prompts
-    document.getElementById('promptInput').value = '';
+    // If all verifications passed, proceed with sendRequest
+    await sendRequest();
 
   } catch (error) {
     console.error('Error during processing:', error);
     showError(`Error: ${error.message}`);
   } finally {
-    document.getElementById('promptInput').disabled = false;
-    await updateCreditDisplay();
+    // Reset everything
+    resetInterface();
   }
 });
+
+async function verifyAndRecordFeatures(hasImage) {
+  try {
+    // Check basic prompt access
+    if (promptUsed) {
+      const basicAccess = await checkFeatureAccess('1');
+      if (!basicAccess.data.canUse) {
+        showError(basicAccess.data.reason === 'timeout'
+          ? `Basic features locked until ${new Date(basicAccess.data.timeoutUntil).toLocaleTimeString()}`
+          : `Daily limit reached for basic features (${basicAccess.data.usageCount}/${basicAccess.data.dailyLimit})`);
+        return false;
+      }
+    }
+
+    // Check image feature access if used
+    if (hasImage) {
+      const imageAccess = await checkFeatureAccess('3');
+      if (!imageAccess.data.canUse) {
+        showError(imageAccess.data.reason === 'timeout'
+          ? `Image features locked until ${new Date(imageAccess.data.timeoutUntil).toLocaleTimeString()}`
+          : `Daily limit reached for image features (${imageAccess.data.usageCount}/${imageAccess.data.dailyLimit})`);
+        return false;
+      }
+    }
+
+    // Check advanced features
+    if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
+      const advancedAccess = await checkFeatureAccess('2');
+      if (!advancedAccess.data.canUse) {
+        showError(advancedAccess.data.reason === 'timeout'
+          ? `Advanced features locked until ${new Date(advancedAccess.data.timeoutUntil).toLocaleTimeString()}`
+          : `Daily limit reached for advanced features (${advancedAccess.data.usageCount}/${advancedAccess.data.dailyLimit})`);
+        return false;
+      }
+    }
+
+    // Record usage and deduct credits for used features
+    if (promptUsed) {
+      await recordFeatureUsage('1');
+      await handleCreditDeduction('basic_prompt');
+    }
+
+    if (hasImage) {
+      await recordFeatureUsage('3');
+      await handleCreditDeduction('image_prompt');
+    }
+
+    if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
+      await recordFeatureUsage('2');
+      for (const optionId of advancedOptionsSelected) {
+        await handleCreditDeduction(`advanced_prompt_${optionId}`);
+      }
+    }
+
+    return true; // All verifications passed
+  } catch (error) {
+    showError(`Error verifying features: ${error.message}`);
+    return false;
+  }
+}
+function resetInterface() {
+  // Enable input
+  document.getElementById('promptInput').disabled = false;
+  
+  // Reset flags
+  promptUsed = false;
+  advancedOptionsUsed = false;
+  imageGuidanceUsed = false;
+  advancedOptionsSelected.clear();
+  
+  // Reset UI elements
+  advancedOptionButtons.forEach(button => {
+    button.classList.remove('selected');
+  });
+  
+  // Clear image upload
+  const imageUpload = document.getElementById('imageUpload');
+  if (imageUpload) {
+    imageUpload.value = '';
+    const imageUploadText = document.querySelector('.image-upload-text');
+    if (imageUploadText) {
+      imageUploadText.textContent = 'Image Guidance'; // Reset text to default
+    }
+  }
+  
+  // Clear prompt input
+  const promptInput = document.getElementById('promptInput');
+  if (promptInput) {
+    promptInput.value = '';
+  }
+  
+  // Update credits display
+  updateCreditDisplay();
+}
+
+
 
 // Initial credit display update when page loads
 updateCreditDisplay();

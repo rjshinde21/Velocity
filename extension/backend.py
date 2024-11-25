@@ -110,7 +110,7 @@ def get_categories():
     try:
         # Get the absolute path to the categories file
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        csv_file_path = os.path.join(current_dir, 'assets', 'categories.csv')
+        csv_file_path = os.path.join(current_dir, 'assets', 'categories_1.csv')
         
         logger.debug(f"Looking for categories file at: {csv_file_path}")
         
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     os.makedirs(assets_dir, exist_ok=True)
     
     # Check if categories.csv exists
-    csv_file_path = os.path.join(assets_dir, 'categories.csv')
+    csv_file_path = os.path.join(assets_dir, 'categories_1.csv')
     if not os.path.exists(csv_file_path):
         logger.warning(f"Categories file not found at {csv_file_path}")
         # Create a sample categories file if it doesn't exist
