@@ -792,6 +792,49 @@ document.addEventListener('DOMContentLoaded', function () {
   const editDropdownMenu = document.getElementById('editDropdownMenu');
   const accountButton = document.getElementById('accountButton');
   const editDeleteButtons = document.getElementById('editDeleteButtons');
+  function navigateToLogin() {
+    window.location.replace('login.html');
+}
+
+function updateHeaderUI() {
+  if (!userId || !token) {
+      // User is not logged in
+      signupButton.innerHTML = `
+          <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
+          Sign Up
+      `;
+      signupButton.classList.add('not-logged-in');
+      
+      // Add click event listener for login redirect
+      signupButton.addEventListener('click', navigateToLogin);
+      
+      // Hide credits button
+      if (editButton) editButton.style.display = 'none';
+  } else {
+      // Remove the login redirect listener
+      signupButton.classList.remove('not-logged-in');
+      signupButton.removeEventListener('click', navigateToLogin);
+      
+      // Fetch and display user info if logged in
+      fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
+          method: 'GET',
+          headers: {
+              'Authorization': `Bearer ${token}`
+          }
+      })
+      .then(response => response.json())
+      .then(data => {
+          signupButton.innerHTML = `
+              <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
+              Hi ${data.data.user.name}!
+          `;
+          // Show credits button
+          if (editButton) editButton.style.display = 'flex';
+      })
+      .catch(error => console.error('Error fetching user profile:', error));
+  }
+}
+
 
   // Initially hide the dropdowns
   dropdownMenu.style.display = 'none';
@@ -800,9 +843,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Toggle Sign Up dropdown
   signupButton.addEventListener('click', function (e) {
+    if(userId && token){
     e.stopPropagation();
     dropdownMenu.style.display = dropdownMenu.style.display === 'none' ? 'block' : 'none';
     editDropdownMenu.style.display = 'none'; // Hide Edit dropdown when Sign Up is clicked
+    }
   });
 
   // Toggle Edit dropdown
@@ -839,6 +884,8 @@ document.addEventListener('DOMContentLoaded', function () {
       editDeleteButtons.style.display = 'none'; // Hide Edit/Delete buttons
     }
   });
+  // Initial UI update
+  updateHeaderUI();
 });
 
 advancedOptionsButton?.addEventListener('click', function () {
@@ -1091,6 +1138,11 @@ document.getElementById('imageUpload').addEventListener('change', function () {
 
 // Event listener for generate button
 document.getElementById('sendButton').addEventListener('click', async function () {
+  if (!userId || !token) {
+    // Show error message if not logged in
+    showError("Please login to continue");
+    return;
+}
   try {
     document.getElementById('promptInput').disabled = true;
     
@@ -1130,6 +1182,21 @@ document.getElementById('sendButton').addEventListener('click', async function (
 
 async function verifyAndRecordFeatures(hasImage) {
   try {
+    // Function to handle credit deduction with better error handling
+    async function handleCredits(feature) {
+      try {
+        await handleCreditDeduction(feature);
+      } catch (error) {
+        if (error === 'Out of tokens' || error === 'Not enough tokens') {
+          throw {
+            type: 'credit_error',
+            message: 'You are out of tokens. Please top up your credits!'
+          };
+        }
+        throw error;
+      }
+    }
+
     // Check basic prompt access
     if (promptUsed) {
       const basicAccess = await checkFeatureAccess('1');
@@ -1138,6 +1205,20 @@ async function verifyAndRecordFeatures(hasImage) {
           ? `Basic features locked until ${new Date(basicAccess.data.timeoutUntil).toLocaleTimeString()}`
           : `Daily limit reached for basic features (${basicAccess.data.usageCount}/${basicAccess.data.dailyLimit})`);
         return false;
+      }
+      // Try to use credits
+      try {
+        await recordFeatureUsage('1');
+        await handleCredits('basic_prompt');
+      } catch (error) {
+        if (error.type === 'credit_error') {
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'flex flex-col items-center gap-2';
+          
+          showError("Top up now you are out of credits");
+          return false;
+        }
+        throw error;
       }
     }
 
@@ -1150,6 +1231,16 @@ async function verifyAndRecordFeatures(hasImage) {
           : `Daily limit reached for image features (${imageAccess.data.usageCount}/${imageAccess.data.dailyLimit})`);
         return false;
       }
+      try {
+        await recordFeatureUsage('3');
+        await handleCredits('image_prompt');
+      } catch (error) {
+        if (error.type === 'credit_error') {
+          showError("Top up now you are out of credits"); 
+          return false;
+        }
+        throw error;
+      }
     }
 
     // Check advanced features
@@ -1161,32 +1252,29 @@ async function verifyAndRecordFeatures(hasImage) {
           : `Daily limit reached for advanced features (${advancedAccess.data.usageCount}/${advancedAccess.data.dailyLimit})`);
         return false;
       }
-    }
-
-    // Record usage and deduct credits for used features
-    if (promptUsed) {
-      await recordFeatureUsage('1');
-      await handleCreditDeduction('basic_prompt');
-    }
-
-    if (hasImage) {
-      await recordFeatureUsage('3');
-      await handleCreditDeduction('image_prompt');
-    }
-
-    if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
-      await recordFeatureUsage('2');
-      for (const optionId of advancedOptionsSelected) {
-        await handleCreditDeduction(`advanced_prompt_${optionId}`);
+      try {
+        await recordFeatureUsage('2');
+        for (const optionId of advancedOptionsSelected) {
+          await handleCredits(`advanced_prompt_${optionId}`);
+        }
+      } catch (error) {
+        if (error.type === 'credit_error') {
+          showError("Top up now you are out of credits"); 
+          return false;
+        }
+        throw error;
       }
     }
 
     return true; // All verifications passed
   } catch (error) {
-    showError(`Error verifying features: ${error.message}`);
+    if (error.type === 'credit_error') {
+      showError("Top up now you are out of credits"); 
+       } 
     return false;
   }
 }
+
 function resetInterface() {
   // Enable input
   document.getElementById('promptInput').disabled = false;
