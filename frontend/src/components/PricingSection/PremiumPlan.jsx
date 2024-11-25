@@ -273,15 +273,15 @@ const PremiumPlan = ({ planData, isMonthly }) => {
   if (!planData) return null;
 
   const listItems = [
-    "Unlimited Base Level Prompt Enhancement",
-    "Advanced Features with flexible credit use",
-    "Advanced Prompt Customization for 5 credits per use",
-    "Image to Prompt magic for 10 credits per use",
-    "Storage for all your prompts",
+    "Unlimited High Quality Prompt Enhancement.",
+    "Unlimited access to Advanced Prompt Customization Templates.",
+    "Custom Platform Specific Prompt Enhancement.",
+    "Limited Access to Velocity's flagship LLM with proven 67% better results.",
+    "Unlimited Storage for all generated prompts upto two months.",
   ];
 
   return (
-    <div className="w-full max-w-sm border border-[#EFBF0452]/50 p-6 font-[Inter] rounded-[32px] shadow sm:p-8 hover:scale-105 transition-all duration-200 bg-gradient-to-b from-[#EFBF041F]/10 via-[#EFBF041F]/5 to-[#EFBF041F]/10 backdrop-blur-[84px] ">
+    <div className="w-full max-w-sm md:max-w-md md:h-auto border border-[#EFBF0452]/50 p-6 font-[Inter] rounded-[32px] shadow sm:p-8 hover:scale-105 transition-all duration-200 bg-gradient-to-b from-[#EFBF041F]/10 via-[#EFBF041F]/5 to-[#EFBF041F]/10 backdrop-blur-[84px] ">
       <div className="flex md:flex-col justify-between md:justify-start items-center md:items-start">
       <div className="flex flex-col">
         <h5 className="mb-0 sm:mb-1 text-xl font-[Inter] text-[#ffffff]">
@@ -318,12 +318,12 @@ const PremiumPlan = ({ planData, isMonthly }) => {
 
       <ul
         role="list"
-        className="py-4 sm:py-10 my-3 sm:my-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-1 border-t border-[#ffffff]/20"
+        className="py-4 sm:py-4 my-3 sm:my-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-1 border-t border-[#ffffff]/20"
       >
         <li class="flex items-center mb-4">
-          <span class="text-base font-normal leading-tight text-primary dark:text-gray-400">
+          {/* <span class="text-base font-normal leading-tight text-primary dark:text-gray-400">
             What you will get
-          </span>
+          </span> */}
         </li>
         {listItems.map((item) => (
           <li class="flex items-center mb-4 text-[#ffffff]/80">

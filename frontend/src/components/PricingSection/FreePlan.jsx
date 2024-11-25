@@ -25,10 +25,10 @@ const FreePlan = ({ planData, isLoggedIn }) => {
     </li>
   );
 
-  const listItems = ["Base Level Prompt Enhancement with unlimited access", "Advanced Features, up to 5 uses"]
+  const listItems = ["High Quality Prompt Enhancement.", "Limited access to Advanced Prompt Customization Templates.","Limited generated prompt storage."]
 
   return (
-    <div className="w-full max-w-xs p-6 font-[Inter] rounded-[32px] shadow sm:p-8 hover:scale-105 transition-all duration-200" style={{
+    <div className="w-full max-w-sm md:max-w-md md:h-auto p-6 font-[Inter] rounded-[32px] shadow sm:p-8 hover:scale-105 transition-all duration-200" style={{
       backgroundImage: 'linear-gradient(to bottom left, #008ACB1A 0%, #008ACB1A 50%, #000000 100%)',
     }}>
       <div className="flex md:flex-col justify-between md:justify-start items-center md:items-start">
@@ -81,10 +81,10 @@ isLoggedIn?
       
       <ul
         role="list"
-        className="py-4 sm:py-10 my-3 sm:my-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-1 border-t border-[#ffffff]/20"
+        className="py-4 sm:py-4 my-3 sm:my-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-1 border-t border-[#ffffff]/20"
       >
         <li class="flex items-center mb-4">
-<span class="text-base font-normal leading-tight text-primary dark:text-gray-400">What you will get</span>
+{/* <span class="text-base font-normal leading-tight text-primary dark:text-gray-400">What you will get</span> */}
 </li>
 {listItems.map((item)=>(
     <li class="flex items-center mb-4 text-[#ffffff]/80">

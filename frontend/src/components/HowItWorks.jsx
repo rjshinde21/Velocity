@@ -35,7 +35,7 @@ const HowItWorks = () => {
         backgroundSize: 'cover',
       }}
     >
-      <h3 className="bg-gradient-to-r from-[#DADADA] to-[#999999] bg-clip-text text-transparent text-3xl sm:text-4xl p-8 sm:p-12 font-[Amenti] flex justify-center">
+      <h3 className="bg-gradient-to-r from-[#DADADA] to-[#999999] bg-clip-text text-transparent text-3xl sm:text-4xl sm:font-semibold p-8 sm:p-12 font-[Amenti] flex justify-center">
         How It Works
       </h3>
 
@@ -43,7 +43,7 @@ const HowItWorks = () => {
         {steps.map((step, index) => (
           <React.Fragment key={step.id}>
             <div
-              className="w-[350px] h-[150px] flex flex-col justify-center items-center py-8 px-12 sm:py-10 sm:px-12 text-white bg-cover bg-center rounded-md shadow-lg"
+              className="w-[350px] h-[150px] flex flex-col justify-center items-center py-8 px-12 sm:py-10 sm:px-12  text-white bg-cover bg-center rounded-md shadow-lg font-[Inter]"
               style={{
                 backgroundImage: `url(${cardbg})`,
                 backgroundSize: 'contain',
@@ -51,7 +51,7 @@ const HowItWorks = () => {
               }}
             >
               <div className="flex flex-col justify-center text-left">
-                <div className="font-semibold mb-4 flex items-center">
+                <div className="font-normal mb-4 flex items-center">
                   <img
                     className="w-7 h-7 mr-3"
                     src={step.icon}

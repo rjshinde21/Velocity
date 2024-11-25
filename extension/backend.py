@@ -198,4 +198,4 @@ if __name__ == '__main__':
             writer.writerow(['Background', 'Nature'])
             writer.writerow(['Background', 'Urban'])
     
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=2000, debug=True)

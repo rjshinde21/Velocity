@@ -127,8 +127,8 @@ async function sendRequest() {
       if (imageUpload && imageUpload.files.length > 0) {
           formData.append('image', imageUpload.files[0]);
       }
-
-      const response = await fetch(`${API_BASE_URL}/process`, {
+      console.log("form data:"+formData.toString());
+      const response = await fetch(`http://127.0.0.1:2000/process`, {
           method: 'POST',
           body: formData,
       });
