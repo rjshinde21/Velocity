@@ -551,7 +551,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.head.appendChild(style);
 
 
-  fetch('http://localhost:5000/get_categories')
+  fetch('http://localhost:2000/get_categories')
     .then(response => response.json())
     .then(categories => {
       console.log('Categories:', categories);
