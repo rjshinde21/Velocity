@@ -3,7 +3,6 @@ const { body } = require('express-validator');
 const validate = require('../middleware/validation.middleware');
 
 const userValidation = {
-    
     register: [
         body('name')
             .trim()
@@ -14,8 +13,13 @@ const userValidation = {
             .withMessage('Must be a valid email')
             .normalizeEmail(),
         body('password')
+            .if(body('googleId').not().exists())  // Only require password if not Google auth
             .isLength({ min: 6 })
             .withMessage('Password must be at least 6 characters'),
+        body('googleId')
+            .optional()
+            .isString()
+            .withMessage('Invalid Google ID'),
         body('plan_id')
             .optional()
             .isInt({ min: 1 })
@@ -29,10 +33,16 @@ const userValidation = {
             .withMessage('Must be a valid email')
             .normalizeEmail(),
         body('password')
+            .if(body('googleId').not().exists())  // Only require password if not Google auth
             .exists()
             .withMessage('Password is required'),
+        body('googleId')
+            .optional()
+            .isString()
+            .withMessage('Invalid Google ID'),
         validate
     ],
+
 
     update: [
         body('name')

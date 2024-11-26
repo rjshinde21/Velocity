@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import velocitylogo from "../assets/velocitylogo.png";
-import { Link } from 'react-router-dom';
 import ProfilePage from './ProfilePage';
 import ThreeDLogo from './3dLogo/ThreeDLogo';
 import supabase from '../config/supabaseClient';
-import googleLogo from '../assets/googleLogo.png'
+import googleLogo from '../assets/googleLogo.png';
+
 
 const Login = ({setIsLoggedIn}) => {
   const [email, setEmail] = useState('');
@@ -16,6 +17,93 @@ const Login = ({setIsLoggedIn}) => {
     email: '',
     password: '',
   });
+  const navigate = useNavigate();
+  const authInProgressRef = useRef(false); // To prevent duplicate handling
+
+  useEffect(() => {
+    // Check if we already have a session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        handleUserSession(session);
+      }
+    };
+
+    checkSession();
+
+    // Set up auth listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event, 'Auth in progress:', authInProgressRef.current);
+      
+      if (event === 'SIGNED_IN' && session?.user && !authInProgressRef.current) {
+        authInProgressRef.current = true;
+        await handleUserSession(session);
+        authInProgressRef.current = false;
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
+
+  const handleUserSession = async (session) => {
+    try {
+      setIsLoading(true);
+      setMessage(<span style={{ color: '#2563eb' }}>Processing login...</span>);
+
+      const apiResponse = await fetch('http://127.0.0.1:3000/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: session.user.email,
+          googleId: session.user.id
+        })
+      });
+
+      const data = await apiResponse.json();
+      console.log('API Response:', data);
+
+      if (apiResponse.ok) {
+        // Store session data
+        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('userId', data.data.user.id);
+        localStorage.setItem('user', JSON.stringify(data.data.user));
+        localStorage.setItem('loginTime', new Date().getTime().toString());
+
+        setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
+        setIsLoggedIn(true);
+        
+        // Store Supabase session
+        localStorage.setItem('supabaseSession', JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token
+        }));
+
+        setTimeout(() => {
+          navigate('/profile');
+        }, 1000);
+      } else if (apiResponse.status === 404) {
+        setMessage(<span style={{ color: 'red' }}>Account not found. Redirecting to registration...</span>);
+        setTimeout(() => {
+          navigate('/register');
+        }, 2000);
+      } else {
+        throw new Error(data.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('API call failed:', error);
+      setMessage(<span style={{ color: 'red' }}>Failed to complete login. Please try again.</span>);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+
+  
   // const [animate, setAnimate] = useState(false);
 
   // useEffect(() => {
@@ -262,40 +350,39 @@ const Login = ({setIsLoggedIn}) => {
   };
 
   const handleGoogleSignIn = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setMessage('');
+    
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: '/',
+          redirectTo: `${window.location.origin}/login`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
           },
         }
-      }); 
-  
-      if (error) {
-        throw error;
-      }
+      });
+
+      if (error) throw error;
 
     } catch (error) {
-      console.error('\n=== Google Sign In Error ===', {
-        message: error.message,
-        hint: error.hint,
-        status: error.status,
-        details: error.details,
-        stack: error.stack,
-      });
-      alert(error.message);
+      console.error('Google Sign In Error:', error);
+      setMessage(<span style={{ color: 'red' }}>Failed to connect with Google. Please try again.</span>);
+      setIsLoading(false);
     }
   };
+
+  
 
   if (showTokenDetails) {
     return <ProfilePage />;
   }
 
   return (
-    <div className="min-h-screen bg-[#0C0C0C] sm:bg-black absolute h-full w-full flex justify-center items-center z-30 flex-col sm:flex-row sm:gap-0 gap-12" >
+    <div className="min-h-screen bg-[#0C0C0C] sm:bg-black fixed h-full w-full flex justify-center items-center z-30 flex-col sm:flex-row sm:gap-0 gap-12">
       <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm py-6 px-6 sm:px-36 sm:w-1/2 w-full" style={{zIndex: 2}}>
         <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-4">Welcome back!</h2>
         <h2 className="text-left text-[16px] font-normal text-[#808080] mb-10">Please enter your details.</h2>

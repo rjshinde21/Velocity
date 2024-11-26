@@ -9,18 +9,23 @@ const INITIAL_TOKEN_AMOUNT = 50;
 
 const userController = {
     async register(req, res) {
-        console.log("hellooo");
-        // console.log("Registration body:", req.body);
-        // console.log("INITIAL_TOKEN_AMOUNT:", INITIAL_TOKEN_AMOUNT);
-        console.log(req.body);
+        console.log("Registration request:", req.body);
         try {
-            const { name, email, password } = req.body;
+            const { name, email, password, googleId, avatar } = req.body;
             
-            // Validate input
-            if (!name || !email || !password) {
+            // Validate email presence
+            if (!email) {
                 return res.status(400).json({ 
                     success: false,
-                    message: 'Please provide all required fields' 
+                    message: 'Email is required' 
+                });
+            }
+
+            // For regular sign-up, require password
+            if (!googleId && !password) {
+                return res.status(400).json({ 
+                    success: false,
+                    message: 'Password is required for regular sign-up' 
                 });
             }
 
@@ -33,34 +38,38 @@ const userController = {
                 });
             }
 
-            // Check if email already exists
-            const existingUser = await User.findByEmail(email);
-            if (existingUser) {
-                return res.status(409).json({ 
+            // Check if user exists
+            const [existingUsers] = await db.query(
+                'SELECT * FROM usertable WHERE email = ? OR google_id = ?',
+                [email, googleId]
+            );
+
+            if (existingUsers && existingUsers.length > 0) {
+                return res.status(409).json({
                     success: false,
-                    message: 'Email already registered' 
+                    message: 'User already exists'
                 });
             }
-
-            // Hash password
-            const hashedPassword = await bcrypt.hash(password, 10);
 
             // Start a transaction
             const connection = await db.getConnection();
             await connection.beginTransaction();
 
             try {
-                // Insert user
+                // Insert user with or without Google ID
+                let hashedPassword = null;
+                if (password) {
+                    hashedPassword = await bcrypt.hash(password, 10);
+                }
+
                 const [userResult] = await connection.query(
-                    'INSERT INTO usertable (name, email, password, tokens) VALUES (?, ?, ?, ?)',
-                    [name, email, hashedPassword, INITIAL_TOKEN_AMOUNT]
+                    `INSERT INTO usertable 
+                    (name, email, password, google_id, tokens) 
+                    VALUES (?, ?, ?, ?, ?)`,
+                    [name, email, hashedPassword, googleId || null, INITIAL_TOKEN_AMOUNT]
                 );
 
                 const userId = userResult.insertId;
-                await connection.commit();
-
-                // console.log(userId);
-                // console.log("Creating token record with INITIAL_TOKEN_AMOUNT:", INITIAL_TOKEN_AMOUNT);
 
                 // Create token record
                 const [tokenResult] = await connection.query(
@@ -74,10 +83,9 @@ const userController = {
                     [INITIAL_TOKEN_AMOUNT, 0, userId]
                 );
 
-                // Commit transaction
                 await connection.commit();
 
-                // Generate JWT token for authentication
+                // Generate JWT token
                 const authToken = jwt.sign(
                     { userId, email },
                     process.env.JWT_SECRET || 'your_jwt_secret_key',
@@ -91,7 +99,8 @@ const userController = {
                         user: {
                             id: userId,
                             name,
-                            email
+                            email,
+                            avatar
                         },
                         token: authToken,
                         tokenInfo: {
@@ -103,7 +112,6 @@ const userController = {
                 });
 
             } catch (error) {
-                // Rollback transaction on error
                 await connection.rollback();
                 throw error;
             } finally {
@@ -122,42 +130,63 @@ const userController = {
 
     async login(req, res) {
         try {
-            const { email, password } = req.body;
+            const { email, password, googleId } = req.body;
             
-            if (!email || !password) {
+            if (!email) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Please provide both email and password'
+                    message: 'Email is required'
                 });
             }
 
-            // console.log("Login attempt for email:", email);
+            // Find user by email or Google ID
+            let queryString = 'SELECT * FROM usertable WHERE email = ?';
+            let queryParams = [email];
 
-            // Find user by email
-            const user = await User.findByEmail(email);
+            if (googleId) {
+                queryString = 'SELECT * FROM usertable WHERE email = ? OR google_id = ?';
+                queryParams = [email, googleId];
+            }
+
+            const [users] = await db.query(queryString, queryParams);
+            const user = users[0];
+
             if (!user) {
-                console.log("User not found for email:", email);
-                return res.status(401).json({
+                return res.status(404).json({
                     success: false,
-                    message: 'Invalid credentials'
+                    message: 'User not found'
                 });
             }
 
-            // Verify password using bcryptjs
-            const isValidPassword = await bcrypt.compare(password, user.password);
-            // console.log("Password verification result:", isValidPassword);
-            // console.log("revceived id:"+user.user_id);
-
-            if (!isValidPassword) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Invalid credentials'
-                });
+            // Validate based on auth type
+            if (googleId) {
+                // For Google login, update google_id if not present
+                if (!user.google_id) {
+                    await db.query(
+                        'UPDATE usertable SET google_id = ? WHERE user_id = ?',
+                        [googleId, user.user_id]
+                    );
+                }
+            } else {
+                // Regular login
+                if (!password || !user.password) {
+                    return res.status(401).json({
+                        success: false,
+                        message: 'Invalid credentials'
+                    });
+                }
+                const validPassword = await bcrypt.compare(password, user.password);
+                if (!validPassword) {
+                    return res.status(401).json({
+                        success: false,
+                        message: 'Invalid credentials'
+                    });
+                }
             }
 
-            // Generate JWT token
+            // Generate token
             const token = jwt.sign(
-                { userId: user.id },
+                { userId: user.user_id },
                 process.env.JWT_SECRET || 'your-secret-key',
                 { expiresIn: '24h' }
             );
@@ -170,7 +199,8 @@ const userController = {
                     user: {
                         id: user.user_id,
                         name: user.name,
-                        email: user.email
+                        email: user.email,
+                        avatar: user.avatar
                     }
                 }
             });

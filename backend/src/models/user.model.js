@@ -5,17 +5,48 @@ const bcrypt = require('bcryptjs');
 class User {
     static async create(userData) {
         try {
-            const { name, email, password, plan_id = 1, tokens = 50 } = userData;
-            // Using bcryptjs for consistent hashing
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
+            const { name, email, password, googleId, plan_id = 1, tokens = 50 } = userData;
             
+            // If it's a Google sign-in, we don't need a password
+            let hashedPassword = null;
+            if (password) {
+                const salt = await bcrypt.genSalt(10);
+                hashedPassword = await bcrypt.hash(password, salt);
+            }
+
+            // First, check if user exists
+            const existingUser = await this.findByEmail(email);
+            if (existingUser) {
+                if (googleId && !existingUser.google_id) {
+                    // If it's a Google sign-in and user exists but without Google ID,
+                    // update the user with Google ID
+                    const query = `
+                        UPDATE usertable 
+                        SET google_id = ?
+                        WHERE email = ?
+                    `;
+                    await db.query(query, [googleId, email]);
+                    return existingUser.user_id;
+                }
+                throw new Error('User already exists');
+            }
+
+            // Create new user
             const query = `
                 INSERT INTO usertable 
-                (name, email, password, plan_id, tokens) 
-                VALUES (?, ?, ?, ?, ?)
+                (name, email, password, google_id, plan_id, tokens) 
+                VALUES (?, ?, ?, ?, ?, ?)
             `;
-            const [result] = await db.query(query, [name, email, hashedPassword, plan_id, tokens]);
+            
+            const [result] = await db.query(query, [
+                name, 
+                email, 
+                hashedPassword,  // This can be null for Google auth
+                googleId || null, 
+                plan_id, 
+                tokens
+            ]);
+            
             return result.insertId;
         } catch (error) {
             console.error('Error creating user:', error);
@@ -25,12 +56,41 @@ class User {
 
     static async findByEmail(email) {
         try {
-            // Ensure we're selecting all fields including password
             const query = 'SELECT * FROM usertable WHERE email = ?';
             const [rows] = await db.query(query, [email]);
             return rows[0];
         } catch (error) {
             console.error('Error finding user by email:', error);
+            throw error;
+        }
+    }
+
+    static async findByGoogleId(googleId) {
+        try {
+            const query = 'SELECT * FROM usertable WHERE google_id = ?';
+            const [rows] = await db.query(query, [googleId]);
+            return rows[0];
+        } catch (error) {
+            console.error('Error finding user by Google ID:', error);
+            throw error;
+        }
+    }
+
+    // Update existing methods to include google_id
+    static async update(user_id, userData) {
+        try {
+            const { name, email, googleId } = userData;
+            const query = `
+                UPDATE usertable 
+                SET name = ?, 
+                    email = ?,
+                    google_id = COALESCE(?, google_id)
+                WHERE user_id = ?
+            `;
+            const [result] = await db.query(query, [name, email, googleId, user_id]);
+            return result.affectedRows > 0;
+        } catch (error) {
+            console.error('Error updating user:', error);
             throw error;
         }
     }
@@ -50,17 +110,7 @@ class User {
         }
     }
 
-    static async update(user_id, userData) {
-        try {
-            const { name, email } = userData;
-            const query = 'UPDATE usertable SET name = ?, email = ? WHERE user_id = ?';
-            const [result] = await db.query(query, [name, email, user_id]);
-            return result.affectedRows > 0;
-        } catch (error) {
-            console.error('Error updating user:', error);
-            throw error;
-        }
-    }
+   
 
     static async updatePlan(id, plan_id) {
         try {

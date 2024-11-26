@@ -1,33 +1,94 @@
-import React, { useEffect, useState } from 'react';
-import velocitylogo from "../assets/velocitylogo.png";
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import velocitylogo from "../assets/velocitylogo.png";
 import ThreeDLogo from './3dLogo/ThreeDLogo';
 import supabase from '../config/supabaseClient';
-import googleLogo from '../assets/googleLogo.png'
+import googleLogo from '../assets/googleLogo.png';
+
 
 const Register = () => {
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [animate, setAnimate] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
-  const [animate, setAnimate] = useState(false);
-
-  console.log('supabase', supabase)
+  const authInProgressRef = useRef(false);
 
   useEffect(() => {
-    setAnimate(true);
-  }, []);
-
-  const navigate = useNavigate(); // Initialize navigate hook
-
+    const handleAuthStateChange = async (event, session) => {
+      console.log('Register Auth event:', event);
+      console.log('Register Session:', session);
+  
+      // Only proceed if we have a new sign in with user data
+      if (event === 'SIGNED_IN' && session?.user) {
+        try {
+          setIsLoading(true);
+          setMessage(<span style={{ color: '#2563eb' }}>Processing registration...</span>);
+  
+          // Make the API call to your backend
+          const apiResponse = await fetch('http://127.0.0.1:3000/api/users/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: session.user.user_metadata?.full_name || session.user.email,
+              email: session.user.email,
+              googleId: session.user.id,
+              avatar: session.user.user_metadata?.avatar_url
+            })
+          });
+  
+          const data = await apiResponse.json();
+          console.log('Register API Response:', data);
+  
+          if (apiResponse.ok) {
+            localStorage.setItem('token', data.data.token);
+            localStorage.setItem('userId', data.data.user.id);
+            localStorage.setItem('user', JSON.stringify(data.data.user));
+            localStorage.setItem('loginTime', new Date().getTime().toString());
+            
+            setMessage(<span style={{ color: 'green' }}>Registration successful! Redirecting...</span>);
+            setTimeout(() => {
+              navigate('/profile');
+            }, 1000);
+          } else if (apiResponse.status === 409) {
+            // If user exists, store their session data and redirect to login
+            setMessage(<span style={{ color: 'orange' }}>Account exists. Redirecting to login...</span>);
+            setTimeout(() => {
+              navigate('/login');
+            }, 2000);
+          } else {
+            throw new Error(data.message || 'Registration failed');
+          }
+        } catch (error) {
+          console.error('Registration error:', error);
+          setMessage(<span style={{ color: 'red' }}>Failed to complete registration. Please try again.</span>);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+  
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+  
+    // Cleanup subscription
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, [navigate]);
+  
+  
   const validateField = (field, value) => {
     let error = '';
     switch (field) {
@@ -55,7 +116,6 @@ const Register = () => {
   };
 
   const handleFieldChange = (field, value) => {
-    // Update the field value
     switch (field) {
       case 'name':
         setName(value);
@@ -65,7 +125,6 @@ const Register = () => {
         break;
       case 'password':
         setPassword(value);
-        // Also validate confirm password when password changes
         if (confirmPassword) {
           setFieldErrors(prev => ({
             ...prev,
@@ -80,7 +139,6 @@ const Register = () => {
         break;
     }
 
-    // Validate and set error
     const error = validateField(field, value);
     setFieldErrors(prev => ({
       ...prev,
@@ -91,19 +149,6 @@ const Register = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage('');
-
-    try{   
-      const { data, error } = await supabase.auth.signUp({
-      name:name,
-      email: email,
-      password: password,
-      confirmPassword: confirmPassword
-    })
-    if (error) throw error
-    alert("Check your email for verification link")
-  } catch(error){
-    console.log(error)
-  }
 
     const errors = {
       name: validateField('name', name),
@@ -120,7 +165,7 @@ const Register = () => {
     }
 
     setIsLoading(true);
-    setMessage(<span style={{ color: '2563eb' }}>Processing registration...</span>);
+    setMessage(<span style={{ color: '#2563eb' }}>Processing registration...</span>);
 
     try {
       const response = await fetch('http://127.0.0.1:3000/api/users/register', {
@@ -129,7 +174,6 @@ const Register = () => {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        credentials: 'include',
         body: JSON.stringify({
           name,
           email,
@@ -140,11 +184,8 @@ const Register = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(<span style={{ color: 'green' }}>Registration successful! Now you can login into extension using this credentials</span>);
-        localStorage.setItem('registrationSuccess', 'true');
-        setTimeout(() => {
-          navigate('/login'); 
-        }, 2000);
+        setMessage(<span style={{ color: 'green' }}>Registration successful! Redirecting...</span>);
+        setTimeout(() => navigate('/login'), 2000);
       } else {
         switch (response.status) {
           case 400:
@@ -153,16 +194,13 @@ const Register = () => {
           case 409:
             setMessage(<span style={{ color: 'red' }}>Email already registered. Please login instead.</span>);
             break;
-          case 500:
-            setMessage(<span style={{ color: 'red' }}>Server error. Please try again later.</span>);
-            break;
           default:
             setMessage(<span style={{ color: 'red' }}>Error: {data.message || 'Registration failed'}</span>);
         }
       }
     } catch (error) {
       console.error('Registration error:', error);
-      setMessage(<span style={{ color: 'red' }}>Network error. Please check your connection and try again.</span>);
+      setMessage(<span style={{ color: 'red' }}>Network error. Please try again.</span>);
     } finally {
       setIsLoading(false);
     }
@@ -171,86 +209,37 @@ const Register = () => {
   const handleGoogleSignUp = async (e) => {
     e.preventDefault();
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      setIsLoading(true);
+      setMessage(<span style={{ color: '#2563eb' }}>Connecting to Google...</span>);
+  
+      // Clear any existing session first
+      await supabase.auth.signOut();
+  
+      // Initiate Google OAuth
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}/register`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
           },
         }
-      }); 
-      if(data) console.log('data', data)
+      });
   
       if (error) throw error;
   
-      // Set up auth state listener to capture user data after successful sign-in
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('Auth Event:', event);
-        
-        if (event === 'SIGNED_IN') {
-          // Get user data
-          const { data: { user }, error: userError } = await supabase.auth.getUser();
-          
-          if (userError) {
-            console.error('Error fetching user data:', userError);
-          } else {
-            // Log detailed user information
-            console.log('User Data:', {
-              id: user.id,
-              email: user.email,
-              emailVerified: user.email_confirmed_at,
-              lastSignIn: user.last_sign_in_at,
-              createdAt: user.created_at,
-              updatedAt: user.updated_at,
-              userMetadata: user.user_metadata,
-              appMetadata: user.app_metadata,
-            });
-  
-            // Log Google-specific profile information
-            console.log('Google Profile:', {
-              name: user.user_metadata?.full_name,
-              avatar: user.user_metadata?.avatar_url,
-              email: user.user_metadata?.email,
-            });
-  
-            // Log session information
-            console.log('Session Info:', {
-              accessToken: session?.access_token,
-              tokenType: session?.token_type,
-              expiresAt: session?.expires_at,
-            });
-  
-            // Store user data in localStorage if needed
-            localStorage.setItem('user', JSON.stringify({
-              id: user.id,
-              email: user.email,
-              name: user.user_metadata?.full_name,
-              avatar: user.user_metadata?.avatar_url
-            }));
-  
-            // Navigate to home page
-            navigate('/');
-          }
-        }
-      });
-  
     } catch (error) {
-      console.error('Google Sign Up Error:', {
-        message: error.message,
-        hint: error.hint,
-        status: error.status,
-        details: error.details,
-      });
-      alert(error.message);
+      console.error('Google Sign Up Error:', error);
+      setMessage(<span style={{ color: 'red' }}>Failed to connect with Google. Please try again.</span>);
+      setIsLoading(false);
     }
   };
-
+  
   return (
-    <div className="min-h-screen bg-[#0C0C0C] sm:bg-black absolute h-full w-full flex justify-center items-center sm:flex-row flex-col z-30 sm:gap-0 gap-12">
+    <div className="min-h-screen bg-[#0C0C0C] sm:bg-black fixed h-full w-full flex justify-center items-center sm:flex-row flex-col z-30 sm:gap-0 gap-12">
       <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm px-6 sm:px-36 sm:w-1/2 w-full" style={{zIndex: 2}}>
-      <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-8">Create an account</h2>
+        <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-8">Create an account</h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             {/* Name */}
@@ -327,59 +316,68 @@ const Register = () => {
 
             {/* Register Button */}
             <div className='w-full flex justify-center'>
-            <button className='bg-[#008ACB] text-primary rounded-md w-full py-3 mt-2' content="Register" disabled={isLoading}>
-              Register
-            </button>
+              <button 
+                className={`bg-[#008ACB] text-primary rounded-md w-full py-3 mt-2 ${
+                  isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                type="submit"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Processing...' : 'Register'}
+              </button>
             </div>
 
+            {/* Google Sign Up Button */}
             <div className='w-full flex justify-center'>
-            <button onClick={handleGoogleSignUp} className='bg-[#000000] border-[#989898] border text-primary rounded-md w-full py-3 flex gap-2 justify-center items-center' content="Register" disabled={isLoading}>
-              <img src={googleLogo} alt="Google" />Sign up with Google
-            </button>
+              <button 
+                onClick={handleGoogleSignUp}
+                className={`bg-[#000000] border-[#989898] border text-primary rounded-md w-full py-3 flex gap-2 justify-center items-center ${
+                  isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                disabled={isLoading}
+              >
+                <img src={googleLogo} alt="Google" />
+                {isLoading ? 'Processing...' : 'Sign up with Google'}
+              </button>
             </div>
-            
           </div>
 
           {/* Message Area */}
-          <div id="message" className="mt-4 text-center text-sm text-gray-600">
-            {message}
-          </div>
+          {message && (
+            <div className="mt-4 text-center text-sm text-gray-600">
+              {message}
+            </div>
+          )}
         </form>
 
         {/* Link to Login */}
         <div className="mt-4 text-center">
-          <p className="text-sm bg-gradient-text">Already have an account? {' '}
-          <Link to="/login" className="text-[#008ACB] hover:text-[#4bb8eb]">Log In</Link>
+          <p className="text-sm bg-gradient-text">
+            Already have an account?{' '}
+            <Link to="/login" className="text-[#008ACB] hover:text-[#4bb8eb]">
+              Log In
+            </Link>
           </p>
         </div>
       </div>
+
+      {/* Logo and 3D Animation Section */}
       <div className="flex justify-center order-1 sm:order-2 items-center w-1/2 h-[20vh] sm:h-screen bg-[#0C0C0C]">
+        <Link
+          to="/"
+          className={'flex items-center space-x-3 sm:w-auto w-auto absolute top-16 right-16'}
+        >
+          <img
+            src={velocitylogo}
+            className="h-10 sm:h-14"
+            alt="Velocity Logo"
+          />
+        </Link>
 
-      <Link
-            to="/"
-            className={'flex items-center space-x-3 sm:w-auto w-auto absolute top-16 right-16 '}
-          >
-            <img
-              src={velocitylogo}
-              className="h-10 sm:h-14"
-              alt="Velocity Logo" 
-            />
-          </Link>
-
-          <div className="relative">
-      {/* <div
-        className={`w-24 h-24 sm:w-64 sm:h-64 bg-[#008ACB] rounded-full transform transition-opacity duration-700 ${
-          animate ? "animate-slideUp opacity-100" : "opacity-0"
-        }`}
-        style={{
-          animation: animate ? "circleSlideUp 2s ease-out" : "none",
-        }}
-      ></div>
-
-      <div className="absolute top-1/2 sm:left-[-60px] w-40 h-32 left-[-35px] sm:w-96 sm:h-96 backdrop-blur-md bg-[#0C0C0C]/40"></div> */}
-      <ThreeDLogo />
-    </div>
-    </div>
+        <div className="relative">
+          <ThreeDLogo />
+        </div>
+      </div>
     </div>
   );
 };
