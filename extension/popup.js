@@ -1,3 +1,5 @@
+
+
 async function checkFeatureAccess(featureId) {
   try {
     const userId = localStorage.getItem('userId');
@@ -93,77 +95,129 @@ function showError(message) {
   }
 }
 async function sendRequest() {
+  let promptHistoryId = null;
+  let creditsDeducted = false;
+  let usageRecorded = false;
+
   try {
-      const promptInput = document.getElementById('promptInput');
-      const imageUpload = document.getElementById('imageUpload');
-      const prompt = promptInput.value.trim();
-      const selectedAIType = getSelectedRadioValue();
-      const userId = localStorage.getItem('userId');
+    const promptInput = document.getElementById('promptInput');
+    const imageUpload = document.getElementById('imageUpload');
+    const prompt = promptInput.value.trim();
+    const selectedAIType = getSelectedRadioValue();
+    const userId = localStorage.getItem('userId');
 
-      showLoading('Processing request...');
+    showLoading('Processing request...');
 
-      // Save prompt to history
-      try {
-          const promptData = await savePromptToHistory(userId, prompt, selectedAIType);
-          if (promptData.success) {
-              lastSavedPromptId = promptData.data.history_id;
-              console.log('Prompt saved with ID:', lastSavedPromptId);
-          }
-      } catch (error) {
-          console.error('Error saving prompt:', error);
-          // Continue with generation even if history saving fails
+    // Create and send request
+    const formData = new FormData();
+    const requestData = {
+      prompt: prompt,
+      category: getSelectedCategories(),
+      AIType: selectedAIType || 'default'
+    };
+
+    formData.append('data', JSON.stringify(requestData));
+
+    if (imageUpload && imageUpload.files.length > 0) {
+      formData.append('image', imageUpload.files[0]);
+    }
+
+    // Make the actual API request first
+    const response = await fetch('http://127.0.0.1:2000/process', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(response.status === 500
+        ? `Server error (500): ${await response.text()}`
+        : `Server returned ${response.status}: ${await response.text()}`);
+    }
+
+    const data = await response.json();
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    // Once we have a successful response, save to history
+    try {
+      const promptData = await savePromptToHistory(userId, prompt, selectedAIType);
+      if (promptData.success) {
+        promptHistoryId = promptData.data.history_id;
+        lastSavedPromptId = promptHistoryId; // Set this for copy functionality
+        console.log('Prompt saved with ID:', promptHistoryId);
+      }
+    } catch (historyError) {
+      console.error('Error saving prompt to history:', historyError);
+      // Continue execution even if history save fails
+    }
+
+    // Record features and deduct credits only after successful response
+    try {
+      // Basic prompt
+      if (promptUsed) {
+        await recordFeatureUsage('1');
+        await handleCreditDeduction('basic_prompt');
       }
 
-      // Create and send request
-      const formData = new FormData();
-      const requestData = {
-          prompt: prompt,
-          category: getSelectedCategories(),
-          AIType: selectedAIType || 'default'
-      };
-
-      formData.append('data', JSON.stringify(requestData));
-
+      // Image feature
       if (imageUpload && imageUpload.files.length > 0) {
-          formData.append('image', imageUpload.files[0]);
-      }
-      console.log("form data:"+formData.toString());
-      const response = await fetch(`http://127.0.0.1:2000/process`, {
-          method: 'POST',
-          body: formData,
-      });
-
-      if (!response.ok) {
-          throw new Error(response.status === 500 
-              ? `Server error (500): ${await response.text()}`
-              : `Server returned ${response.status}: ${await response.text()}`);
+        await recordFeatureUsage('3');
+        await handleCreditDeduction('image_prompt');
       }
 
-      const data = await response.json();
-      if (data.error) {
-          throw new Error(data.error);
+      // Advanced features
+      if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
+        await recordFeatureUsage('2');
+        for (const optionId of advancedOptionsSelected) {
+          await handleCreditDeduction(`advanced_prompt_${optionId}`);
+        }
       }
 
-      // Update tokens used if necessary
-      if (lastSavedPromptId && lastTokensUsed > 0) {
-          try {
-              await updatePromptTokens(lastSavedPromptId, lastTokensUsed);
-              console.log('Updated tokens used:', lastTokensUsed);
-          } catch (error) {
-              console.error('Error updating tokens:', error);
-              // Continue even if token update fails
-          }
-      }
+      creditsDeducted = true;
+      usageRecorded = true;
 
+    } catch (creditError) {
+      console.error('Error handling credits/usage:', creditError);
+      // If credit deduction fails, we should still show the response
+      // but log the error and notify the user
+      showError('Warning: Error processing credits. Please contact support.');
+    }
+
+    // Finally, handle the response
+    if (data.response) {
       handleParsedResponse(data.response);
+    } else {
+      throw new Error('No response data received from server');
+    }
 
   } catch (error) {
-      console.error('Request failed:', error);
-      showError(error.message.includes('Failed to fetch')
-          ? 'Unable to connect to server. Please make sure the backend is running.'
-          : `Error: ${error.message}`);
+    console.error('Request failed:', error);
+    
+    // Clean up any partial operations if needed
+    if (promptHistoryId && (!creditsDeducted || !usageRecorded)) {
+      try {
+        // Add cleanup code here if needed
+        console.log('Cleaning up partial operations...');
+      } catch (cleanupError) {
+        console.error('Error during cleanup:', cleanupError);
+      }
+    }
+
+    // Show appropriate error message
+    if (error.message.includes('Failed to fetch')) {
+      showError('Unable to connect to server. Please make sure the backend is running.');
+    } else {
+      showError(`Error: ${error.message}`);
+    }
+  } finally {
+    // Always reset the interface
+    document.getElementById('promptInput').disabled = false;
+    resetInterface();
   }
 }
+
+
 
 function showLoading(message) {
   const responseDiv = document.getElementById('response');
@@ -196,6 +250,12 @@ function adjustPopupSize() {
   document.documentElement.style.width = `${popupWidth}px`;
   document.documentElement.style.height = `${popupHeight}px`;
 }
+function closeAllDropdowns() {
+  document.querySelectorAll('.dropdown-content').forEach(content => {
+      content.style.display = 'none';
+  });
+}
+
 async function savePromptToHistory(userId, promptText, aiType) {
   try {
       const response = await fetch('http://127.0.0.1:3000/api/history/prompts', {
@@ -627,6 +687,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function createDropdown(dropdown) {
     const dropdownContainer = document.createElement('div');
     dropdownContainer.className = 'dropdown flex-1';
+    dropdownContainer.setAttribute('data-default-text', dropdown.name);
 
     const dropdownButton = document.createElement('button');
     dropdownButton.className = 'dropdown-button';
@@ -651,28 +712,6 @@ document.addEventListener('DOMContentLoaded', function () {
         button.className = 'dropdown-card-select';
         button.textContent = item.name;
         
-        let isSelected = false;
-        
-        button.addEventListener('click', function(event) {
-            event.stopPropagation();
-            
-            // Toggle selection
-            isSelected = !isSelected;
-            
-            if (isSelected) {
-                // Select this item
-                card.classList.add('selected');
-                dropdownButton.querySelector('span').textContent = item.name;
-            } else {
-                // Unselect this item
-                card.classList.remove('selected');
-                dropdownButton.querySelector('span').textContent = dropdown.name;
-            }
-            
-            // Don't close dropdown on selection
-            event.preventDefault();
-        });
-        
         card.appendChild(button);
         horizontalContainer.appendChild(card);
     });
@@ -681,15 +720,10 @@ document.addEventListener('DOMContentLoaded', function () {
     dropdownContainer.appendChild(dropdownButton);
     dropdownContainer.appendChild(dropdownContent);
 
-    // Toggle dropdown visibility
     dropdownButton.addEventListener('click', function(e) {
         e.stopPropagation();
         const isVisible = dropdownContent.style.display === 'block';
-        
-        // Close all other dropdowns
         closeAllDropdowns();
-        
-        // Toggle this dropdown
         dropdownContent.style.display = isVisible ? 'none' : 'block';
     });
 
@@ -700,11 +734,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-function closeAllDropdowns() {
-  document.querySelectorAll('.dropdown-content').forEach(content => {
-      content.style.display = 'none';
-  });
-}
+
 function getSelectedValues() {
   const selected = {};
   document.querySelectorAll('.category-card').forEach(card => {
@@ -1098,7 +1128,124 @@ function handleCreditDeduction(feature) {
 let promptUsed = false;
 let advancedOptionsUsed = false;
 let imageGuidanceUsed = false;
-let advancedOptionsSelected = new Set();
+const advancedOptionsSelected = new Set();
+
+function initializeAdvancedOptions() {
+  // Wait for elements to be available
+  const observer = new MutationObserver((mutations, obs) => {
+      const advancedOptionButtons = document.querySelectorAll('.dropdown-card');
+      if (advancedOptionButtons.length) {
+          obs.disconnect(); // Stop observing once elements are found
+          setupAdvancedOptionListeners(advancedOptionButtons);
+      }
+  });
+
+  // Start observing the document with the configured parameters
+  observer.observe(document, {
+      childList: true,
+      subtree: true
+  });
+}
+
+function setupAdvancedOptionListeners(buttons) {
+    buttons.forEach(button => {
+        button.addEventListener('click', function(event) {
+            event.stopPropagation();
+            
+            const selectElement = this.querySelector('.dropdown-card-select');
+            if (!selectElement) return;
+            
+            const optionId = selectElement.innerText.trim();
+            const dropdown = this.closest('.dropdown');
+            
+            // If this item is already selected, deselect it
+            if (this.classList.contains('selected')) {
+                this.classList.remove('selected');
+                advancedOptionsSelected.delete(optionId);
+                
+                // Reset dropdown button text
+                const dropdownButton = dropdown?.querySelector('.dropdown-button span');
+                if (dropdownButton) {
+                    const defaultText = dropdown.getAttribute('data-default-text') || 'Select Option';
+                    dropdownButton.textContent = defaultText;
+                }
+            } else {
+                // Deselect all other items in this dropdown
+                const allCardsInDropdown = dropdown?.querySelectorAll('.dropdown-card');
+                allCardsInDropdown?.forEach(card => {
+                    const cardOptionId = card.querySelector('.dropdown-card-select')?.innerText.trim();
+                    if (cardOptionId) {
+                        advancedOptionsSelected.delete(cardOptionId);
+                    }
+                    card.classList.remove('selected');
+                });
+                
+                // Select this item
+                this.classList.add('selected');
+                advancedOptionsSelected.add(optionId);
+                
+                // Update dropdown button text
+                const dropdownButton = dropdown?.querySelector('.dropdown-button span');
+                if (dropdownButton) {
+                    dropdownButton.textContent = optionId;
+                }
+            }
+
+            // Update usage flag
+            advancedOptionsUsed = advancedOptionsSelected.size > 0;
+
+            // Debug logging
+            console.log('Current advanced options:', Array.from(advancedOptionsSelected));
+            console.log('Advanced options used:', advancedOptionsUsed);
+            
+            // Update UI
+            updateAdvancedOptionsUI();
+        });
+    });
+}
+function resetAdvancedOptions() {
+  // Clear the tracking set
+  advancedOptionsSelected.clear();
+  advancedOptionsUsed = false;
+
+  // Reset UI elements
+  document.querySelectorAll('.dropdown-card').forEach(card => {
+      card.classList.remove('selected');
+  });
+
+  // Reset dropdown button texts to their defaults
+  document.querySelectorAll('.dropdown').forEach(dropdown => {
+      const defaultText = dropdown.getAttribute('data-default-text') || 'Select Option';
+      const buttonSpan = dropdown.querySelector('.dropdown-button span');
+      if (buttonSpan) {
+          buttonSpan.textContent = defaultText;
+      }
+  });
+
+  // Close all dropdowns
+  closeAllDropdowns();
+
+  // Reset any visual indicators
+  updateAdvancedOptionsUI();
+  
+  console.log('Advanced options reset');
+}
+
+function updateAdvancedOptionsUI() {
+  const advancedOptionsButton = document.getElementById('advancedOptionsButton');
+  if (advancedOptionsButton) {
+      advancedOptionsButton.classList.toggle('active', advancedOptionsUsed);
+  }
+}
+
+function getAdvancedOptionsState() {
+  return {
+      used: advancedOptionsUsed,
+      selectedOptions: Array.from(advancedOptionsSelected),
+      count: advancedOptionsSelected.size
+  };
+}
+document.addEventListener('DOMContentLoaded', initializeAdvancedOptions);
 
 // Event listener for basic prompt
 document.getElementById('promptInput').addEventListener('change', function () {
@@ -1166,65 +1313,84 @@ document.getElementById('imageUpload').addEventListener('change', function () {
 // Event listener for generate button
 document.getElementById('sendButton').addEventListener('click', async function () {
   if (!userId || !token) {
-    // Show error message if not logged in
     showError("Please login to continue");
     return;
-}
+  }
+
   try {
     document.getElementById('promptInput').disabled = true;
     
-    console.log('Generating with the following options:');
-    console.log('Prompt used:', promptUsed);
-    console.log('Advanced options used:', advancedOptionsUsed);
-    console.log('Image guidance used:', imageGuidanceUsed);
-
-    // First check if user has entered text
     const promptInput = document.getElementById('promptInput');
     if (!promptInput || !promptInput.value.trim()) {
       showError('Please enter a prompt text');
       return;
     }
 
-    // Check if image is attached
     const imageUpload = document.getElementById('imageUpload');
     const hasImage = imageUpload && imageUpload.files.length > 0;
 
-    // Verify all feature access and record usage
+    // First verify access to all required features
     const canProceed = await verifyAndRecordFeatures(hasImage);
     if (!canProceed) {
-      return; // Stop if any feature verification failed
+      return;
     }
 
-    // If all verifications passed, proceed with sendRequest
+    // If verification passed, proceed with the request
     await sendRequest();
 
   } catch (error) {
     console.error('Error during processing:', error);
     showError(`Error: ${error.message}`);
   } finally {
-    // Reset everything
     resetInterface();
   }
 });
 
 async function verifyAndRecordFeatures(hasImage) {
   try {
-    // Function to handle credit deduction with better error handling
-    async function handleCredits(feature) {
-      try {
-        await handleCreditDeduction(feature);
-      } catch (error) {
-        if (error === 'Out of tokens' || error === 'Not enough tokens') {
-          throw {
-            type: 'credit_error',
-            message: 'You are out of tokens. Please top up your credits!'
-          };
-        }
-        throw error;
+    // Get current token balance first
+    const tokenResponse = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
       }
+    });
+    const tokenData = await tokenResponse.json();
+    const availableTokens = tokenData.data.token_received - tokenData.data.tokens_used;
+
+    // Get feature costs
+    const creditsResponse = await fetch('http://127.0.0.1:3000/api/credit/credits', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const creditsData = await creditsResponse.json();
+    
+    // Calculate total required tokens
+    let requiredTokens = 0;
+    if (promptUsed) {
+      const basicFeature = creditsData.data.find(credit => credit.feature === 'basic_prompt');
+      requiredTokens += basicFeature?.credits || 0;
+    }
+    if (hasImage) {
+      const imageFeature = creditsData.data.find(credit => credit.feature === 'image_prompt');
+      requiredTokens += imageFeature?.credits || 0;
+    }
+    if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
+      [...advancedOptionsSelected].forEach(option => {
+        const advancedFeature = creditsData.data.find(credit => credit.feature === `advanced_prompt_${option}`);
+        requiredTokens += advancedFeature?.credits || 0;
+      });
     }
 
-    // Check basic prompt access first
+    // Check if enough tokens are available
+    if (availableTokens < requiredTokens) {
+      showError('Not enough tokens available. Please top up your credits.');
+      return false;
+    }
+
+    // Proceed with feature access checks
     if (promptUsed) {
       const basicAccess = await checkFeatureAccess('1');
       if (!basicAccess.data.canUse) {
@@ -1235,7 +1401,6 @@ async function verifyAndRecordFeatures(hasImage) {
       }
     }
 
-    // Check image feature access if used
     if (hasImage) {
       const imageAccess = await checkFeatureAccess('3');
       if (!imageAccess.data.canUse) {
@@ -1246,7 +1411,6 @@ async function verifyAndRecordFeatures(hasImage) {
       }
     }
 
-    // Check advanced features access
     if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
       const advancedAccess = await checkFeatureAccess('2');
       if (!advancedAccess.data.canUse) {
@@ -1257,80 +1421,47 @@ async function verifyAndRecordFeatures(hasImage) {
       }
     }
 
-    // After all access checks pass, proceed with credit deductions and usage recording
-    try {
-      // Handle basic prompt
-      if (promptUsed) {
-        await recordFeatureUsage('1');
-        await handleCredits('basic_prompt');
-      }
-
-      // Handle image feature
-      if (hasImage) {
-        await recordFeatureUsage('3');
-        await handleCredits('image_prompt');
-      }
-
-      // Handle advanced features
-      if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
-        await recordFeatureUsage('2');
-        for (const optionId of advancedOptionsSelected) {
-          await handleCredits(`advanced_prompt_${optionId}`);
-        }
-      }
-
-      return true; // All operations successful
-
-    } catch (error) {
-      if (error.type === 'credit_error') {
-        showError("Top up now you are out of credits");
-      } else {
-        showError(`Error processing request: ${error.message}`);
-      }
-      return false;
-    }
-
+    return true;
   } catch (error) {
-    console.error('Error in verifyAndRecordFeatures:', error);
-    showError("An error occurred while processing your request");
+    console.error('Error checking feature access:', error);
+    showError("Error verifying feature access. Please try again.");
     return false;
   }
 }
 
 
+
+
 function resetInterface() {
+  // Enable input
+  resetAdvancedOptions();
+    
   // Enable input
   document.getElementById('promptInput').disabled = false;
   
   // Reset flags
   promptUsed = false;
-  advancedOptionsUsed = false;
   imageGuidanceUsed = false;
-  advancedOptionsSelected.clear();
-  
-  // Reset UI elements
-  advancedOptionButtons.forEach(button => {
-    button.classList.remove('selected');
-  });
   
   // Clear image upload
   const imageUpload = document.getElementById('imageUpload');
   if (imageUpload) {
-    imageUpload.value = '';
-    const imageUploadText = document.querySelector('.image-upload-text');
-    if (imageUploadText) {
-      imageUploadText.textContent = 'Image Guidance'; // Reset text to default
-    }
+      imageUpload.value = '';
+      const imageUploadText = document.querySelector('.image-upload-text');
+      if (imageUploadText) {
+          imageUploadText.textContent = 'Image Guidance';
+      }
   }
   
   // Clear prompt input
   const promptInput = document.getElementById('promptInput');
   if (promptInput) {
-    promptInput.value = '';
+      promptInput.value = '';
   }
   
   // Update credits display
   updateCreditDisplay();
+
 }
 
 
