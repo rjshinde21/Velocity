@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple, Any
 from logging import Logger
 import re
+from spellchecker import SpellChecker
+
 
 app = Flask(__name__)
 CORS(app)
@@ -18,15 +20,19 @@ CORS(app)
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+
 @dataclass
 class ProcessedPrompt:
     prompt: str
     categories: str
     tokens: int
+    corrections_made: Dict[str, str]  # Track corrections for logging
 
 class PromptPreprocessor:
     def __init__(self, logger: Logger):
         self.logger = logger
+        self.spell = SpellChecker()
         self.redundant_phrases = {
             "please make", "please create", "i want", "i need", "generate",
             "create an image", "make an image", "create a picture",
@@ -38,8 +44,45 @@ class PromptPreprocessor:
             "digital art", "oil painting", "watercolor", "sketch"
         }
         
-    def clean_text(self, text: str) -> str:
-        """Basic text cleaning"""
+        # Add common art/style terms to spell checker dictionary
+        self.spell.word_frequency.load_words([
+            "anime", "manga", "cyberpunk", "steampunk", "vaporwave",
+            "minimalist", "maximalist", "surreal", "hyperrealistic",
+            "pixelated", "cinematic", "isometric", "dystopian", "utopian"
+        ])
+    
+    def correct_spelling(self, text: str) -> Tuple[str, Dict[str, str]]:
+        """
+        Correct spelling in text while tracking corrections.
+        Returns corrected text and dictionary of corrections made.
+        """
+        words = text.split()
+        corrected_words = []
+        corrections = {}
+        
+        for word in words:
+            # Skip words that are likely intentional or style-related
+            if (word.lower() in self.style_keywords or 
+                word.isupper() or  # Acronyms
+                any(c.isdigit() for c in word)):  # Numbers
+                corrected_words.append(word)
+                continue
+            
+            # Check if word is misspelled
+            if self.spell.unknown([word]):
+                correction = self.spell.correction(word)
+                if correction and correction != word:
+                    corrections[word] = correction
+                    corrected_words.append(correction)
+                else:
+                    corrected_words.append(word)
+            else:
+                corrected_words.append(word)
+        
+        return ' '.join(corrected_words), corrections
+
+    def clean_text(self, text: str) -> Tuple[str, Dict[str, str]]:
+        """Basic text cleaning with spell checking"""
         # Convert to lowercase and remove extra whitespace
         text = ' '.join(text.lower().split())
         
@@ -51,7 +94,10 @@ class PromptPreprocessor:
         text = re.sub(r'[!.?]+(?=[!.?])', '', text)
         text = re.sub(r'[,;]+(?=[,;])', '', text)
         
-        return text.strip()
+        # Correct spelling
+        corrected_text, corrections = self.correct_spelling(text.strip())
+        
+        return corrected_text, corrections
     
     def extract_style(self, text: str) -> Tuple[str, str]:
         """Extract and separate style information from prompt"""
@@ -87,9 +133,10 @@ class PromptPreprocessor:
         """Main processing pipeline"""
         self.logger.debug(f"Processing raw prompt: {raw_prompt}")
         
-        # Clean the basic text
-        cleaned_prompt = self.clean_text(raw_prompt)
-        self.logger.debug(f"Cleaned prompt: {cleaned_prompt}")
+        # Clean the text and get spelling corrections
+        cleaned_prompt, corrections = self.clean_text(raw_prompt)
+        if corrections:
+            self.logger.debug(f"Spelling corrections made: {corrections}")
         
         # Extract style information
         content, style = self.extract_style(cleaned_prompt)
@@ -111,8 +158,49 @@ class PromptPreprocessor:
         return ProcessedPrompt(
             prompt=final_prompt,
             categories=formatted_cats,
-            tokens=tokens
+            tokens=tokens,
+            corrections_made=corrections
         )
+
+def normalize_json_response(response_text: str) -> dict:
+    """
+    Normalizes JSON response from Gemini to ensure consistent formatting
+    regardless of how it was originally formatted.
+    """
+    try:
+        # First try to parse as JSON
+        data = json.loads(response_text)
+    except json.JSONDecodeError:
+        # If parsing fails, try to extract and format the prompts
+        lines = response_text.strip().split('\n')
+        prompts = []
+        current_prompt = ""
+        
+        for line in lines:
+            line = line.strip()
+            if line and not line.startswith('{') and not line.startswith('}') and not line.startswith('"prompts"'):
+                if line.startswith('"prompt":'): # New prompt starts
+                    if current_prompt:  # Save previous prompt if exists
+                        prompts.append({"prompt": current_prompt.strip()})
+                    current_prompt = line.split(':', 1)[1].strip().strip('"').strip(',')
+                else:
+                    # Continue previous prompt
+                    current_prompt += " " + line.strip('"').strip(',')
+        
+        # Add the last prompt if exists
+        if current_prompt:
+            prompts.append({"prompt": current_prompt.strip()})
+            
+        data = {"prompts": prompts}
+    
+    # Ensure each prompt is a single line with no extra whitespace
+    for prompt in data.get("prompts", []):
+        if "prompt" in prompt:
+            # Remove extra whitespace and newlines within the prompt
+            prompt["prompt"] = " ".join(prompt["prompt"].split())
+    
+    return data
+
 # Configure the Gemini API
 try:
     genai.configure(api_key=os.getenv('GOOGLE_API_KEY', "AIzaSyAInppRzQoReAnvNyAEIB0xtL1ZCxIjaDk"))
@@ -144,16 +232,23 @@ def process_request():
         preprocessor = PromptPreprocessor(logger)
         
         # Process the prompt and categories
-        processed = preprocessor.process_prompt(data['prompt'],data.get('category', {}))
-        print("processed prompt:" + processed.prompt)
-        print("processed categories:" + processed.categories)
+        processed = preprocessor.process_prompt(
+            data['prompt'],
+            data.get('category', {})
+        )
+        
+        # Log any spelling corrections
+        if processed.corrections_made:
+            logger.info(f"Spelling corrections applied: {processed.corrections_made}")
+        
         # Construct optimized prompt string for Gemini
         prompt_string = (
             "You are a professional prompt designer. Generate 3 varied and creative "
             f"image prompts based on this concept: '{processed.prompt}'. "
             f"Consider these aspects: {processed.categories}. "
             "Each prompt should be unique and detailed. "
-            'Return in JSON format: {"prompts":[{"prompt":"..."}, {"prompt":"..."}, {"prompt":"..."}]}'
+            'Return ONLY a JSON object in this exact format without any extra whitespace or newlines: '
+            '{"prompts":[{"prompt":"prompt1"},{"prompt":"prompt2"},{"prompt":"prompt3"}]}'
         )
 
         logger.debug(f"Final prompt string: {prompt_string}")
@@ -165,12 +260,19 @@ def process_request():
         try:
             response = model.generate_content(prompt_string)
             logger.debug(f"Gemini API response: {response.text}")
+            normalized_response = normalize_json_response(response.text)
+            print("formatted gemini api response:",normalized_response)
+            # Add spelling corrections to response if any were made
+            response_data = {
+                "response": json.dumps(normalized_response, ensure_ascii=False),
+                "corrections": processed.corrections_made if processed.corrections_made else None
+            }
             
             try:
                 json_response = json.loads(response.text)
-                return jsonify({"response": json.dumps(json_response)})
+                response_data["response"] = json.dumps(json_response)
+                return jsonify(response_data)
             except json.JSONDecodeError:
-                # Fallback formatting if JSON parsing fails
                 formatted_response = {
                     "prompts": [
                         {"prompt": line.strip()} 
@@ -178,7 +280,8 @@ def process_request():
                         if line.strip()
                     ]
                 }
-                return jsonify({"response": json.dumps(formatted_response)})
+                response_data["response"] = json.dumps(formatted_response)
+                return jsonify(response_data)
 
         except Exception as e:
             logger.error(f"Gemini API error: {str(e)}")

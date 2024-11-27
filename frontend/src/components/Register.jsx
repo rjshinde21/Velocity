@@ -21,72 +21,84 @@ const Register = () => {
     password: '',
     confirmPassword: ''
   });
+  const [showSpinner, setShowSpinner] = useState(false);
   const authInProgressRef = useRef(false);
 
   useEffect(() => {
-    const handleAuthStateChange = async (event, session) => {
-      console.log('Register Auth event:', event);
-      console.log('Register Session:', session);
-  
-      // Only proceed if we have a new sign in with user data
-      if (event === 'SIGNED_IN' && session?.user) {
-        try {
-          setIsLoading(true);
-          setMessage(<span style={{ color: '#2563eb' }}>Processing registration...</span>);
-  
-          // Make the API call to your backend
-          const apiResponse = await fetch('http://127.0.0.1:3000/api/users/register', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              name: session.user.user_metadata?.full_name || session.user.email,
-              email: session.user.email,
-              googleId: session.user.id,
-              avatar: session.user.user_metadata?.avatar_url
-            })
-          });
-  
-          const data = await apiResponse.json();
-          console.log('Register API Response:', data);
-  
-          if (apiResponse.ok) {
-            localStorage.setItem('token', data.data.token);
-            localStorage.setItem('userId', data.data.user.id);
-            localStorage.setItem('user', JSON.stringify(data.data.user));
-            localStorage.setItem('loginTime', new Date().getTime().toString());
-            
-            setMessage(<span style={{ color: 'green' }}>Registration successful! Redirecting...</span>);
-            setTimeout(() => {
-              navigate('/profile');
-            }, 1000);
-          } else if (apiResponse.status === 409) {
-            // If user exists, store their session data and redirect to login
-            setMessage(<span style={{ color: 'orange' }}>Account exists. Redirecting to login...</span>);
-            setTimeout(() => {
-              navigate('/login');
-            }, 2000);
-          } else {
-            throw new Error(data.message || 'Registration failed');
-          }
-        } catch (error) {
-          console.error('Registration error:', error);
+    let mounted = true;
+
+    const processGoogleAuth = async (session) => {
+      if (!session?.user || !mounted) return;
+
+      try {
+        setIsLoading(true);
+        setMessage(<span style={{ color: '#2563eb' }}>Processing registration...</span>);
+
+        const apiResponse = await fetch('http://127.0.0.1:3000/api/users/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: session.user.user_metadata?.full_name || session.user.email,
+            email: session.user.email,
+            googleId: session.user.id,
+            avatar: session.user.user_metadata?.avatar_url
+          })
+        });
+
+        if (!mounted) return;
+
+        const data = await apiResponse.json();
+        console.log('Register API Response:', data);
+
+        if (apiResponse.ok) {
+          localStorage.setItem('token', data.data.token);
+          localStorage.setItem('userId', data.data.user.id);
+          localStorage.setItem('user', JSON.stringify(data.data.user));
+          localStorage.setItem('loginTime', new Date().getTime().toString());
+          navigate('/profile');
+        } else if (apiResponse.status === 409) {
+          navigate('/login');
+        } else {
+          throw new Error(data.message || 'Registration failed');
+        }
+      } catch (error) {
+        console.error('Registration error:', error);
+        if (mounted) {
           setMessage(<span style={{ color: 'red' }}>Failed to complete registration. Please try again.</span>);
-        } finally {
+        }
+      } finally {
+        if (mounted) {
           setIsLoading(false);
         }
       }
     };
-  
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
-  
-    // Cleanup subscription
+
+    // Check for existing session immediately
+    const checkExistingSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && mounted) {
+        await processGoogleAuth(session);
+      }
+    };
+    checkExistingSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event);
+      if (event === 'SIGNED_IN') {
+        await processGoogleAuth(session);
+      }
+    });
+
+    // Cleanup
     return () => {
+      mounted = false;
       subscription?.unsubscribe();
     };
   }, [navigate]);
+
   
   
   const validateField = (field, value) => {
@@ -208,33 +220,35 @@ const Register = () => {
 
   const handleGoogleSignUp = async (e) => {
     e.preventDefault();
+    setMessage(<span style={{ color: '#2563eb' }}>Connecting to Google...</span>);
+    setIsLoading(true);
+
     try {
-      setIsLoading(true);
-      setMessage(<span style={{ color: '#2563eb' }}>Connecting to Google...</span>);
-  
-      // Clear any existing session first
-      await supabase.auth.signOut();
-  
-      // Initiate Google OAuth
-      const { error } = await supabase.auth.signInWithOAuth({
+      await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/register`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
+          scopes: 'email profile',
         }
       });
-  
-      if (error) throw error;
-  
     } catch (error) {
       console.error('Google Sign Up Error:', error);
       setMessage(<span style={{ color: 'red' }}>Failed to connect with Google. Please try again.</span>);
       setIsLoading(false);
     }
   };
+
+  if (showSpinner) {
+    return (
+      <div className="min-h-screen bg-[#0C0C0C] flex items-center justify-center">
+        <div className="text-primary">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          <p className="mt-4">Processing Google Sign Up...</p>
+        </div>
+      </div>
+    );
+  }
+
   
   return (
     <div className="min-h-screen bg-[#0C0C0C] sm:bg-black fixed h-full w-full flex justify-center items-center sm:flex-row flex-col z-30 sm:gap-0 gap-12">

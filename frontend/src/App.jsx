@@ -36,23 +36,18 @@ function App() {
       subscription?.unsubscribe();
     };
   }, []);
-  
-  // useEffect(() => {
-  //   // Check for login status from localStorage
-  //   const userId = localStorage.getItem("userId");
-  //   const authToken = localStorage.getItem("token");
-  //   setIsLoggedIn(!!userId && !!authToken);
-  // }, [isLoggedIn]);
   useEffect(() => {
     // Check for active session when app loads
     const checkSession = async () => {
       try {
-        // Check both Supabase session and local storage
+        // Check Supabase session for Google auth
         const { data: { session } } = await supabase.auth.getSession();
+        // Check localStorage for regular auth
         const storedToken = localStorage.getItem('token');
         const storedUserId = localStorage.getItem('userId');
-
-        if (session && storedToken && storedUserId) {
+  
+        // Set logged in if either auth method is valid
+        if ((session && session.user) || (storedToken && storedUserId)) {
           setIsLoggedIn(true);
         }
       } catch (error) {
@@ -61,9 +56,9 @@ function App() {
         setLoading(false);
       }
     };
-
+  
     checkSession();
-
+  
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state changed:', event);
@@ -71,35 +66,23 @@ function App() {
       if (event === 'SIGNED_IN') {
         setIsLoggedIn(true);
       } else if (event === 'SIGNED_OUT') {
-        setIsLoggedIn(false);
-        localStorage.clear();
-      }
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, []);
-  useEffect(() => {
-    const checkSessionTimeout = () => {
-      const loginTime = localStorage.getItem('loginTime');
-      if (loginTime) {
-        const currentTime = new Date().getTime();
-        const sessionDuration = 60 * 60 * 1000; // 1 hour in milliseconds
+        // Only clear Supabase-related data
+        const token = localStorage.getItem('token');
+        const userId = localStorage.getItem('userId');
         
-        if (currentTime - parseInt(loginTime) > sessionDuration) {
-          // Session expired
-          console.log("session experied");
+        // If there's no regular auth data, then log out completely
+        if (!token || !userId) {
           setIsLoggedIn(false);
           localStorage.clear();
         }
       }
+    });
+  
+    return () => {
+      subscription?.unsubscribe();
     };
-
-    const interval = setInterval(checkSessionTimeout, 1000); // Check every second
-
-    return () => clearInterval(interval);
   }, []);
+
 
   useEffect(() => {
     const updateLoginTime = () => {
@@ -131,29 +114,24 @@ function App() {
   const pricingRef = useRef(null);
   const carouselRef = useRef(null);
 
-  const SESSION_DURATION = 86400 * 1000; //1 day in milli seconds
+  const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
   // Session check function
   const checkSessionValidity = () => {
     const loginTime = localStorage.getItem('loginTime');
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
-
+  
     if (!loginTime || !token || !userId) {
-      handleSessionExpiration();
       return false;
     }
-
+  
     const currentTime = new Date().getTime();
     const sessionStartTime = parseInt(loginTime, 10);
-
-    if (currentTime - sessionStartTime > SESSION_DURATION) {
-      handleSessionExpiration();
-      return false;
-    }
-
-    return true;
+  
+    return currentTime - sessionStartTime <= SESSION_DURATION;
   };
+  
 
   // Handle session expiration
   const handleSessionExpiration = () => {
@@ -188,29 +166,57 @@ function App() {
   };
 
   useEffect(() => {
-    // Set up activity listeners
+    if (!isLoggedIn) return;
+  
+    let sessionCheckInterval;
+    
+    // Function to update login time
+    const updateLoginTime = () => {
+      localStorage.setItem('loginTime', new Date().getTime().toString());
+    };
+  
+    // Set initial login time if not exists
+    if (!localStorage.getItem('loginTime')) {
+      updateLoginTime();
+    }
+  
+    // Activity listeners
     const activityEvents = ['mousedown', 'keydown', 'scroll', 'mousemove', 'touchstart'];
-    activityEvents.forEach(event => {
-      window.addEventListener(event, updateSessionTimestamp);
-    });
-
-    // Session check interval
-    const sessionCheckInterval = setInterval(() => {
-      const currentTime = new Date().getTime();
-      const loginTime = parseInt(localStorage.getItem('loginTime'), 10);
-
-      if (!loginTime || currentTime - loginTime > SESSION_DURATION) {
+    
+    const handleActivity = () => {
+      if (checkSessionValidity()) {
+        updateLoginTime(); // Only update if session is still valid
+      } else {
         handleSessionExpiration();
       }
-    }, 5000); // Check every 5 seconds
-
-    return () => {
-      activityEvents.forEach(event => {
-        window.removeEventListener(event, updateSessionTimestamp);
-      });
-      clearInterval(sessionCheckInterval);
     };
-  }, [isLoggedIn]);
+  
+    // Add activity listeners
+    activityEvents.forEach(event => {
+      window.addEventListener(event, handleActivity);
+    });
+  
+    // Set up session check interval
+    sessionCheckInterval = setInterval(() => {
+      if (!checkSessionValidity()) {
+        handleSessionExpiration();
+      }
+    }, 60000); // Check every minute instead of every 5 seconds
+  
+    // Cleanup function
+    return () => {
+      // Remove activity listeners
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+      
+      // Clear interval
+      if (sessionCheckInterval) {
+        clearInterval(sessionCheckInterval);
+      }
+    };
+  }, [isLoggedIn]); // Only depend on isLoggedIn
+  
 
 
   // Protected Route component
