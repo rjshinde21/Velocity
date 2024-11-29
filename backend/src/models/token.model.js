@@ -51,6 +51,32 @@ class Token {
         const [rows] = await db.query('SELECT * FROM tokentable WHERE user_id = ?', [userId]);
         return rows[0];
     }
+    static async topUpTokens(userId, topUpAmount) {
+        try {
+            const [result] = await db.query(
+                `
+                UPDATE tokentable t
+                JOIN usertable u ON t.user_id = u.user_id
+                SET 
+                    t.token_received = t.token_received + ?,
+                    u.tokens = u.tokens + ?
+                WHERE t.user_id = ?
+                `,
+                [topUpAmount, topUpAmount, userId]
+            );
+    
+            if (result.affectedRows === 0) {
+                throw new Error(`No record found for user_id ${userId}`);
+            }
+    
+            return result;
+        } catch (error) {
+            console.error("Error topping up tokens:", error.message);
+            throw error;
+        }
+    }
+    
+    
 }
 
 module.exports = Token;

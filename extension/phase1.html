@@ -6,7 +6,16 @@
   <title>Extension Popup</title>
   <link rel="stylesheet" href="src/output.css">
   <style>
-    #logoutButton {
+    #logoutButton, #editButton, #signupButton {
+    transition: all 0.3s ease;
+    height: auto;
+    padding: 0px 10px;
+    border-radius: 12px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+ #logoutButton {
     background: transparent;
     border: none;
     padding: 8px 12px;
@@ -14,9 +23,8 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    cursor: pointer;
-    transition: all 0.3s ease;
 }
+
 
 #logoutButton:hover {
     background-color: rgba(0, 138, 203, 0.1);
@@ -544,6 +552,7 @@ color: #C9C9C9;
         text-align: center;
         margin-bottom: 20px;
         max-width: 150px;
+        /*margin-top: 3%;*/
         /* display: block; */
         width: calc(100% - 20px);
         font-size: 16px;
@@ -580,10 +589,10 @@ color: #C9C9C9;
         flex-grow: 1;
         margin-right: 10px;
       }
-      .profileicon{
-        height: 13px;
-        width: 13px;
-      }
+      .profileicon {
+    height: 13px;
+    width: 13px;
+}
       /* .copy-button {
       background-color: #008ACB;
       border: none;
@@ -653,7 +662,7 @@ color: #C9C9C9;
       .input-container {
         /* position: relative; */
                width: 100%;
-               margin-top: 5%;
+               margin-top: 0%;
                padding-left: 5%;
                padding-right: 5%;
         /* padding-top: 50px; */
@@ -665,34 +674,39 @@ color: #C9C9C9;
         margin-left: 150px;
       } */
       #signupButton {
-        height: auto; /* Set height to auto for content-based height */
-        margin-right: 15px; /* Space between buttons */
-        margin-top: 5px;
-        font-style: italic;
-        margin-bottom: 5px;
-        background: linear-gradient(to bottom, #008ACB4D, #6ACFFF4D);
-        border: 1px solid #008ACB;
-        border-radius: 12px; /* Makes the button pill-shaped */
-        padding: 0px 10px; /* Decrease padding for reduced height */
-        color: white; /* Text color */
-        font-size: 14px; /* Reduce font size */
-        cursor: pointer; /* Pointer cursor on hover */
-        transition: all 0.3s ease; /* Smooth background transition */
-      }
-      #editButton {
-        height: auto; /* Set height to auto for content-based height */
-        margin-top: 5px;
-        margin-bottom: 5px;
-        font-style: italic;
-        border: 1px solid #F7AA1C;
-        background: linear-gradient(to bottom, #f7aa1c4d, #f1d49f4d);
-        border-radius: 12px; /* Makes the button pill-shaped */
-        padding: 0px 10px; /* Decrease padding for reduced height */
-        color: white; /* Text color */
-        font-size: 14px; /* Reduce font size */
-        cursor: pointer; /* Pointer cursor on hover */
-        transition: all 0.3s ease; /* Smooth background transition */
-      }
+    font-style: italic;
+    background: linear-gradient(to bottom, #008ACB4D, #6ACFFF4D);
+    border: 1px solid #008ACB;
+    margin: 5px 15px 5px 0;
+}
+
+
+.profileicon {
+    height: 13px;
+    width: 13px;
+}
+
+#editDropdownMenu {
+    width: 175px;
+    margin-right: 25px;
+    margin-top: 232px;
+    position: absolute;
+    right: 100;
+    z-index: 1;
+    border-radius: 16px;
+    background-color: black;
+    overflow: hidden;
+}
+#editButton {
+    font-style: italic;
+    border: 1px solid #F7AA1C;
+    background: linear-gradient(to bottom, #f7aa1c4d, #f1d49f4d);
+    margin: 5px 0;
+}
+#editButton:hover {
+    box-shadow: 0 0 10px #FFC107;
+}
+
       #deleteButton {
         height: auto; /* Set height to auto for content-based height */
         margin-right: 15px; /* Space between buttons */
@@ -725,94 +739,68 @@ color: #C9C9C9;
       #editButton:hover, #editButton1:hover {
         box-shadow: 0 0 10px #FFC107; /* Darker shade on hover for edit button */
       }
+      #signupButton:hover {
+    box-shadow: 0 0 10px #008ACB;
+}
+
+#signupButton.not-logged-in:hover {
+    cursor: pointer;
+    opacity: 0.9;
+}
       #deleteButton:hover, #signupButton:hover {
         box-shadow: 0 0 10px #008ACB /* Darker shade on hover for delete button */
       }
   </style>
 </head>
 <body>
-  <div class="w-full bg-[#00131c] flex items-center justify-between text-white text-lg font-normal font-amenti h-[60px] relative px-4">
-    <!-- <button id="logoutButton" class=" gap-2 text-white text-sm hover:text-[#008ACB] transition-colors">
-      <img src="./assets/logout.png" alt="Logout" class="h-4 w-4">
-      <span>Log Out</span>
-  </button> -->
-
-    <div class="flex items-center justify-center flex-grow gap-2">
-        <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto mr-2">
-        <span>Velocity</span>
-    </div>
-    <!-- <div class="flex-none relative">
-        <button id="signupButton" class="text-white flex items-center space-x-2"> -->
-            <!-- <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 .587l3.668 7.429 8.332 1.151-6.064 5.703 1.482 8.13L12 18.896l-7.418 4.104 1.482-8.13L0 9.167l8.332-1.151L12 .587z"/>
-            </svg> -->
-            <!-- <span>Sign Up</span> -->
-            <!-- <div style="height: 50px; display:flex; align-items:center; gap: 10px;"> -->
-            <!-- <button id="editButton" class="flex items-center gap-2"><span><img src="./assets/coin.png" alt="coin"></span>40</button> -->
-            <!-- <div id="editDropdownMenu" class="absolute text-xs font-normal font-amenti mt-[47px] bg-black border border-[#222222] rounded-[12px] shadow-xl overflow-hidden" style="display: none;"> -->
-              <!-- <ul class="py-7 px-4 space-y-2">
-                  <li>
-                      <div class="flex items-center text-xs text-left hover:bg-[#2a2a2a] cursor-pointer transition-colors mt-4">
-                          Credit Balance of today
-                      </div>
-                  </li>
-                
-                  <li>
-                      <div style="border-bottom: 1px solid #444444;" class="flex items-center text-xs hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors pb-4">
-                          <p style="padding-bottom: 12px;"><span class="text-2xl">40</span> Credits Left</p style="padding-bottom: 12px;">
-                      </div>
-                  </li>
-                  <li>
-                      <div class="flex items-center space-x-2 hover:bg-[#2a2a2a] cursor-pointer transition-colors text-[10px]">
-                          <p class="runningout">Running out of daily credits?</p>
-                      </div>
-                      <button id="editButton1" onclick="window.location.href='topup.html';">Top Up Credits</button>
-                  </li> 
-              </ul> 
-          </div>
-            <button id="signupButton" class="text-white flex gap-2 items-center space-x-2"><span><img class="profileicon" src="./assets//profile.png" alt=""></span>Hi Nikhil!</button>
-            </div> -->
-        <!-- </button> -->
-        <!-- <div id="editDeleteButtons" style="height: 50px; display: flex; align-items: center;">
-          
-                  
+  <div class="w-full flex items-center justify-between text-white text-lg font-normal font-amenti h-[60px] relative px-4">
+    <!-- Logout button - hidden by default, shown when logged in -->
+    <button id="logoutButton" class="flex items-center gap-2 text-white text-sm hover:text-[#008ACB] transition-colors" style="display: none;">
+        <img src="./assets/logout.png" alt="Logout" class="h-4 w-4">
+        <span>Log Out</span>
+    </button>
     
-      </div> -->
-      
-        
-        <!-- Dropdown Menu -->
-        <!-- <div id="dropdownMenu" class="absolute text-xs font-normal font-amenti right-0 mt-[47px] w-[172px] h-[209px] bg-black border border-[#222222] rounded-[24px] shadow-xl overflow-hidden">
-          <ul class="py-7 px-4 space-y-2 mt-4">
-               Inside the dropdown menu 
-<li style="padding-bottom: 10px; border-bottom: 1px solid #444444;">
-  <div class="flex gap-2 items-center hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors">
-      <div class="w-8 h-6 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
-          <img src="./assets/account.png" alt="Account">
-      </div>
-      <button id="accountButton">Account</button>
-  </div>
-</li>
+    <!-- Empty div to maintain spacing when logout is hidden -->
+    <div class="w-[100px]"></div>
 
-              <li style="padding-bottom: 10px; border-bottom: 1px solid #444444;">
-                  <div class="flex items-center gap-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors">
-                      <div class="w-8 h-6 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
-                        <img src="./assets/subscription.png" alt="Subscription">                      
-                      </div>
-                      <button>Subscription</button>
-                  </div>
-              </li>
-              <li>
-                <div class="flex items-center gap-2 hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors pb-10 mb-4">
-                  <div class="w-8 h-6 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
-                     <img src="./assets/logout.png" alt="Logout">
-                  </div>
-                  <button id="logoutButton" class="logout-button">Log Out</button>
-              </div>              
-              </li>
-          </ul>
-      </div> -->
+    <!-- Center logo - always visible -->
+    <!-- Right side buttons container -->
+    <div class="flex-none relative">
+        <div style="height: 50px; display:flex; align-items:center; gap: 10px;">
+            <!-- Token/Credits button - hidden by default, shown when logged in -->
+            <button id="editButton" class="flex items-center gap-2" style="display: none;">
+                <span><img src="./assets/coin.png" alt="coin"></span>
+                <span class="credit-amount">0</span>
+            </button>
+            
+            <!-- Credits dropdown menu -->
+            <div id="editDropdownMenu" class="absolute text-xs font-normal font-amenti mt-[47px] bg-black border border-[#222222] rounded-[12px] shadow-xl overflow-hidden" style="display: none;">
+                <ul class="py-7 px-4 space-y-2">
+                    <li>
+                        <div class="flex items-center text-xs text-left hover:bg-[#2a2a2a] cursor-pointer transition-colors mt-4">
+                            Credit Balance of today
+                        </div>
+                    </li>
+                    <li>
+                        <div style="border-bottom: 1px solid #444444;" class="flex items-center text-xs hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors pb-4">
+                            <p style="padding-bottom: 12px;">
+                                <span class="text-2xl credit-amount">0</span> Credits Left
+                            </p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sign Up/User Info button -->
+            <button id="signupButton" class="text-white flex gap-2 items-center space-x-2">
+                <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
+                <span>Sign Up</span>
+            </button>
+        </div>
     </div>
 </div>
+
+
 <div class="title">Select your AI model</div>
 <div class="radio-group">
     <div class="radio-button">
@@ -914,6 +902,15 @@ color: #C9C9C9;
       <!-- <img id="generateIcon" src="./assets/Rectangle 32.png" alt="Generate" class="ml-2" /> Space between text and image -->
     </button>
   </div>   
+  <div class="w-full bg-[#00141C] flex items-center justify-between text-white text-lg font-normal font-amenti h-[60px] relative px-4">
+
+  <div class="flex items-center justify-center flex-grow gap-2">
+    <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto mr-2">
+    <span>Velocity</span>
+</div>
+</div>
+
+
   <script src="popup.js"></script>
 </body>
 </html>

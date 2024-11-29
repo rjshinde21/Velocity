@@ -112,15 +112,13 @@ async function sendRequest() {
     const formData = new FormData();
     const requestData = {
       prompt: prompt,
-      category: getSelectedCategories(),
+      style: getSelectedStyle(),
       AIType: selectedAIType || 'default'
     };
 
     formData.append('data', JSON.stringify(requestData));
 
-    if (imageUpload && imageUpload.files.length > 0) {
-      formData.append('image', imageUpload.files[0]);
-    }
+ 
 
     // Make the actual API request first
     const response = await fetch('http://127.0.0.1:2000/process', {
@@ -250,11 +248,11 @@ function adjustPopupSize() {
   document.documentElement.style.width = `${popupWidth}px`;
   document.documentElement.style.height = `${popupHeight}px`;
 }
-function closeAllDropdowns() {
-  document.querySelectorAll('.dropdown-content').forEach(content => {
-      content.style.display = 'none';
-  });
-}
+// function closeAllDropdowns() {
+//   document.querySelectorAll('.dropdown-content').forEach(content => {
+//       content.style.display = 'none';
+//   });
+// }
 
 async function savePromptToHistory(userId, promptText, aiType) {
   try {
@@ -321,6 +319,12 @@ function getSelectedCategories() {
   });
   return selectedCategories;
 }
+function getSelectedStyle() {
+  const selectedStyle = document.querySelector('.button-group input[type="radio"]:checked');
+  return selectedStyle ? selectedStyle.id : 'professional'; // Default to professional if none selected
+}
+
+
 function handleParsedResponse(parsedResponse) {
   const responseDiv = document.getElementById('response');
   if (!responseDiv) {
@@ -505,9 +509,9 @@ const API_BASE_URL = 'http://127.0.0.1:5000';
 document.addEventListener('DOMContentLoaded', function () {
   const sendButton = document.getElementById('sendButton');
   const promptInput = document.getElementById('promptInput');
-  const categoriesContainer = document.getElementById('categories-container');
+  //const categoriesContainer = document.getElementById('categories-container');
   const responseDiv = document.getElementById('response');
-  const advancedOptionsButton = document.getElementById('advancedOptionsButton');
+  //const advancedOptionsButton = document.getElementById('advancedOptionsButton');
   const imageUpload = document.getElementById('imageUpload');
   const imageUploadText = document.querySelector('.image-upload-text');
   
@@ -520,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const radioGroup = document.querySelector('.radio-group');
 
-  categoriesContainer.classList.add('hidden2');
+  //categoriesContainer.classList.add('hidden2');
 
  
 
@@ -533,202 +537,202 @@ document.addEventListener('DOMContentLoaded', function () {
   resizeObserver.observe(document.body);
 
   // Event Listeners
-  if (advancedOptionsButton && categoriesContainer) {
-    // Remove any existing listeners first
-    advancedOptionsButton.replaceWith(advancedOptionsButton.cloneNode(true));
+//   if (advancedOptionsButton && categoriesContainer) {
+//     // Remove any existing listeners first
+//     advancedOptionsButton.replaceWith(advancedOptionsButton.cloneNode(true));
     
-    // Get the fresh reference
-    const newAdvancedOptionsButton = document.getElementById('advancedOptionsButton');
+//     // Get the fresh reference
+//     const newAdvancedOptionsButton = document.getElementById('advancedOptionsButton');
     
-    // Add the click listener
-    newAdvancedOptionsButton.addEventListener('click', function() {
-        // Toggle the hidden2 class
-        categoriesContainer.classList.toggle('hidden2');
+//     // Add the click listener
+//     newAdvancedOptionsButton.addEventListener('click', function() {
+//         // Toggle the hidden2 class
+//         categoriesContainer.classList.toggle('hidden2');
         
-        // Log the current state
-        const isHidden = categoriesContainer.classList.contains('hidden2');
-        console.log('Advanced options panel toggled:', !isHidden);
+//         // Log the current state
+//         const isHidden = categoriesContainer.classList.contains('hidden2');
+//         console.log('Advanced options panel toggled:', !isHidden);
         
-        // Make sure your hidden2 class is properly defined in CSS
-        if (!isHidden) {
-            categoriesContainer.style.display = 'grid'; // or 'block' depending on your layout
-        } else {
-            categoriesContainer.style.display = 'none';
-        }
+//         // Make sure your hidden2 class is properly defined in CSS
+//         if (!isHidden) {
+//             categoriesContainer.style.display = 'grid'; // or 'block' depending on your layout
+//         } else {
+//             categoriesContainer.style.display = 'none';
+//         }
         
-        // Adjust popup size after toggle
-        setTimeout(adjustPopupSize, 100);
-    });
-} else {
-    console.error('Advanced options elements not found:', {
-        button: !!advancedOptionsButton,
-        container: !!categoriesContainer
-    });
-  }
-  const style = document.createElement('style');
-  style.textContent = `
-     .hidden2 {
-    display: none !important;
-}
+//         // Adjust popup size after toggle
+//         setTimeout(adjustPopupSize, 100);
+//     });
+// } else {
+//     console.error('Advanced options elements not found:', {
+//         button: !!advancedOptionsButton,
+//         container: !!categoriesContainer
+//     });
+//   }
+//   const style = document.createElement('style');
+//   style.textContent = `
+//      .hidden2 {
+//     display: none !important;
+// }
 
-#categories-container {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
-    padding: 15px;
-    transition: all 0.3s ease;
-    opacity: 1;
-    transform: translateY(0);
-}
+// #categories-container {
+//     display: grid;
+//     grid-template-columns: repeat(2, 1fr);
+//     gap: 15px;
+//     padding: 15px;
+//     transition: all 0.3s ease;
+//     opacity: 1;
+//     transform: translateY(0);
+// }
 
-#categories-container.hidden2 {
-    display: none !important;
-    opacity: 0;
-    transform: translateY(-10px);
-}
+// #categories-container.hidden2 {
+//     display: none !important;
+//     opacity: 0;
+//     transform: translateY(-10px);
+// }
 
-#advancedOptionsButton {
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
+// #advancedOptionsButton {
+//     cursor: pointer;
+//     transition: all 0.3s ease;
+// }
 
-#advancedOptionsButton:hover {
-    opacity: 0.8;
-}
+// #advancedOptionsButton:hover {
+//     opacity: 0.8;
+// }
 
-.category-card {
-    opacity: 1;
-    transform: translateY(0);
-    transition: all 0.3s ease;
-}
+// .category-card {
+//     opacity: 1;
+//     transform: translateY(0);
+//     transition: all 0.3s ease;
+// }
 
-.hidden2 .category-card {
-    opacity: 0;
-    transform: translateY(-10px);
-}
+// .hidden2 .category-card {
+//     opacity: 0;
+//     transform: translateY(-10px);
+// }
 
-  `;
-  document.head.appendChild(style);
+//   `;
+//   document.head.appendChild(style);
 
 
-  fetch('http://localhost:2000/get_categories')
-    .then(response => response.json())
-    .then(categories => {
-      console.log('Categories:', categories);
-      categories.forEach(category => {
-        const categoryCard = createCategoryCard(category);
-        categoriesContainer.appendChild(categoryCard);
-      });
-    })
-    .catch(error => {
-      console.error('Error fetching categories:', error);
-      categoriesContainer.textContent = `Failed to load categories. Error: ${error.message}`;
-    });
+//   fetch('http://localhost:2000/get_categories')
+//     .then(response => response.json())
+//     .then(categories => {
+//       console.log('Categories:', categories);
+//       categories.forEach(category => {
+//         const categoryCard = createCategoryCard(category);
+//         categoriesContainer.appendChild(categoryCard);
+//       });
+//     })
+//     .catch(error => {
+//       console.error('Error fetching categories:', error);
+//       categoriesContainer.textContent = `Failed to load categories. Error: ${error.message}`;
+//     });
 
-  imageUpload.addEventListener('change', function (event) {
-    const fileName = event.target.files[0]?.name;
-    imageUploadText.textContent = fileName || 'Upload Image';
-  });
+//   imageUpload.addEventListener('change', function (event) {
+//     const fileName = event.target.files[0]?.name;
+//     imageUploadText.textContent = fileName || 'Upload Image';
+//   });
 
- // sendButton.addEventListener('click', sendRequest);
-  //iconImage.addEventListener('click', sendRequest);  // Add this line to make the icon work as a generate button
+//  // sendButton.addEventListener('click', sendRequest);
+//   //iconImage.addEventListener('click', sendRequest);  // Add this line to make the icon work as a generate button
 
-  document.addEventListener('click', closeAllDropdowns);
+//   document.addEventListener('click', closeAllDropdowns);
 
-  new MutationObserver(adjustPopupSize).observe(document.body, { childList: true, subtree: true });
-  adjustPopupSize();
+//   new MutationObserver(adjustPopupSize).observe(document.body, { childList: true, subtree: true });
+//   adjustPopupSize();
 
-  // Radio group initialization
-  function initializeRadioGroup() {
-    if (radioGroup) {
-      radioGroup.addEventListener('click', function (event) {
-        if (event.target.classList.contains('radio-button')) {
-          radioGroup.querySelectorAll('.radio-button').forEach(btn =>
-            btn.classList.remove('selected')
-          );
-          event.target.classList.add('selected');
-        }
-      });
-    }
-  }
+//   // Radio group initialization
+//   function initializeRadioGroup() {
+//     if (radioGroup) {
+//       radioGroup.addEventListener('click', function (event) {
+//         if (event.target.classList.contains('radio-button')) {
+//           radioGroup.querySelectorAll('.radio-button').forEach(btn =>
+//             btn.classList.remove('selected')
+//           );
+//           event.target.classList.add('selected');
+//         }
+//       });
+//     }
+//   }
 
-  initializeRadioGroup();
+//   initializeRadioGroup();
 
-  function createCategoryCard(category) {
-    const categoryCard = document.createElement('div');
-    categoryCard.className = 'category-card';
+//   function createCategoryCard(category) {
+//     const categoryCard = document.createElement('div');
+//     categoryCard.className = 'category-card';
     
-    const categoryTitle = document.createElement('div');
-    categoryTitle.className = 'category-title';
-    categoryTitle.textContent = category.name;
-    categoryCard.appendChild(categoryTitle);
+//     const categoryTitle = document.createElement('div');
+//     categoryTitle.className = 'category-title';
+//     categoryTitle.textContent = category.name;
+//     categoryCard.appendChild(categoryTitle);
 
-    // Create container for dropdowns
-    const dropdownsContainer = document.createElement('div');
-    dropdownsContainer.className = 'dropdowns-container flex gap-4';
+//     // Create container for dropdowns
+//     const dropdownsContainer = document.createElement('div');
+//     dropdownsContainer.className = 'dropdowns-container flex gap-4';
 
-    // Create both dropdowns
-    category.dropdowns.forEach(dropdown => {
-        const dropdownContainer = createDropdown(dropdown);
-        dropdownsContainer.appendChild(dropdownContainer);
-    });
+//     // Create both dropdowns
+//     category.dropdowns.forEach(dropdown => {
+//         const dropdownContainer = createDropdown(dropdown);
+//         dropdownsContainer.appendChild(dropdownContainer);
+//     });
 
-    categoryCard.appendChild(dropdownsContainer);
-    return categoryCard;
-}
+//     categoryCard.appendChild(dropdownsContainer);
+//     return categoryCard;
+// }
 
 
 
-  function updateDropdownButton(dropdownButton, selectedItem) {
-    const nameContainer = dropdownButton.querySelector('span');
-    nameContainer.textContent = selectedItem.querySelector('.dropdown-card-select').textContent;
-  }
+//   function updateDropdownButton(dropdownButton, selectedItem) {
+//     const nameContainer = dropdownButton.querySelector('span');
+//     nameContainer.textContent = selectedItem.querySelector('.dropdown-card-select').textContent;
+//   }
 
-  function createDropdown(dropdown) {
-    const dropdownContainer = document.createElement('div');
-    dropdownContainer.className = 'dropdown flex-1';
-    dropdownContainer.setAttribute('data-default-text', dropdown.name);
+//   function createDropdown(dropdown) {
+//     const dropdownContainer = document.createElement('div');
+//     dropdownContainer.className = 'dropdown flex-1';
+//     dropdownContainer.setAttribute('data-default-text', dropdown.name);
 
-    const dropdownButton = document.createElement('button');
-    dropdownButton.className = 'dropdown-button';
-    dropdownButton.innerHTML = `
-        <div class="dropdown-button-content">
-            <span>${dropdown.name}</span>
-        </div>
-    `;
+//     const dropdownButton = document.createElement('button');
+//     dropdownButton.className = 'dropdown-button';
+//     dropdownButton.innerHTML = `
+//         <div class="dropdown-button-content">
+//             <span>${dropdown.name}</span>
+//         </div>
+//     `;
 
-    const dropdownContent = document.createElement('div');
-    dropdownContent.className = 'dropdown-content';
-    dropdownContent.style.display = 'none';
+//     const dropdownContent = document.createElement('div');
+//     dropdownContent.className = 'dropdown-content';
+//     dropdownContent.style.display = 'none';
 
-    const horizontalContainer = document.createElement('div');
-    horizontalContainer.className = 'dropdown-horizontal-container';
+//     const horizontalContainer = document.createElement('div');
+//     horizontalContainer.className = 'dropdown-horizontal-container';
 
-    dropdown.items.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'dropdown-card';
+//     dropdown.items.forEach(item => {
+//         const card = document.createElement('div');
+//         card.className = 'dropdown-card';
         
-        const button = document.createElement('button');
-        button.className = 'dropdown-card-select';
-        button.textContent = item.name;
+//         const button = document.createElement('button');
+//         button.className = 'dropdown-card-select';
+//         button.textContent = item.name;
         
-        card.appendChild(button);
-        horizontalContainer.appendChild(card);
-    });
+//         card.appendChild(button);
+//         horizontalContainer.appendChild(card);
+//     });
 
-    dropdownContent.appendChild(horizontalContainer);
-    dropdownContainer.appendChild(dropdownButton);
-    dropdownContainer.appendChild(dropdownContent);
+//     dropdownContent.appendChild(horizontalContainer);
+//     dropdownContainer.appendChild(dropdownButton);
+//     dropdownContainer.appendChild(dropdownContent);
 
-    dropdownButton.addEventListener('click', function(e) {
-        e.stopPropagation();
-        const isVisible = dropdownContent.style.display === 'block';
-        closeAllDropdowns();
-        dropdownContent.style.display = isVisible ? 'none' : 'block';
-    });
+//     dropdownButton.addEventListener('click', function(e) {
+//         e.stopPropagation();
+//         const isVisible = dropdownContent.style.display === 'block';
+//         closeAllDropdowns();
+//         dropdownContent.style.display = isVisible ? 'none' : 'block';
+//     });
 
-    return dropdownContainer;
-}
+//     return dropdownContainer;
+// }
 
 
 
@@ -894,25 +898,25 @@ if (logoutButton) {
 
 
   // Initially hide the dropdowns
-  dropdownMenu.style.display = 'none';
-  editDropdownMenu.style.display = 'none';
-  editDeleteButtons.style.display = 'none';
+  // dropdownMenu.style.display = 'none';
+  // editDropdownMenu.style.display = 'none';
+  // editDeleteButtons.style.display = 'none';
 
-  // Toggle Sign Up dropdown
-  // signupButton.addEventListener('click', function (e) {
-  //   if(userId && token){
+  // // Toggle Sign Up dropdown
+  // // signupButton.addEventListener('click', function (e) {
+  // //   if(userId && token){
+  // //   e.stopPropagation();
+  // //   dropdownMenu.style.display = dropdownMenu.style.display === 'none' ? 'block' : 'none';
+  // //   editDropdownMenu.style.display = 'none'; // Hide Edit dropdown when Sign Up is clicked
+  // //   }
+  // // });
+
+  // // Toggle Edit dropdown
+  // editButton.addEventListener('click', function (e) {
   //   e.stopPropagation();
-  //   dropdownMenu.style.display = dropdownMenu.style.display === 'none' ? 'block' : 'none';
-  //   editDropdownMenu.style.display = 'none'; // Hide Edit dropdown when Sign Up is clicked
-  //   }
+  //   editDropdownMenu.style.display = editDropdownMenu.style.display === 'none' ? 'block' : 'none';
+  //   dropdownMenu.style.display = 'none'; // Hide Sign Up dropdown when Edit is clicked
   // });
-
-  // Toggle Edit dropdown
-  editButton.addEventListener('click', function (e) {
-    e.stopPropagation();
-    editDropdownMenu.style.display = editDropdownMenu.style.display === 'none' ? 'block' : 'none';
-    dropdownMenu.style.display = 'none'; // Hide Sign Up dropdown when Edit is clicked
-  });
 
   // // Show Edit/Delete buttons when Account button is clicked
   // accountButton.addEventListener('click', function (e) {
@@ -945,10 +949,10 @@ if (logoutButton) {
   updateHeaderUI();
 });
 
-advancedOptionsButton?.addEventListener('click', function () {
-  categoriesContainer.classList.toggle('hidden2');
-  setTimeout(adjustPopupSize, 100);
-});
+// advancedOptionsButton?.addEventListener('click', function () {
+//   categoriesContainer.classList.toggle('hidden2');
+//   setTimeout(adjustPopupSize, 100);
+// });
 
 function areAdvancedOptionsSelected() {
   return advancedOptionsSelected.size > 0;
@@ -1199,7 +1203,7 @@ function setupAdvancedOptionListeners(buttons) {
             console.log('Advanced options used:', advancedOptionsUsed);
             
             // Update UI
-            updateAdvancedOptionsUI();
+            //updateAdvancedOptionsUI();
         });
     });
 }
@@ -1223,20 +1227,20 @@ function resetAdvancedOptions() {
   });
 
   // Close all dropdowns
-  closeAllDropdowns();
+  //closeAllDropdowns();
 
   // Reset any visual indicators
-  updateAdvancedOptionsUI();
+  //updateAdvancedOptionsUI();
   
   console.log('Advanced options reset');
 }
 
-function updateAdvancedOptionsUI() {
-  const advancedOptionsButton = document.getElementById('advancedOptionsButton');
-  if (advancedOptionsButton) {
-      advancedOptionsButton.classList.toggle('active', advancedOptionsUsed);
-  }
-}
+// function updateAdvancedOptionsUI() {
+//   const advancedOptionsButton = document.getElementById('advancedOptionsButton');
+//   if (advancedOptionsButton) {
+//       advancedOptionsButton.classList.toggle('active', advancedOptionsUsed);
+//   }
+// }
 
 function getAdvancedOptionsState() {
   return {
@@ -1290,25 +1294,25 @@ advancedOptionButtons.forEach(button => {
 });
 
 // Event listener for image upload
-document.getElementById('imageUpload').addEventListener('change', function () {
-  const allowedExtensions = ['jpg', 'jpeg', 'png', 'svg'];
+// document.getElementById('imageUpload').addEventListener('change', function () {
+//   const allowedExtensions = ['jpg', 'jpeg', 'png', 'svg'];
 
-  if (this.files.length > 0) {
-    const file = this.files[0];
-    const fileExtension = file.name.split('.').pop().toLowerCase();
+//   if (this.files.length > 0) {
+//     const file = this.files[0];
+//     const fileExtension = file.name.split('.').pop().toLowerCase();
 
-    if (!allowedExtensions.includes(fileExtension)) {
-      alert('Only image files (jpg, jpeg, png) are allowed!');
-      this.value = ''; // Clear the file input
-      imageGuidanceUsed = false; // Reset usage tracking
-      return;
-    }
+//     if (!allowedExtensions.includes(fileExtension)) {
+//       alert('Only image files (jpg, jpeg, png) are allowed!');
+//       this.value = ''; // Clear the file input
+//       imageGuidanceUsed = false; // Reset usage tracking
+//       return;
+//     }
 
-    imageGuidanceUsed = true; // Mark image guidance as used
-  } else {
-    imageGuidanceUsed = false; // Reset if no files are selected
-  }
-});
+//     imageGuidanceUsed = true; // Mark image guidance as used
+//   } else {
+//     imageGuidanceUsed = false; // Reset if no files are selected
+//   }
+// });
 
 // Event listener for generate button
 document.getElementById('sendButton').addEventListener('click', async function () {

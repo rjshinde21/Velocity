@@ -38,7 +38,7 @@ async function checkAuthAndRedirect(token, userId) {
         });
 
         if (response.ok) {
-            window.location.href = 'popup.html';
+            window.location.href = 'phase1.html';
         } else {
             // Token invalid, clear storage
             localStorage.removeItem('userToken');
@@ -132,7 +132,7 @@ async function loginUser() {
                     tokenInfo: userData.data.tokenInfo
                 }));
 
-                window.location.href = 'popup.html';
+                window.location.href = 'phase1.html';
             } else {
                 const errorText = await verifyResponse.text();
                 console.error('Profile verification failed:', {

@@ -9,5 +9,9 @@ router.get('/token-types', authMiddleware, tokenController.getAllTokens);
 router.get('/token-types/:id', authMiddleware, tokenController.getTokenById);
 // Update tokens by ID
 router.put('/token-types/:id', authMiddleware, tokenController.updateTokens);
+router.post('/token-types/:id/topup', authMiddleware, tokenController.topUpTokens);
+router.post('/create-order', authMiddleware, tokenController.createOrder);
+router.post('/verify-payment', authMiddleware, tokenController.verifyPayment);
+
 
 module.exports = router;

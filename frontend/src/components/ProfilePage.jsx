@@ -2,6 +2,7 @@ import React, { useState,useEffect } from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import velocitylogo from '../assets/velocitylogo.png';
 import PromptGrid from './PromptGrid';
+//import useRazorpay from "react-razorpay";
 
 const ProfilePage = ({pricingRef}) => {
     const [name, setName] = useState("");
@@ -14,6 +15,9 @@ const ProfilePage = ({pricingRef}) => {
     const navigate = useNavigate();
     const userId = localStorage.getItem('userId');
     const authToken = localStorage.getItem('token');
+    const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
+    const [topUpAmount, setTopUpAmount] = useState(100); // Default amount
+
     useEffect(() => {
         const checkAuthAndFetchTokens = async () => {
             if (!authToken || !userId) {
@@ -82,7 +86,7 @@ const ProfilePage = ({pricingRef}) => {
             setIsLoading(false);
         }
     };
-    const handleTopUp = async () => {
+    const handleTopUp = async (amount) => {
         if (!authToken || !userId) {
             setError('Authentication required.');
             return;
@@ -90,35 +94,38 @@ const ProfilePage = ({pricingRef}) => {
         try {
             setIsUpdating(true);
             setError(null);
-            const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
-                method: 'PUT',
+            const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}/topup`, {
+                method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    token_received: tokenInfo.token_received,
-                    token_used: tokenInfo.tokens_used,
-                    user_id: userId
+                    amount: amount
                 })
             });
-
+    
             if (!response.ok) {
-                throw new Error(`Failed to update tokens: ${response.status}`);
+                throw new Error(`Failed to top up tokens: ${response.status}`);
             }
+            
             const updatedData = await response.json();
-            if (updatedData && updatedData.data) {
-                setTokenInfo(updatedData.data);
-                alert('Successfully topped up credits!');
+            if (updatedData.success) {
+                // Fetch updated token info to refresh the UI
+                await fetchTokenDetails();
+                return true; // Return true to indicate success
+            } else {
+                throw new Error(updatedData.message || 'Failed to top up tokens');
             }
         } catch (error) {
             console.error('Top-up error:', error);
             setError(error.message);
-            alert('Failed to top up tokens. Please try again.');
+            throw error; // Re-throw the error to be handled by the payment flow
         } finally {
             setIsUpdating(false);
         }
     };
+    
     const handleUpgrade = () => {
         if (pricingRef && pricingRef.current) {
           pricingRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -153,7 +160,74 @@ const ProfilePage = ({pricingRef}) => {
         }
     };
     
-    
+    const handlePayment = async () => {
+        try {
+            // First create order on your backend
+            const orderResponse = await fetch('http://127.0.0.1:3000/api/create-order', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount: topUpAmount * 100, // Razorpay expects amount in paise
+                })
+            });
+
+            const orderData = await orderResponse.json();
+
+            const options = {
+                key: "rzp_test_99YnTAFGwSDddP", // Replace with your key
+                amount: topUpAmount * 100,
+                currency: "INR",
+                name: "Velocity AI",
+                description: "Token Top Up",
+                order_id: orderData.id,
+                handler: async function (response) {
+                    try {
+                        // Verify payment on backend
+                        const verifyResponse = await fetch('http://127.0.0.1:3000/api/verify-payment', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${authToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                userId : userId,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_signature: response.razorpay_signature,
+                                amount: topUpAmount
+                            })
+                        });
+                
+                        const verifyData = await verifyResponse.json();
+                
+                        if (verifyData.success) {
+                            try {
+                                await handleTopUp(topUpAmount);
+                                setIsTopUpModalOpen(false);
+                                alert('Payment successful! Tokens have been added to your account.');
+                            } catch (error) {
+                                alert('Payment was successful but token update failed. Please contact support.');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Payment verification failed:', error);
+                        alert('Payment verification failed. Please contact support.');
+                    }
+                }                
+            };
+
+            const paymentObject = new window.Razorpay(options);
+            paymentObject.open();
+
+        } catch (error) {
+            console.error('Payment initiation failed:', error);
+            alert('Unable to initiate payment. Please try again.');
+        }
+    };
+
     // Credits section component to avoid duplication
     const CreditsSection = () => (
         <div className="flex flex-col justify-between h-full px-6 sm:px-4 py-6 md:py-10 ">
@@ -197,12 +271,20 @@ const ProfilePage = ({pricingRef}) => {
                 </p>
                 <p className="text-[#FFFFFF]/80 my-3 italic font-normal font-[Inter]">Running out of daily credits?</p>
                 <div className='flex sm:flex-col gap-10 sm:gap-0'>
-                <button onClick={()=>handleUpgrade(pricingRef)}
+                {/* <button onClick={()=>handleUpgrade(pricingRef)}
      
     className="w-full max-w-sm flex justify-center text-lg px-7 py-4 sm:px-36 sm:py-5 text-[#BEBEBE] border border-[#F7AA1C] shadow-[0_0_9px_rgba(247,170,28,0.3)] transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_12px_rgba(247,170,28,0.7)]"
 >
     Upgrade
-</button>
+</button> */}
+            <button 
+                onClick={() => setIsTopUpModalOpen(true)}
+                className="w-full max-w-sm flex justify-center text-lg px-7 py-4 sm:px-36 sm:py-5 text-[#BEBEBE] border border-[#F7AA1C] shadow-[0_0_9px_rgba(247,170,28,0.3)] transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_12px_rgba(247,170,28,0.7)]"
+            >
+                Top Up
+            </button>
+
+
 <button 
     onClick={handleLogout} 
     className="w-fit flex justify-center text-sm px-6 py-2 sm:px-6 sm:py-2 mt-4 text-[#ffffff]/30 border border-[#ffffff]/30 transition-all duration-200 rounded-[35px] items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]"
@@ -214,6 +296,43 @@ const ProfilePage = ({pricingRef}) => {
             </div>
         </div>
     );
+    const TopUpModal = () => (
+        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${isTopUpModalOpen ? '' : 'hidden'}`}>
+            <div className="bg-[#1C1C1C] rounded-lg p-6 w-96">
+                <h2 className="text-white text-xl mb-4">Top Up Tokens</h2>
+                <div className="mb-4">
+                    <label className="text-white text-sm mb-2 block">Select Amount (INR)</label>
+                    <select 
+                        value={topUpAmount}
+                        onChange={(e) => setTopUpAmount(Number(e.target.value))}
+                        className="w-full bg-[#2C2C2C] text-white rounded px-3 py-2"
+                    >
+                        <option value="100">100 Tokens - ₹100</option>
+                        <option value="500">500 Tokens - ₹500</option>
+                        <option value="1000">1000 Tokens - ₹1000</option>
+                        <option value="2000">2000 Tokens - ₹2000</option>
+                    </select>
+                </div>
+                <div className="flex justify-end gap-3">
+                    <button 
+                        onClick={() => setIsTopUpModalOpen(false)}
+                        className="px-4 py-2 text-white border border-gray-600 rounded hover:bg-gray-700"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={handlePayment}
+                        className="px-4 py-2 bg-[#F7AA1C] text-white rounded hover:bg-[#d89116]"
+                    >
+                        Proceed to Pay
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
+      
+      
     return (
         <div className="flex flex-col md:flex h-screen w-screen overflow-x-hidden">
             {/* Credits section for desktop only */}
@@ -242,6 +361,7 @@ const ProfilePage = ({pricingRef}) => {
                     <PromptGrid />
                 </div>
             </div>
+            <TopUpModal />
         </div>
     );
 };

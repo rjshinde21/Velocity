@@ -1,4 +1,11 @@
 const Token = require('../models/token.model');
+const Razorpay = require('razorpay');
+const crypto = require('crypto');
+
+const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+});
 
 const tokenController = {
     async getAllTokens(req, res) {
@@ -117,8 +124,108 @@ const tokenController = {
                 error: error.message,
             });
         }
+    },
+    async topUpTokens(req, res) {
+        try {
+            const id = parseInt(req.params.id);
+            const { amount } = req.body;
+    
+            // Validate ID
+            if (isNaN(id)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid token ID format'
+                });
+            }
+    
+            // Validate amount
+            if (!amount || amount <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Top-up amount must be a positive number'
+                });
+            }
+    
+            // Perform the top-up
+            await Token.topUpTokens(id, amount);
+    
+            // Get updated token information
+            const updatedToken = await Token.getTokenById(id);
+    
+            res.status(200).json({
+                success: true,
+                message: `Successfully topped up ${amount} tokens`,
+                data: updatedToken
+            });
+    
+        } catch (error) {
+            console.error('Error topping up tokens:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error topping up tokens',
+                error: error.message
+            });
+        }
+    },
+    async createOrder(req, res){
+        try {
+            const options = {
+                amount: req.body.amount,
+                currency: 'INR',
+                receipt: 'order_' + Date.now(),
+            };
+    
+            const order = await razorpay.orders.create(options);
+            res.json(order);
+        } catch (error) {
+            res.status(500).json({ message: 'Error creating order', error: error.message });
+        }
+    },
+    
+    async verifyPayment(req, res) {
+        console.log("verifying:"+req.body);
+        try {
+            const {
+                razorpay_payment_id,
+                razorpay_order_id,
+                razorpay_signature,
+                amount,
+                userId
+            } = req.body;
+    
+            const body = razorpay_order_id + "|" + razorpay_payment_id;
+            const expectedSignature = crypto
+                .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+                .update(body.toString())
+                .digest("hex");
+    
+            if (expectedSignature === razorpay_signature) {
+                // Payment is verified, now update tokens
+                //const userId = req.user.id; // Assuming you have user info in req from auth middleware
+                await Token.topUpTokens(userId, amount);
+                
+                res.json({
+                    success: true,
+                    message: 'Payment verified successfully'
+                });
+            } else {
+                res.status(400).json({
+                    success: false,
+                    message: 'Invalid signature'
+                });
+            }
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: 'Error verifying payment',
+                error: error.message
+            });
+        }
     }
-        
+    
 };
+
+
+
 
 module.exports = tokenController;
