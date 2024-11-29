@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Configure the Gemini API
 try:
-    genai.configure(api_key=os.getenv('GOOGLE_API_KEY', "AIzaSyAInppRzQoReAnvNyAEIB0xtL1ZCxIjaDk"))
+    genai.configure(api_key=os.getenv('GOOGLE_API_KEY', "AIzaSyBuei3ff-s2bUAFznTXv7FM1v-o9RO9Aig"))
     model = genai.GenerativeModel('gemini-pro')
 except Exception as e:
     logger.error(f"Failed to configure Gemini API: {str(e)}")
