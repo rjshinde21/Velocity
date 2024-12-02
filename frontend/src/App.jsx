@@ -15,7 +15,7 @@ import PrivacyPolicy from "./components/PrivacyPolicy";
 import TermsConditions from "./components/TermsConditions";
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './config/firebaseConfig';
-
+import BultFor from'./components/BuiltFor';
 
 function App() {
   const [showLogin, setShowLogin] = useState(false);
