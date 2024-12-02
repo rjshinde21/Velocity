@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./components/Home";
-import FreeTrial from "./components/FreeTrial";
-import Pricing from "./components/PricingSection/Pricing";
+// import FreeTrial from "./components/FreeTrial";
+// import Pricing from "./components/PricingSection/Pricing";
 import Carousel from "./components/Carousel";
 import Login from "./components/Login";
 import Register from "./components/Register";
@@ -14,6 +14,7 @@ import ProfilePage from "./components/ProfilePage";
 import PrivacyPolicy from "./components/PrivacyPolicy";
 import TermsConditions from "./components/TermsConditions";
 import supabase from './config/supabaseClient';
+import BuiltFor from "./components/BuiltFor";
 
 function App() {
   const [showLogin, setShowLogin] = useState(false);
@@ -110,9 +111,10 @@ function App() {
 
   // Define refs for each section
   const howItWorksRef = useRef(null);
-  const freeTrialRef = useRef(null);
+  // const freeTrialRef = useRef(null);
   const pricingRef = useRef(null);
   const carouselRef = useRef(null);
+  const built = useRef(null)
 
   const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
@@ -254,7 +256,7 @@ function App() {
                <Navbar
           handleClick={handleClick}
           howItWorksRef={howItWorksRef}
-          freeTrialRef={freeTrialRef}
+          // freeTrialRef={freeTrialRef}
           pricingRef={pricingRef}
           carouselRef={carouselRef}
           isLoggedIn={isLoggedIn}
@@ -268,12 +270,15 @@ function App() {
                 <div ref={howItWorksRef}>
                   <HowItWorks />
                 </div>
-                <div ref={pricingRef}>
+                 <div ref={built}>
+                <BuiltFor />
+                </div>
+                {/* <div ref={pricingRef}>
                   <Pricing isLoggedIn={isLoggedIn} />
-                </div>
-                <div ref={freeTrialRef}>
+                </div> */}
+                {/* <div ref={freeTrialRef}>
                   <FreeTrial />
-                </div>
+                </div> */}
                 <div ref={carouselRef}>
                   <Carousel />
                 </div>

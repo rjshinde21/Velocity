@@ -1,80 +1,90 @@
 import React from 'react';
-import cardbg from '../../src/assets/howitworkscard.png';
-import circuit from '../../src/assets/circuit.png';
-import mask from '../../src/assets/Mask.png';
-import rightarrow from "../assets/rightarrow.png";
 
 const HowItWorks = () => {
   const steps = [
     {
-      id: 1,
-      title: 'Choose your AI platform',
-      description: 'Choose your desired AI platform (e.g., GPT, DALL-E)',
-      icon: circuit,
+      icon: (
+        <img
+          src="https://toteminteractive.in/velosty/work1.png"
+          alt="Step 1 Icon"
+          className="w-5 h-5"
+        />
+      ),
+      title: "Choose your AI platform",
+      description: "Choose your desired AI platform (e.g., GPT, DALL-E)",
     },
     {
-      id: 2,
-      title: 'Customise Prompt',
-      description: 'Tailor your prompt using our templates and AI suggestions',
-      icon: circuit,
+      icon: (
+        <img
+          src="https://toteminteractive.in/velosty/work2.png"
+          alt="Step 2 Icon"
+          className="w-5 h-5"
+        />
+      ),
+      title: "Customise Prompt",
+      description: "Tailor your prompt using our templates and AI suggestions",
     },
     {
-      id: 3,
-      title: 'Generate & Refine',
-      description: 'Generate content, review, and fine-tune for the best results',
-      icon: circuit,
+      icon: (
+        <img
+          src="https://toteminteractive.in/velosty/work3.png"
+          alt="Step 3 Icon"
+          className="w-5 h-5"
+        />
+      ),
+      title: "Generate & Refine",
+      description: "Generate content, review, and fine tune for the best results",
     },
   ];
 
   return (
-    <div
-      className="my-20 sm:my-32"
-      style={{
-        backgroundImage: `url(${mask})`,
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: 'cover',
-      }}
-    >
-      <h3 className="bg-gradient-to-r from-[#DADADA] to-[#999999] bg-clip-text text-transparent text-3xl sm:text-4xl sm:font-semibold p-8 sm:p-12 font-[Amenti] flex justify-center">
-        How It Works
-      </h3>
+    <div className="relative w-full min-h-screen bg-black text-white p-8">
+      {/* Background Image Layer */}
+      <div
+        className="absolute inset-0 bg-center bg-cover opacity-50"
+        style={{
+          backgroundImage: "url('https://toteminteractive.in/velosty/mask.png')",
+        }}
+      ></div>
+       <div className="relative max-w-7xl mx-auto">
+        {/* Heading */}
+        <h1 className="text-4xl font-light mb-2 text-left">How It Works</h1>
 
-      <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4 pb-16">
-        {steps.map((step, index) => (
-          <React.Fragment key={step.id}>
-            <div
-              className="w-[350px] h-[150px] flex flex-col justify-center items-center py-8 px-12 sm:py-10 sm:px-12  text-white bg-cover bg-center rounded-md shadow-lg font-[Inter]"
-              style={{
-                backgroundImage: `url(${cardbg})`,
-                backgroundSize: 'contain',
-                backgroundRepeat: 'no-repeat',
-              }}
-            >
-              <div className="flex flex-col justify-center text-left">
-                <div className="font-normal mb-4 flex items-center">
-                  <img
-                    className="w-7 h-7 mr-3"
-                    src={step.icon}
-                    alt="Step Icon"
-                  />
-                  <span className="text-md">{step.title}</span>
+        <div className="flex flex-col lg:flex-row gap-20">
+          {/* Left side - Steps */}
+          <div className="flex p-8 flex-col justify-center items-center space-y-4 lg:w-2/5">
+            {steps.map((step, index) => (
+              <div
+                key={index}
+                className="flex flex-col w-2/3 p-6 rounded-lg bg-[rgba(0,0,0,0.3)] border border-gray-800 backdrop-blur-sm transition-transform hover:transform hover:-translate-y-1"
+              >
+                <div className="flex flex-row items-center space-x-2">
+                  <div className="flex-shrink-0 p-2 bg-[rgba(0,128,203,0.1)] rounded-lg">
+                    {step.icon}
+                  </div>
+                  <h3 className="text-base font-medium text-white">
+                    {step.title}
+                  </h3>
                 </div>
-                <p className="text-sm text-[#999999] text-left">
+
+                <p className="text-xs text-gray-400 mt-2 ml-2">
                   {step.description}
                 </p>
               </div>
-            </div>
+            ))}
+          </div>
 
-            {/* Add arrow between cards */}
-            {index < steps.length - 1 && (
-              <img
-                src={rightarrow}
-                alt="Right Arrow"
-                className="w-8 h-8 sm:w-8 sm:h-8 rotate-90 sm:rotate-0"
+          {/* Right side - Video Placeholder */}
+          <div className="lg:w-2/5">
+            <div className="relative rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800" style={{ aspectRatio: '514/588' }}>
+              <video
+                controls
+                src="https://toteminteractive.in/velosty/Extension.mp4"
+                className="w-full h-full object-cover autoplay loop muted"
               />
-            )}
-          </React.Fragment>
-        ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
