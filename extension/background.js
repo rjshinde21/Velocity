@@ -14,7 +14,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     return true; // Required for async response
   });
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === 'LOGIN_STATUS') {
+      chrome.storage.local.set({ 'authToken': request.token, 'userData': request.userData });
+      // Broadcast to all extension pages
+      chrome.runtime.sendMessage({ type: 'AUTH_CHANGED', isLoggedIn: true });
+    } else if (request.type === 'LOGOUT') {
+      chrome.storage.local.remove(['authToken', 'userData']);
+      chrome.runtime.sendMessage({ type: 'AUTH_CHANGED', isLoggedIn: false });
+    }
+  });
   
+    
   chrome.runtime.onInstalled.addListener(function() {
       // Initialize storage
       chrome.storage.local.get(['userToken'], function(result) {

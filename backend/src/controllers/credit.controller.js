@@ -160,7 +160,11 @@ async useFeature(req, res) {
           return res.json({
               success: false,
               message: accessCheck.reason === 'timeout' 
-                  ? `Feature locked until ${accessCheck.timeoutUntil}` 
+                  ? `Feature locke
+                  
+                  
+                  
+                  until ${accessCheck.timeoutUntil}` 
                   : `Daily limit reached (${accessCheck.usageCount}/${accessCheck.dailyLimit})`,
               data: accessCheck
           });

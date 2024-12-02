@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { auth } from '../config/firebaseConfig';
+import { setAuthData } from '../utils/authUtils';
 import velocitylogo from "../assets/velocitylogo.png";
-import ThreeDLogo from './3dLogo/ThreeDLogo';
-import supabase from '../config/supabaseClient';
 import googleLogo from '../assets/googleLogo.png';
-
+import ThreeDLogo from './3dLogo/ThreeDLogo';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -14,93 +15,13 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [animate, setAnimate] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
-  const [showSpinner, setShowSpinner] = useState(false);
-  const authInProgressRef = useRef(false);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const processGoogleAuth = async (session) => {
-      if (!session?.user || !mounted) return;
-
-      try {
-        setIsLoading(true);
-        setMessage(<span style={{ color: '#2563eb' }}>Processing registration...</span>);
-
-        const apiResponse = await fetch('http://127.0.0.1:3000/api/users/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: session.user.user_metadata?.full_name || session.user.email,
-            email: session.user.email,
-            googleId: session.user.id,
-            avatar: session.user.user_metadata?.avatar_url
-          })
-        });
-
-        if (!mounted) return;
-
-        const data = await apiResponse.json();
-        console.log('Register API Response:', data);
-
-        if (apiResponse.ok) {
-          localStorage.setItem('token', data.data.token);
-          localStorage.setItem('userId', data.data.user.id);
-          localStorage.setItem('user', JSON.stringify(data.data.user));
-          localStorage.setItem('loginTime', new Date().getTime().toString());
-          navigate('/profile');
-        } else if (apiResponse.status === 409) {
-          navigate('/login');
-        } else {
-          throw new Error(data.message || 'Registration failed');
-        }
-      } catch (error) {
-        console.error('Registration error:', error);
-        if (mounted) {
-          setMessage(<span style={{ color: 'red' }}>Failed to complete registration. Please try again.</span>);
-        }
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    // Check for existing session immediately
-    const checkExistingSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user && mounted) {
-        await processGoogleAuth(session);
-      }
-    };
-    checkExistingSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event);
-      if (event === 'SIGNED_IN') {
-        await processGoogleAuth(session);
-      }
-    });
-
-    // Cleanup
-    return () => {
-      mounted = false;
-      subscription?.unsubscribe();
-    };
-  }, [navigate]);
-
-  
-  
   const validateField = (field, value) => {
     let error = '';
     switch (field) {
@@ -184,7 +105,6 @@ const Register = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
         body: JSON.stringify({
           name,
@@ -220,36 +140,49 @@ const Register = () => {
 
   const handleGoogleSignUp = async (e) => {
     e.preventDefault();
-    setMessage(<span style={{ color: '#2563eb' }}>Connecting to Google...</span>);
     setIsLoading(true);
+    setMessage(<span style={{ color: '#2563eb' }}>Connecting to Google...</span>);
 
     try {
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/register`,
-          scopes: 'email profile',
-        }
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      const apiResponse = await fetch('http://127.0.0.1:3000/api/users/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: user.displayName || user.email,
+          email: user.email,
+          googleId: user.uid,
+          avatar: user.photoURL
+        })
       });
+
+      const data = await apiResponse.json();
+
+      if (apiResponse.ok) {
+        setAuthData(data.data.user, {
+          token: data.data.token,
+          userId: data.data.user.id
+        });
+        setMessage(<span style={{ color: 'green' }}>Registration successful! Redirecting...</span>);
+        setTimeout(() => navigate('/profile'), 1000);
+      } else if (apiResponse.status === 409) {
+        setMessage(<span style={{ color: 'orange' }}>Account exists. Redirecting to login...</span>);
+        setTimeout(() => navigate('/login'), 2000);
+      } else {
+        throw new Error(data.message || 'Registration failed');
+      }
     } catch (error) {
       console.error('Google Sign Up Error:', error);
       setMessage(<span style={{ color: 'red' }}>Failed to connect with Google. Please try again.</span>);
+    } finally {
       setIsLoading(false);
     }
-  };
-
-  if (showSpinner) {
-    return (
-      <div className="min-h-screen bg-[#0C0C0C] flex items-center justify-center">
-        <div className="text-primary">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-          <p className="mt-4">Processing Google Sign Up...</p>
-        </div>
-      </div>
-    );
-  }
-
-  
+  }; 
   return (
     <div className="min-h-screen bg-[#0C0C0C] sm:bg-black fixed h-full w-full flex justify-center items-center sm:flex-row flex-col z-30 sm:gap-0 gap-12">
       <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm px-6 sm:px-36 sm:w-1/2 w-full" style={{zIndex: 2}}>

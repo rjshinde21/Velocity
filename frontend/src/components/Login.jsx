@@ -1,237 +1,51 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { auth } from '../config/firebaseConfig';
+import { setAuthData, getSharedAuthData, isSharedSessionValid } from '../utils/authUtils';
 import velocitylogo from "../assets/velocitylogo.png";
-import ProfilePage from './ProfilePage';
-import ThreeDLogo from './3dLogo/ThreeDLogo';
-import supabase from '../config/supabaseClient';
 import googleLogo from '../assets/googleLogo.png';
-
+import ThreeDLogo from './3dLogo/ThreeDLogo';
 
 const Login = ({setIsLoggedIn}) => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showTokenDetails, setShowTokenDetails] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({
     email: '',
     password: '',
   });
-  const navigate = useNavigate();
-  const authInProgressRef = useRef(false); // To prevent duplicate handling
 
   useEffect(() => {
-    // Check if we already have a session
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        handleUserSession(session);
-      }
-    };
-
-    checkSession();
-
-    // Set up auth listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event, 'Auth in progress:', authInProgressRef.current);
-      
-      if (event === 'SIGNED_IN' && session?.user && !authInProgressRef.current) {
-        authInProgressRef.current = true;
-        await handleUserSession(session);
-        authInProgressRef.current = false;
-      }
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
+    // Check for redirect result on component mount
+    checkRedirectResult();
   }, []);
 
-  const handleUserSession = async (session) => {
+  const checkRedirectResult = async () => {
     try {
-      setIsLoading(true);
-      setMessage(<span style={{ color: '#2563eb' }}>Processing login...</span>);
+      const result = await getRedirectResult(auth);
+      if (result) {
+        await handleGoogleAuthResult(result.user);
+      }
+    } catch (error) {
+      console.error('Redirect result error:', error);
+      setMessage(<span style={{ color: 'red' }}>Failed to complete Google sign-in. Please try again.</span>);
+    }
+  };
 
-      const apiResponse = await fetch('http://127.0.0.1:3000/api/users/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: session.user.email,
-          googleId: session.user.id
-        })
-      });
-
-      const data = await apiResponse.json();
-      console.log('API Response:', data);
-
-      if (apiResponse.ok) {
-        // Store session data
-        localStorage.setItem('token', data.data.token);
-        localStorage.setItem('userId', data.data.user.id);
-        localStorage.setItem('user', JSON.stringify(data.data.user));
-        localStorage.setItem('loginTime', new Date().getTime().toString());
-
-        setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
+  useEffect(() => {
+    // Check if user is already logged in
+    if (isSharedSessionValid()) {
+      const authData = getSharedAuthData();
+      if (authData.token) {
         setIsLoggedIn(true);
-        
-        // Store Supabase session
-        localStorage.setItem('supabaseSession', JSON.stringify({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token
-        }));
-
-        setTimeout(() => {
-          navigate('/profile');
-        }, 1000);
-      } else if (apiResponse.status === 404) {
-        setMessage(<span style={{ color: 'red' }}>Account not found. Redirecting to registration...</span>);
-        setTimeout(() => {
-          navigate('/register');
-        }, 2000);
-      } else {
-        throw new Error(data.message || 'Login failed');
-      }
-    } catch (error) {
-      console.error('API call failed:', error);
-      setMessage(<span style={{ color: 'red' }}>Failed to complete login. Please try again.</span>);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-
-  
-  // const [animate, setAnimate] = useState(false);
-
-  // useEffect(() => {
-  //   setAnimate(true);
-  // }, []);
-
-  
-
-  // Session management
-  const SESSION_DURATION = 60 * 1000; // 1 minute in milliseconds
-
-  const handleReLogin = async (email, password) => {
-    try {
-      const response = await fetch('http://127.0.0.1:3000/api/users/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const currentTime = new Date().getTime();
-
-        // Save session data again
-        localStorage.setItem('token', data.data.token);
-        localStorage.setItem('userId', data.data.user.id);
-        localStorage.setItem('userEmail', email);
-        localStorage.setItem('loginTime', currentTime.toString());
-        return true; // Re-login successful
-      } else {
-        console.error("Re-login failed:", await response.text());
-        return false; // Re-login failed
-      }
-    } catch (error) {
-      console.error("Network error during re-login:", error);
-      return false; // Network or other error
-    }
-  };
-
-  const checkAndClearSession = async () => {
-    const loginTime = localStorage.getItem('loginTime');
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
-    const savedEmail = localStorage.getItem('userEmail');
-  
-    if (loginTime && token && userId) {
-      const currentTime = new Date().getTime();
-      const timeSinceLogin = currentTime - parseInt(loginTime, 10);
-  
-      if (timeSinceLogin > SESSION_DURATION) {
-        // Session expired, clear session and attempt re-login
-        clearSessionData();
-  
-        // Attempt re-login if saved credentials are available
-        if (savedEmail && password) {
-          const reLoginSuccessful = await handleReLogin(savedEmail, password);
-          if (reLoginSuccessful) {
-            setShowTokenDetails(true);
-            return false; // Session refreshed
-          }
-        }
-        return true; // Session expired, re-login failed
-      } else {
-        // Session is still valid
-        setShowTokenDetails(true);
-        return false;
+        navigate('/profile');
       }
     }
-    return true; // No session exists
-  };
+  }, [navigate, setIsLoggedIn]);
 
-  const clearSessionData = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('loginTime');
-    setShowTokenDetails(false);
-    navigate('/login');
-  };
-
-  const setupSessionExpirationCheck = () => {
-    const loginTime = localStorage.getItem('loginTime');
-    if (loginTime) {
-      const currentTime = new Date().getTime();
-      const timeSinceLogin = currentTime - parseInt(loginTime, 10);
-      const timeRemaining = SESSION_DURATION - timeSinceLogin;
-
-      if (timeRemaining > 0) {
-        const timeoutId = setTimeout(() => {
-          clearSessionData();
-          // setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
-        }, timeRemaining);
-
-        return () => clearTimeout(timeoutId);
-      } else {
-        clearSessionData();
-      }
-    }
-  };
-
-  useEffect(() => {
-    const checkSession = async () => {
-      const sessionExpired = await checkAndClearSession();
-      if (sessionExpired) {
-        // setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
-      }
-    };
-
-    checkSession();
-    const cleanup = setupSessionExpirationCheck();
-    return () => {
-      if (cleanup) cleanup();
-    };
-  }, []);
-
-  useEffect(() => {
-    const intervalId = setInterval(async () => {
-      const sessionExpired = await checkAndClearSession();
-      if (sessionExpired) {
-        // setMessage(<span style={{ color: 'red' }}>Session expired. Please log in again.</span>);
-      }
-    }, 5000);
-
-    return () => clearInterval(intervalId);
-  }, []);
 
   const validateField = (field, value) => {
     let error = '';
@@ -274,7 +88,6 @@ const Login = ({setIsLoggedIn}) => {
     event.preventDefault();
     setMessage('');
 
-    // Validate fields
     const errors = {
       email: validateField('email', email),
       password: validateField('password', password),
@@ -291,59 +104,76 @@ const Login = ({setIsLoggedIn}) => {
     setMessage(<span style={{ color: '#2563eb' }}>Processing login...</span>);
 
     try {
-      const response = await fetch('http://127.0.0.1:3000/api/users/login', {
+      const response = await fetch('http://localhost:3000/api/users/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
-        body: JSON.stringify({
-          email,
-          password
-        }),
+        body: JSON.stringify({ email, password })
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        const currentTime = new Date().getTime();
-        
-        // Save session data
-        localStorage.setItem('token', data.data.token);
-        localStorage.setItem('userId', String(data.data.user.id)); // Ensure userId is stored as string
-        localStorage.setItem('userEmail', email);
-        localStorage.setItem('loginTime', currentTime.toString());
-        setIsLoggedIn(true);
-
-        setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
-        
-        setupSessionExpirationCheck();
-        
-        setTimeout(() => {
-          setShowTokenDetails(true);
-        }, 1000);
+        handleSuccessfulLogin(data.data.user, data.data.token);
       } else {
-        switch (response.status) {
-          case 400:
-            setMessage(<span style={{ color: 'red' }}>Invalid email or password format</span>);
-            break;
-          case 401:
-            setMessage(<span style={{ color: 'red' }}>Invalid email or password</span>);
-            break;
-          case 404:
-            setMessage(<span style={{ color: 'red' }}>Account not found</span>);
-            break;
-          default:
-            setMessage(<span style={{ color: 'red' }}>{data.message || 'Login failed'}</span>);
-        }
+        throw new Error(data.message || 'Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
-      setMessage(
-        <span style={{ color: 'red' }}>
-          Network error. Please check your connection and try again.
-        </span>
-      );
+      setMessage(<span style={{ color: 'red' }}>Invalid email or password</span>);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleGoogleAuthResult = async (googleUser) => {
+    setIsLoading(true);
+    setMessage(<span style={{ color: '#2563eb' }}>Processing Google sign-in...</span>);
+
+    try {
+      const apiResponse = await fetch('http://localhost:3000/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: googleUser.email,
+          googleId: googleUser.uid,
+        })
+      });
+
+      const data = await apiResponse.json();
+
+      if (apiResponse.ok) {
+        handleSuccessfulLogin(data.data.user, data.data.token);
+      } else if (apiResponse.status === 404) {
+        // User doesn't exist, try registering
+        const registerResponse = await fetch('http://localhost:3000/api/users/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: googleUser.displayName || googleUser.email,
+            email: googleUser.email,
+            googleId: googleUser.uid,
+            avatar: googleUser.photoURL
+          })
+        });
+
+        if (registerResponse.ok) {
+          const registerData = await registerResponse.json();
+          handleSuccessfulLogin(registerData.data.user, registerData.data.token);
+        } else {
+          throw new Error('Registration failed');
+        }
+      } else {
+        throw new Error(data.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Google auth processing error:', error);
+      setMessage(<span style={{ color: 'red' }}>Failed to process Google sign-in. Please try again.</span>);
     } finally {
       setIsLoading(false);
     }
@@ -352,22 +182,12 @@ const Login = ({setIsLoggedIn}) => {
   const handleGoogleSignIn = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setMessage('');
     
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/login`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        }
-      });
-
-      if (error) throw error;
-
+      const provider = new GoogleAuthProvider();
+      // Use redirect instead of popup
+      await signInWithRedirect(auth, provider);
+      // The result will be handled in checkRedirectResult after redirect
     } catch (error) {
       console.error('Google Sign In Error:', error);
       setMessage(<span style={{ color: 'red' }}>Failed to connect with Google. Please try again.</span>);
@@ -375,11 +195,22 @@ const Login = ({setIsLoggedIn}) => {
     }
   };
 
+  const handleSuccessfulLogin = (userData, token) => {
+    setAuthData(userData, {
+      token: token,
+      userId: userData.id
+    });
+    
+    setIsLoggedIn(true);
+    setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
+    setTimeout(() => navigate('/profile'), 1000);
+  };
+
   
 
-  if (showTokenDetails) {
-    return <ProfilePage />;
-  }
+  // if (showTokenDetails) {
+  //   return <ProfilePage />;
+  // }
 
   return (
     <div className="min-h-screen bg-[#0C0C0C] sm:bg-black fixed h-full w-full flex justify-center items-center z-30 flex-col sm:flex-row sm:gap-0 gap-12">

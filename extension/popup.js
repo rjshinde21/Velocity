@@ -1,5 +1,3 @@
-
-
 async function checkFeatureAccess(featureId) {
   try {
     const userId = localStorage.getItem('userId');
@@ -505,6 +503,8 @@ function handleParsedResponse(parsedResponse) {
     adjustPopupSize();
   }
 }
+
+
 const API_BASE_URL = 'http://127.0.0.1:5000';
 document.addEventListener('DOMContentLoaded', function () {
   const sendButton = document.getElementById('sendButton');

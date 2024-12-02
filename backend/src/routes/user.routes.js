@@ -16,6 +16,48 @@ router.delete('/profile/:id', authMiddleware, userController.deleteProfile);
 
 // Plan management routes
 router.put('/plan', authMiddleware, userValidation.updatePlan, userController.updatePlan);
+
+router.post('/verify-token', async (req, res) => {
+    try {
+      const token = req.headers.authorization?.split(' ')[1];
+      
+      if (!token) {
+        return res.status(401).json({
+          success: false,
+          message: 'No token provided'
+        });
+      }
+  
+      // Verify the token using your JWT secret
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      // Optional: Check if user still exists in database
+      const user = await User.findById(decoded.userId);
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+  
+      return res.status(200).json({
+        success: true,
+        message: 'Token is valid',
+        data: {
+          user: {
+            id: user._id,
+            email: user.email,
+            name: user.name
+          }
+        }
+      });
+    } catch (error) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token'
+      });
+    }
+  });
 // router.get('/plan', authMiddleware, userController.getUserPlan);
 
 // Token routes
