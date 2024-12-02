@@ -1,14 +1,12 @@
 document.addEventListener('DOMContentLoaded', function() {
     const loginButton = document.getElementById('loginButton');
+    const loginButton2 = document.getElementById('loginButton2');
     const signupButton = document.getElementById('signupButton');
     
-    // Check if already logged in
-    const token = localStorage.getItem('userToken');
-    const userId = localStorage.getItem('userId'); // Add userId storage
-    if (token && userId) {
-        checkAuthAndRedirect(token, userId);
-    }
+    // Check if already logged in via web app
+    checkWebAppAuthStatus();
 
+    // Regular login handler
     if (loginButton) {
         loginButton.addEventListener('click', async function(e) {
             e.preventDefault();
@@ -16,17 +14,162 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (signupButton) {
-        signupButton.addEventListener('click', function(e) {
+    // Google login handler
+    if (loginButton2) {
+        loginButton2.addEventListener('click', function(e) {
             e.preventDefault();
-            chrome.tabs.create({
-                url: 'https://www.toteminteractive.in/velocity_lander/index.html'
-            });
-            window.close();
+            // Redirect to web app's login page for Google auth
+            window.open('http://localhost:3000/login', '_blank');
         });
     }
-});
 
+    // Listen for auth changes from web app
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'userToken' || e.key === 'userId' || e.key === 'userData') {
+            checkWebAppAuthStatus();
+        }
+    });
+});
+async function checkWebAppAuthStatus() {
+    // Check web app's local storage for auth data
+    const token = localStorage.getItem('userToken');
+    const userId = localStorage.getItem('userId');
+    const userData = localStorage.getItem('userData');
+
+    if (token && userId) {
+        try {
+            // Verify token with backend
+            const response = await fetch(`http://localhost:3000/api/users/profile/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const verifiedData = await response.json();
+                // Store in extension's storage
+                chrome.storage.local.set({
+                    'userToken': token,
+                    'userId': userId,
+                    'userData': userData
+                }, function() {
+                    // Redirect to extension's main page
+                    window.location.href = 'phase1.html';
+                });
+            } else {
+                // Clear invalid auth data
+                clearAuthData();
+            }
+        } catch (error) {
+            console.error('Auth verification error:', error);
+            clearAuthData();
+        }
+    }
+}
+
+async function loginUser() {
+    const email = document.getElementById('email')?.value?.trim() || '';
+    const password = document.getElementById('password')?.value || '';
+    const responseDiv = document.getElementById('response');
+    const loadingDiv = document.getElementById('loading');
+
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (responseDiv) responseDiv.style.display = 'none';
+
+    if (!email || !password) {
+        showError('Please enter both email and password');
+        return;
+    }
+
+    try {
+        const response = await fetch('http://localhost:3000/api/users/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.data?.token) {
+            // Store auth data in both local storage and extension storage
+            const authData = {
+                userToken: data.data.token,
+                userId: data.data.user.id,
+                userData: JSON.stringify(data.data.user)
+            };
+
+            // Store in local storage
+            localStorage.setItem('userToken', authData.userToken);
+            localStorage.setItem('userId', authData.userId);
+            localStorage.setItem('userData', authData.userData);
+
+            // Store in extension storage
+            chrome.storage.local.set(authData, function() {
+                window.location.href = 'phase1.html';
+            });
+        } else {
+            showError(data.message || 'Login failed. Please try again.');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        showError('Network error. Please try again.');
+    } finally {
+        if (loadingDiv) loadingDiv.style.display = 'none';
+    }
+}
+function clearAuthData() {
+    // Clear local storage
+    localStorage.removeItem('userToken');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userData');
+
+    // Clear extension storage
+    chrome.storage.local.remove(['userToken', 'userId', 'userData']);
+}
+
+function setLoading(isLoading) {
+    const loginButton2 = document.getElementById('loginButton2');
+    if (!loginButton2) return;
+
+    if (isLoading) {
+        loginButton2.disabled = true;
+        loginButton2.innerHTML = `
+            <span class="loading-spinner"></span>
+            Connecting...
+        `;
+    } else {
+        loginButton2.disabled = false;
+        loginButton2.innerHTML = 'Sign in with Google';
+    }
+}
+
+  function updateUserInterface(user) {
+    const signupButton = document.getElementById('signupButton');
+    const editButton = document.getElementById('editButton');
+    
+    if (user) {
+      signupButton.innerHTML = `
+        <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
+        Hi ${user.name}!
+      `;
+      if (editButton) {
+        editButton.style.display = 'flex';
+      }
+    } else {
+      signupButton.innerHTML = `
+        <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
+        Sign in with Google
+      `;
+      if (editButton) {
+        editButton.style.display = 'none';
+      }
+    }
+  }
+    
 async function checkAuthAndRedirect(token, userId) {
     try {
         const response = await fetch(`http://localhost:3000/api/users/profile/${userId}`, {
@@ -50,128 +193,6 @@ async function checkAuthAndRedirect(token, userId) {
     }
 }
 
-async function loginUser() {
-    const email = document.getElementById('email')?.value?.trim() || '';
-    const password = document.getElementById('password')?.value || '';
-    const responseDiv = document.getElementById('response');
-    const loadingDiv = document.getElementById('loading');
-
-    // Reset UI
-    if (responseDiv) responseDiv.style.display = 'none';
-    if (loadingDiv) loadingDiv.style.display = 'block';
-
-    // Validate inputs
-    if (!email || !password) {
-        showError('Please enter both email and password');
-        return;
-    }
-
-    try {
-        console.log('Attempting login with:', { email });
-
-        const response = await fetch('http://localhost:3000/api/users/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
-        });
-
-        console.log('Response status:', response.status);
-
-        if (loadingDiv) loadingDiv.style.display = 'none';
-
-        const data = await response.json();
-        console.log('Full Login Response:', data);
-
-        // Log specific data structure
-        console.log('User ID from response:', data.data?.user?.id);
-        console.log('Token from response:', data.data?.token);
-
-        if (response.ok && data.data?.token) {
-            // Store token and user data
-            const token = data.data.token;
-            const userId = data.data.user.id; // Changed to match your API response structure
-            
-            console.log('Storing user data:', {
-                token: token ? 'Present' : 'Missing',
-                userId,
-                email
-            });
-            
-            localStorage.setItem('userToken', token);
-            localStorage.setItem('userEmail', email);
-            localStorage.setItem('userId', userId);
-
-            // Log stored values
-            console.log('Stored values:', {
-                storedToken: localStorage.getItem('userToken'),
-                storedUserId: localStorage.getItem('userId'),
-                storedEmail: localStorage.getItem('userEmail')
-            });
-            console.log("api called::+ "+ `http://localhost:3000/api/users/profile/${userId}`);
-            // Verify token before redirecting
-            const verifyResponse = await fetch(`http://localhost:3000/api/users/profile/${userId}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            console.log('Profile verification status:', verifyResponse.status);
-
-            if (verifyResponse.ok) {
-                const userData = await verifyResponse.json();
-                console.log('Profile verification response:', userData);
-
-                // Store complete user data
-                localStorage.setItem('userData', JSON.stringify({
-                    user: userData.data.user,
-                    tokenInfo: userData.data.tokenInfo
-                }));
-
-                window.location.href = 'phase1.html';
-            } else {
-                const errorText = await verifyResponse.text();
-                console.error('Profile verification failed:', {
-                    status: verifyResponse.status,
-                    error: errorText
-                });
-                showError('Authentication failed. Please try again.');
-                // Clear storage on verification failure
-                localStorage.removeItem('userToken');
-                localStorage.removeItem('userEmail');
-                localStorage.removeItem('userId');
-            }
-        } else {
-            console.error('Login failed:', {
-                status: response.status,
-                message: data.message,
-                success: data.success
-            });
-
-            // Handle specific error cases
-            switch (response.status) {
-                case 401:
-                    showError('Invalid email or password. Please try again.');
-                    break;
-                case 404:
-                    showError('Login service not found. Please try again later.');
-                    break;
-                case 500:
-                    showError('Server error. Please try again later.');
-                    break;
-                default:
-                    showError(data.message || 'Login failed. Please try again.');
-            }
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        showError('Network error. Please check your connection and try again.');
-    }
-}
 
 function showError(message) {
     const responseDiv = document.getElementById('response');
@@ -200,13 +221,15 @@ function isTokenExpired(token) {
     }
 }
 
+
 // Utility function to make authenticated requests
 async function makeAuthenticatedRequest(url, options = {}) {
-    const token = localStorage.getItem('userToken');
-    const userId = localStorage.getItem('userId');
+    const token = await new Promise(resolve => {
+        chrome.storage.local.get('userToken', data => resolve(data.userToken));
+    });
     
-    if (!token || !userId) {
-        throw new Error('No authentication token or user ID found');
+    if (!token) {
+        throw new Error('No authentication token found');
     }
 
     return fetch(url, {

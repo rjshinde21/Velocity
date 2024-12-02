@@ -9,6 +9,7 @@
     "tabs",
     "scripting"
   ],
+  
   "action": {
     "default_popup": "phase1.html"
   },
@@ -21,10 +22,16 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["content-script.js"],
       "css": ["src/output.css"]
     }
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "host_permissions": [
     "http://localhost:*/*",
     "http://127.0.0.1:*/*",

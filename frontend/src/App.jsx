@@ -13,7 +13,9 @@ import HowItWorks from "./components/HowItWorks";
 import ProfilePage from "./components/ProfilePage";
 import PrivacyPolicy from "./components/PrivacyPolicy";
 import TermsConditions from "./components/TermsConditions";
-import supabase from './config/supabaseClient';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './config/firebaseConfig';
+
 
 function App() {
   const [showLogin, setShowLogin] = useState(false);
@@ -22,88 +24,124 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    // Set up global auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Global Auth Event:', event);
-      if (event === 'SIGNED_OUT') {
-        // Clear local storage on sign out
-        localStorage.clear();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('Firebase Auth State Changed:', user ? 'User Logged In' : 'User Logged Out');
+      
+      if (user) {
+        try {
+          // Try login with Google credentials
+          const response = await fetch('http://localhost:3000/api/users/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: user.email,
+              googleId: user.uid
+            })
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            // Store auth data
+            localStorage.setItem('sharedToken', data.data.token);
+            localStorage.setItem('sharedUserId', data.data.user.id);
+            localStorage.setItem('sharedUser', JSON.stringify(data.data.user));
+            localStorage.setItem('sharedLoginTime', new Date().getTime().toString());
+            setIsLoggedIn(true);
+          } else if (response.status === 404) {
+            // User doesn't exist, register them
+            const registerResponse = await fetch('http://localhost:3000/api/users/register', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                name: user.displayName || user.email,
+                email: user.email,
+                googleId: user.uid,
+                avatar: user.photoURL
+              })
+            });
+
+            if (registerResponse.ok) {
+              const registerData = await registerResponse.json();
+              localStorage.setItem('sharedToken', registerData.data.token);
+              localStorage.setItem('sharedUserId', registerData.data.user.id);
+              localStorage.setItem('sharedUser', JSON.stringify(registerData.data.user));
+              localStorage.setItem('sharedLoginTime', new Date().getTime().toString());
+              setIsLoggedIn(true);
+            }
+          }
+        } catch (error) {
+          console.error('Auth processing error:', error);
+        }
+      } else {
+        // User is signed out
+        localStorage.removeItem('sharedToken');
+        localStorage.removeItem('sharedUserId');
+        localStorage.removeItem('sharedUser');
+        localStorage.removeItem('sharedLoginTime');
         setIsLoggedIn(false);
       }
+      setLoading(false);
     });
-  
-    return () => {
-      subscription?.unsubscribe();
-    };
+
+    return () => unsubscribe();
   }, []);
+
+
   useEffect(() => {
-    // Check for active session when app loads
-    const checkSession = async () => {
-      try {
-        // Check Supabase session for Google auth
-        const { data: { session } } = await supabase.auth.getSession();
-        // Check localStorage for regular auth
-        const storedToken = localStorage.getItem('token');
-        const storedUserId = localStorage.getItem('userId');
-  
-        // Set logged in if either auth method is valid
-        if ((session && session.user) || (storedToken && storedUserId)) {
-          setIsLoggedIn(true);
-        }
-      } catch (error) {
-        console.error('Session check error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    checkSession();
-  
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event);
+    if (!isLoggedIn) return;
+
+    const checkSessionValidity = () => {
+      const loginTime = localStorage.getItem('sharedLoginTime');
+      if (!loginTime) return false;
       
-      if (event === 'SIGNED_IN') {
-        setIsLoggedIn(true);
-      } else if (event === 'SIGNED_OUT') {
-        // Only clear Supabase-related data
-        const token = localStorage.getItem('token');
-        const userId = localStorage.getItem('userId');
-        
-        // If there's no regular auth data, then log out completely
-        if (!token || !userId) {
-          setIsLoggedIn(false);
-          localStorage.clear();
-        }
-      }
-    });
-  
-    return () => {
-      subscription?.unsubscribe();
+      const currentTime = new Date().getTime();
+      const sessionStartTime = parseInt(loginTime, 10);
+      return currentTime - sessionStartTime <= SESSION_DURATION;
     };
-  }, []);
 
+    const handleSessionExpiration = () => {
+      auth.signOut();
+      setIsLoggedIn(false);
+    };
 
-  useEffect(() => {
     const updateLoginTime = () => {
-      if (isLoggedIn) {
-        localStorage.setItem('loginTime', new Date().getTime().toString());
+      localStorage.setItem('sharedLoginTime', new Date().getTime().toString());
+    };
+
+    const activityEvents = ['mousedown', 'keydown', 'scroll', 'mousemove', 'touchstart'];
+    
+    const handleActivity = () => {
+      if (checkSessionValidity()) {
+        updateLoginTime();
+      } else {
+        handleSessionExpiration();
       }
     };
 
-    // Update time on user activity
-    window.addEventListener('mousemove', updateLoginTime);
-    window.addEventListener('keydown', updateLoginTime);
-    window.addEventListener('click', updateLoginTime);
-    window.addEventListener('scroll', updateLoginTime);
+    activityEvents.forEach(event => {
+      window.addEventListener(event, handleActivity);
+    });
+
+    const sessionCheck = setInterval(() => {
+      if (!checkSessionValidity()) {
+        handleSessionExpiration();
+      }
+    }, 60000);
 
     return () => {
-      window.removeEventListener('mousemove', updateLoginTime);
-      window.removeEventListener('keydown', updateLoginTime);
-      window.removeEventListener('click', updateLoginTime);
-      window.removeEventListener('scroll', updateLoginTime);
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+      clearInterval(sessionCheck);
     };
   }, [isLoggedIn]);
+
+
 
 
 
