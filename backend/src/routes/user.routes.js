@@ -4,6 +4,8 @@ const userController = require('../controllers/user.controller');
 // const tokenController = require('../controllers/token.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 const userValidation = require('../validations/user.validation');
+const jwt = require('jsonwebtoken');
+const User = require('../models/user.model');
 
 // Public routes
 router.post('/register', userValidation.register, userController.register);
@@ -18,46 +20,53 @@ router.delete('/profile/:id', authMiddleware, userController.deleteProfile);
 router.put('/plan', authMiddleware, userValidation.updatePlan, userController.updatePlan);
 
 router.post('/verify-token', async (req, res) => {
-    try {
-      const token = req.headers.authorization?.split(' ')[1];
-      
-      if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: 'No token provided'
-        });
-      }
-  
-      // Verify the token using your JWT secret
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      // Optional: Check if user still exists in database
-      const user = await User.findById(decoded.userId);
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'User not found'
-        });
-      }
-  
-      return res.status(200).json({
-        success: true,
-        message: 'Token is valid',
-        data: {
-          user: {
-            id: user._id,
-            email: user.email,
-            name: user.name
-          }
-        }
-      });
-    } catch (error) {
+  try {
+    const authHeader = req.headers.authorization;
+    console.log('Received auth header:', authHeader); // Debug log
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid token'
+        message: 'No token provided or invalid format'
       });
     }
-  });
+
+    const token = authHeader.split(' ')[1];
+    console.log('Extracting token:', token); // Debug log
+
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Decoded token:', decoded); // Debug log
+
+    // Check if user exists in database
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Token is valid',
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return res.status(401).json({
+      success: false,
+      message: error.message || 'Invalid token'
+    });
+  }
+});
+
 // router.get('/plan', authMiddleware, userController.getUserPlan);
 
 // Token routes

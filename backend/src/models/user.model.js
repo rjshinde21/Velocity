@@ -98,11 +98,11 @@ class User {
     static async findById(user_id) {
         try {
             const query = `
-                SELECT id, name, email, plan_id, tokens, created_at 
+                SELECT user_id, name, email, plan_id, tokens, created_at 
                 FROM usertable 
                 WHERE user_id = ?
             `;
-            const [rows] = await db.query(query, [id]);
+            const [rows] = await db.query(query, [user_id]);
             return rows[0];
         } catch (error) {
             console.error('Error finding user by id:', error);

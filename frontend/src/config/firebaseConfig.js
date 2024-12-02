@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth,setPersistence,browserLocalPersistence } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCCymRQ4dHwaJ4yWg6Kf-_HdnVRdu6CI2Q",
@@ -14,6 +14,11 @@ const app = initializeApp(firebaseConfig);
 
 // Configure auth persistence
 const auth = getAuth(app);
+await setPersistence(auth, browserLocalPersistence)
+  .then(() => console.log('Firebase persistence initialized'))
+  .catch(console.error);
+
+auth.useDeviceLanguage();
 auth.settings = {
   appVerificationDisabledForTesting: true // Only for development
 };
