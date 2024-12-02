@@ -41,18 +41,18 @@ const HowItWorks = () => {
     <div className="relative w-full min-h-screen bg-black text-white p-8">
       {/* Background Image Layer */}
       <div
-        className="absolute inset-0 bg-center bg-cover opacity-50"
+        className="absolute inset-0 bg-center bg-cover opacity-50 pt-12"
         style={{
           backgroundImage: "url('https://toteminteractive.in/velosty/mask.png')",
         }}
       ></div>
-       <div className="relative max-w-7xl mx-auto">
+      <div className="relative max-w-7xl mx-auto">
         {/* Heading */}
-        <h1 className="text-4xl font-light mb-2 text-left">How It Works</h1>
+        <h1 className="text-4xl font-light mt-12 ml-24 text-left">How It Works</h1>
 
         <div className="flex flex-col lg:flex-row gap-20">
           {/* Left side - Steps */}
-          <div className="flex p-8 flex-col justify-center items-center space-y-4 lg:w-2/5">
+          <div className="flex p-6 flex-col justify-center items-center space-y-2 lg:w-2/5">
             {steps.map((step, index) => (
               <div
                 key={index}
@@ -76,13 +76,20 @@ const HowItWorks = () => {
 
           {/* Right side - Video Placeholder */}
           <div className="lg:w-2/5">
-            <div className="relative rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800" style={{ aspectRatio: '514/588' }}>
+            <div
+              className="relative rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800"
+              style={{ aspectRatio: '514/588' }}
+            >
               <video
-                controls
                 src="https://toteminteractive.in/velosty/Extension.mp4"
-                className="w-full h-full object-cover autoplay loop muted"
+                className="w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                controls
               />
             </div>
+
           </div>
         </div>
       </div>

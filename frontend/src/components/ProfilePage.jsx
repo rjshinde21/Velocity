@@ -2,6 +2,7 @@ import React, { useState,useEffect } from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import velocitylogo from '../assets/velocitylogo.png';
 import PromptGrid from './PromptGrid';
+import BuyCredit from './buy_credit';
 //import useRazorpay from "react-razorpay";
 
 const ProfilePage = ({pricingRef}) => {
@@ -296,74 +297,83 @@ const ProfilePage = ({pricingRef}) => {
             </div>
         </div>
     );
-    const TopUpModal = () => (
-        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${isTopUpModalOpen ? '' : 'hidden'}`}>
-            <div className="bg-[#1C1C1C] rounded-lg p-6 w-96">
-                <h2 className="text-white text-xl mb-4">Top Up Tokens</h2>
-                <div className="mb-4">
-                    <label className="text-white text-sm mb-2 block">Select Amount (INR)</label>
-                    <select 
-                        value={topUpAmount}
-                        onChange={(e) => setTopUpAmount(Number(e.target.value))}
-                        className="w-full bg-[#2C2C2C] text-white rounded px-3 py-2"
-                    >
-                        <option value="100">100 Tokens - ₹100</option>
-                        <option value="500">500 Tokens - ₹500</option>
-                        <option value="1000">1000 Tokens - ₹1000</option>
-                        <option value="2000">2000 Tokens - ₹2000</option>
-                    </select>
-                </div>
-                <div className="flex justify-end gap-3">
-                    <button 
-                        onClick={() => setIsTopUpModalOpen(false)}
-                        className="px-4 py-2 text-white border border-gray-600 rounded hover:bg-gray-700"
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                        onClick={handlePayment}
-                        className="px-4 py-2 bg-[#F7AA1C] text-white rounded hover:bg-[#d89116]"
-                    >
-                        Proceed to Pay
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+    // const TopUpModal = () => (
+    //     <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${isTopUpModalOpen ? '' : 'hidden'}`}>
+    //         <div className="bg-[#1C1C1C] rounded-lg p-6 w-96">
+    //             <h2 className="text-white text-xl mb-4">Top Up Tokens</h2>
+    //             <div className="mb-4">
+    //                 <label className="text-white text-sm mb-2 block">Select Amount (INR)</label>
+    //                 <select 
+    //                     value={topUpAmount}
+    //                     onChange={(e) => setTopUpAmount(Number(e.target.value))}
+    //                     className="w-full bg-[#2C2C2C] text-white rounded px-3 py-2"
+    //                 >
+    //                     <option value="100">100 Tokens - ₹100</option>
+    //                     <option value="500">500 Tokens - ₹500</option>
+    //                     <option value="1000">1000 Tokens - ₹1000</option>
+    //                     <option value="2000">2000 Tokens - ₹2000</option>
+    //                 </select>
+    //             </div>
+    //             <div className="flex justify-end gap-3">
+    //                 <button 
+    //                     onClick={() => setIsTopUpModalOpen(false)}
+    //                     className="px-4 py-2 text-white border border-gray-600 rounded hover:bg-gray-700"
+    //                 >
+    //                     Cancel
+    //                 </button>
+    //                 <button 
+    //                     onClick={handlePayment}
+    //                     className="px-4 py-2 bg-[#F7AA1C] text-white rounded hover:bg-[#d89116]"
+    //                 >
+    //                     Proceed to Pay
+    //                 </button>
+    //             </div>
+    //         </div>
+    //     </div>
+    // );
 
       
       
     return (
         <div className="flex flex-col md:flex h-screen w-screen overflow-x-hidden">
-            {/* Credits section for desktop only */}
-            <div className="hidden absolute items-end md:flex md:w-[485px] flex-shrink-0 bg-black h-full justify-center">
+          {/* Buy Credit Modal */}
+          <BuyCredit
+            isTopUpModalOpen={isTopUpModalOpen}
+            setIsTopUpModalOpen={setIsTopUpModalOpen}
+            topUpAmount={topUpAmount}
+            setTopUpAmount={setTopUpAmount}
+            handlePayment={handlePayment}
+          />
+    
+          {/* Credits section for desktop only */}
+          <div className="hidden absolute items-end md:flex md:w-[485px] flex-shrink-0 bg-black h-full justify-center">
+            <CreditsSection />
+          </div>
+    
+          {/* Main content area */}
+          <div className="flex-1 overflow-y-auto bg-black rounded-lg md:ml-[485px] sm:border-l border-l-[#2C2C2C]">
+            <div className="flex flex-col mt-20 lg:mt-40">
+              {/* Profile Section */}
+              <Link
+                to="/"
+                className={
+                  'flex items-center space-x-3 sm:w-auto w-auto absolute top-5 sm:top-12 left-4 sm:left-12 px-4 '
+                }
+              >
+                <img src={velocitylogo} className="h-10 sm:h-14" alt="Velocity Logo" />
+              </Link>
+    
+              {/* Credits section for mobile only */}
+              <div className="md:hidden w-[90%] sm:border-t border-[#2C2C2C] mx-auto mt-6 sm:mx-0">
                 <CreditsSection />
+              </div>
+    
+              {/* PromptGrid will be scrollable if content grows */}
+              <PromptGrid />
             </div>
-            {/* Main content area */}
-            <div className="flex-1 overflow-y-auto bg-black rounded-lg md:ml-[485px] sm:border-l border-l-[#2C2C2C]">
-                <div className="flex flex-col mt-20 lg:mt-40">
-                    {/* Profile Section */}
-                    <Link
-            to="/"
-            className={'flex items-center space-x-3 sm:w-auto w-auto absolute top-5 sm:top-12 left-4 sm:left-12 px-4 '}
-          >
-            <img
-              src={velocitylogo}
-              className="h-10 sm:h-14"
-              alt="Velocity Logo"
-            />
-          </Link>
-                    {/* Credits section for mobile only - shows below profile */}
-                    <div className="md:hidden w-[90%] sm:border-t border-[#2C2C2C] mx-auto mt-6 sm:mx-0">
-                        <CreditsSection />
-                    </div>
-                    {/* PromptGrid will be scrollable if content grows */}
-                    <PromptGrid />
-                </div>
-            </div>
-            <TopUpModal />
+          </div>
         </div>
-    );
-};
-
-export default ProfilePage; 
+      );
+    };
+    
+    export default ProfilePage; 

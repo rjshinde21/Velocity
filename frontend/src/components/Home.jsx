@@ -6,7 +6,7 @@ import supabase from '../config/supabaseClient';
 
 const Home = () => {
   const [user, setUser] = useState(null);
-  
+
   // useEffect(() => {
   //   // Get initial session
   //   const initializeAuth = async () => {
@@ -45,7 +45,7 @@ const Home = () => {
   //   const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
   //     console.log('Auth event:', event);
   //     console.log('Session in auth change:', session.user.email); // Log the session
-      
+
   //     if (event === 'SIGNED_IN') {
   //       try {
   //         const { data: { user }, error } = await supabase.auth.getUser();
@@ -109,21 +109,22 @@ const Home = () => {
         <div className="absolute inset-0 bg-black opacity-0 flex" />
 
         <div className="relative z-10 flex flex-col items-center justify-center">
-          <h1 className="font-[Amenti] bg-gradient-text pt-30 text-3xl sm:text-6xl pb-4">
-            Unlock Infinite Creativity
+          <h1 className="font-[Amenti] bg-gradient-text pt-30 text-3xl sm:text-6xl pb-4 text-center">
+            Intelligent Prompts for <br />
+            <span className="block text-center">Smarter Results</span>
           </h1>
           <p className="text-[#999999] font-[Inter] text-sm sm:text-lg">
-            Generate Your Perfect AI Prompts!
+            Redefine the way you generate AI-driven ideas
           </p>
-          <a href="https://chromewebstore.google.com/category/extensions?hl=en-US&utm_source=ext_sidebar" target="_blank">  
-          <button className="glowing-button flex items-center gap-2 sm:mt-12 mt-6">
-            <span>Try Now</span>
-            <img src={star} alt="Star" />
-          </button>
+          <a href="https://chromewebstore.google.com/category/extensions?hl=en-US&utm_source=ext_sidebar" target="_blank">
+            <button className="glowing-button flex items-center gap-2 sm:mt-12 mt-6">
+              <span>Try Now with sample prompt</span>
+              <img src={star} alt="Star" />
+            </button>
           </a>
         </div>
         <HomeCards />
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent via-[12%] bottom-0" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent via-[12%] bottom-0" />
       </div>
     </>
   );

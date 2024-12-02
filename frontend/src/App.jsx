@@ -308,7 +308,7 @@ function App() {
                   <HowItWorks />
                 </div>
                  <div ref={built}>
-                <BuiltFor />
+                <BultFor />
                 </div>
                 {/* <div ref={pricingRef}>
                   <Pricing isLoggedIn={isLoggedIn} />

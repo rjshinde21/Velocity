@@ -15,7 +15,7 @@ const HomeCards = () => {
   ];
 
   return (
-    <div className="flex flex-col sm:flex-row justify-center items-center gap-0 sm:gap-10 pb-6 pt-56">
+    <div className="flex flex-col sm:flex-row justify-center items-center gap-0 sm:gap-10 pb-16 pt-56">
       {cardsData.map((card, index) => (
         <div
           key={index}
