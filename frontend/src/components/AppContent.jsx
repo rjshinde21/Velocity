@@ -6,6 +6,7 @@ import Carousel from "./Carousel";
 import Login from "./Login";
 import Register from "./Register";
 import HowItWorks from "./HowItWorks";
+import BuiltFor from "./BuiltFor";
 import ProfilePage from "./ProfilePage";
 import PrivacyPolicy from "./PrivacyPolicy";
 import TermsConditions from "./TermsConditions";
@@ -22,7 +23,7 @@ function AppContent() {
   const freeTrialRef = useRef(null);
   const pricingRef = useRef(null);
   const carouselRef = useRef(null);
-  const built = useRef(null);
+  const builtRef  = useRef(null);
 
   useEffect(() => {
     console.log('Initializing auth state...');
@@ -211,10 +212,12 @@ function AppContent() {
               howItWorksRef={howItWorksRef}
               freeTrialRef={freeTrialRef}
               carouselRef={carouselRef}
+              builtRef={builtRef}
               isLoggedIn={isLoggedIn}
             />
             <Home />
             <div ref={howItWorksRef}><HowItWorks /></div>
+            <div ref={builtRef}><BuiltFor /></div>
             <div ref={carouselRef}><Carousel /></div>
           </>
         }
