@@ -1,5 +1,8 @@
 let userId= "";
 let token = "";
+let selectedPlatform = 'General'; // Default platform
+let selectedStyle = 'professional'; // Default style
+
 async function checkFeatureAccess(featureId) {
   try {
     const userId = localStorage.getItem('userId');
@@ -698,39 +701,95 @@ function updateTabsWithState(isEnabled) {
     });
   });
 }
+
+
+function initializeRadioGroup() {
+  const radioButtons = document.querySelectorAll('.radio-button');
+  radioButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Remove selected class from all buttons
+      radioButtons.forEach(btn => btn.classList.remove('selected'));
+      // Add selected class to clicked button
+      this.classList.add('selected');
+      // Map the button to platform selection
+      const platformMap = {
+        'radiobutton1': 'General',
+        'radiobutton2': 'GPT4',
+        'radiobutton3': 'Midjourney',
+        'radiobutton4': 'Playground',
+        'radiobutton5': 'DALLE'
+      };
+      // Get platform from image source
+      const img = this.querySelector('img');
+      const imgSrc = img.src.split('/').pop();
+      const platform = imgSrc.split('.')[0];
+      selectedPlatform = platformMap[platform] || 'General';
+      // Update content script with new parameters
+      updateEnhanceParameters();
+    });
+  });
+}
+// Add this function to handle style selection
+function initializeStyleButtons() {
+  const styleButtons = document.querySelectorAll('.button-group .button-text');
+  styleButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Remove selected class from all buttons
+      styleButtons.forEach(btn => btn.classList.remove('selected'));
+      // Add selected class to clicked button
+      this.classList.add('selected');
+      // Update selected style
+      selectedStyle = this.textContent.toLowerCase();
+      // Update content script with new parameters
+      updateEnhanceParameters();
+    });
+  });
+}
+// Add this function to update enhance button parameters
+function updateEnhanceParameters() {
+  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+    if (!tabs[0]?.id) return;
+    chrome.tabs.sendMessage(tabs[0].id, {
+      action: 'updateEnhanceParameters',
+      platform: selectedPlatform,
+      style: selectedStyle,
+      enabled: document.getElementById('enhanceToggle').checked
+    });
+  });
+}
+
+
 function initializeEnhanceToggle() {
   const toggle = document.getElementById('enhanceToggle');
   if (!toggle) {
     console.error('Toggle element not found');
     return;
   }
-
   // Load saved state
   chrome.storage.local.get(['enhanceButtonEnabled'], (result) => {
     const isEnabled = result.enhanceButtonEnabled === true;
     toggle.checked = isEnabled;
-    
     // Notify background script to update tabs
     chrome.runtime.sendMessage({
       action: 'updateTabs',
       enabled: isEnabled
     });
+    updateEnhanceParameters();
   });
-
   // Handle toggle changes
   toggle.addEventListener('change', async (event) => {
     const isEnabled = event.target.checked;
-    
     try {
       // Save state
       await chrome.storage.local.set({ 'enhanceButtonEnabled': isEnabled });
       updateActiveTab();
+      // Update parameters including the new enabled state
+      updateEnhanceParameters();
       // Notify background script to update tabs
       chrome.runtime.sendMessage({
         action: 'updateTabs',
         enabled: isEnabled
       });
-      
     } catch (error) {
       console.error('Error handling toggle:', error);
       toggle.checked = !isEnabled; // Revert the toggle if there's an error
@@ -1144,6 +1203,10 @@ function getSelectedValues() {
 
 // dropdown
 document.addEventListener('DOMContentLoaded', function () {
+  initializeEnhanceToggle();
+  initializeRadioGroup();
+  initializeStyleButtons();
+
   const signupButton = document.getElementById('signupButton');
   const dropdownMenu = document.getElementById('dropdownMenu');
   const editButton = document.getElementById('editButton');
