@@ -710,12 +710,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
   
-  
-  
-  
   // Assuming the user ID is available, otherwise you can retrieve it from localStorage, cookies, etc.
   const userId = localStorage.getItem('userId');
-  const token = localStorage.getItem('userToken');
+  const token = localStorage.getItem('token');
   console.log("token:" + token);
   // const userId = 'user123'; // Replace with the actual user ID (from session, localStorage, etc.)
   

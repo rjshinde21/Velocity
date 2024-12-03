@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listen for auth changes from web app
     window.addEventListener('storage', function(e) {
-        if (e.key === 'userToken' || e.key === 'userId' || e.key === 'userData') {
+        if (e.key === 'token' || e.key === 'userId' || e.key === 'userData') {
             checkWebAppAuthStatus();
         }
     });
