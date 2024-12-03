@@ -42,6 +42,80 @@ async function recordFeatureUsage(featureId) {
     throw error;
   }
 }
+
+const style = document.createElement('style');
+  style.textContent = `
+    .responses-container {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 10px;
+    }
+    
+    .response-container {
+        transition: all 0.3s ease;
+    }
+    
+    .response-container:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .copy-button {
+        opacity: 0.7;
+        transition: opacity 0.3s ease;
+    }
+    
+    .copy-button:hover {
+        opacity: 1;
+    }
+
+    .textarea-wrapper {
+    position: relative !important;
+    display: inline-block !important;
+    width: 100% !important;
+  }
+
+  .extension-button {
+    position: absolute !important;
+    bottom: 5px !important;
+    right: 5px !important;
+    padding: 5px 10px !important;
+    background: linear-gradient(180deg, #000000 0%, #008ACB 100%) !important;
+    color: white !important;
+    border: 1px solid #444444 !important;
+    border-radius: 5px !important;
+    cursor: pointer !important;
+    z-index: 999999 !important;
+    opacity: 0 !important;
+    transition: opacity 0.3s ease !important;
+    pointer-events: none !important;
+  }
+
+  .extension-button.enabled {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .extension-button:hover {
+    box-shadow: 0 0 10px rgba(0, 138, 203, 0.5) !important;
+    transform: translateY(-1px) !important;
+  }
+    
+    .copy-button.copied::after {
+        content: 'Copied!';
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        pointer-events: none;
+    }
+`;
+
 function updateHeaderUI() {
   if (!userId || !token) {
       // User is not logged in
@@ -300,6 +374,9 @@ async function sendRequest() {
     resetInterface();
   }
 }
+const oldHandler = document.onclick;
+document.onclick = null;
+
 
 
 
@@ -591,7 +668,166 @@ function handleParsedResponse(parsedResponse) {
     adjustPopupSize();
   }
 }
+function toggleEnhanceButton(enabled) {
+  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+    chrome.tabs.sendMessage(tabs[0].id, {
+      action: 'toggleEnhanceButton',
+      enabled: enabled
+    });
+  });
+}
 
+
+// In popup.js
+function updateTabsWithState(isEnabled) {
+  chrome.tabs.query({}, (tabs) => {
+    tabs.forEach(tab => {
+      // First try to inject the content script if it's not already there
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content-script.js']
+      }).then(() => {
+        // After ensuring the content script is there, send the message
+        return chrome.tabs.sendMessage(tab.id, {
+          action: 'toggleEnhanceButton',
+          enabled: isEnabled
+        });
+      }).catch(err => {
+        console.log(`Could not update tab ${tab.id}:`, err);
+      });
+    });
+  });
+}
+function initializeEnhanceToggle() {
+  const toggle = document.getElementById('enhanceToggle');
+  if (!toggle) {
+    console.error('Toggle element not found');
+    return;
+  }
+
+  // Load saved state
+  chrome.storage.local.get(['enhanceButtonEnabled'], (result) => {
+    const isEnabled = result.enhanceButtonEnabled === true;
+    toggle.checked = isEnabled;
+    
+    // Notify background script to update tabs
+    chrome.runtime.sendMessage({
+      action: 'updateTabs',
+      enabled: isEnabled
+    });
+  });
+
+  // Handle toggle changes
+  toggle.addEventListener('change', async (event) => {
+    const isEnabled = event.target.checked;
+    
+    try {
+      // Save state
+      await chrome.storage.local.set({ 'enhanceButtonEnabled': isEnabled });
+      updateActiveTab();
+      // Notify background script to update tabs
+      chrome.runtime.sendMessage({
+        action: 'updateTabs',
+        enabled: isEnabled
+      });
+      
+    } catch (error) {
+      console.error('Error handling toggle:', error);
+      toggle.checked = !isEnabled; // Revert the toggle if there's an error
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initializeEnhanceToggle);
+function cleanupEventListeners() {
+  const existingHandlers = [window.existingClickHandler];
+  existingHandlers.forEach(handler => {
+    if (handler) {
+      document.removeEventListener('click', handler);
+    }
+  });
+}
+
+function updateActiveTab(isEnabled) {
+  console.log(":called");
+  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    const activeTab = tabs[0];
+    console.log("active tab:"+activeTab.id);
+    if (!activeTab) return;
+    
+    // Skip chrome:// URLs and other restricted pages
+    // if (activeTab.url.startsWith('chrome://') || 
+    //     activeTab.url.startsWith('brave://') || 
+    //     activeTab.url.startsWith('chrome-extension://')) {
+    //   console.log('Skipping restricted URL:', activeTab.url);
+    //   return;
+    // }
+
+    try {
+      console.log("helooooo");
+      // Inject the content script first
+      await chrome.scripting.executeScript({
+        target: { tabId: activeTab.id },
+        files: ['content-script.js']
+      });
+      console.log("reached here");
+      // Then send the toggle message
+      await chrome.tabs.sendMessage(activeTab.id, {
+        action: 'toggleEnhanceButton',
+        enabled: isEnabled
+      });
+
+    } catch (error) {
+      console.log('Could not update tab:', error.message);
+    }
+  });
+}
+function updateAllTabs(isEnabled) {
+  chrome.tabs.query({}, (tabs) => {
+    tabs.forEach(tab => {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'toggleEnhanceButton',
+        enabled: isEnabled
+      }).catch(err => {
+        console.log(`Could not send message to tab ${tab.id}:`, err);
+      });
+    });
+  });
+}
+function addButtonToTextAreas() {
+  const textAreas = document.querySelectorAll('textarea');
+  textAreas.forEach(textArea => {
+    // Skip if button already exists
+    if (textArea.nextElementSibling?.classList.contains('extension-button')) {
+      return;
+    }
+
+    // Create wrapper if it doesn't exist
+    let wrapper = textArea.closest('.textarea-wrapper');
+    if (!wrapper) {
+      wrapper = document.createElement('div');
+      wrapper.className = 'textarea-wrapper';
+      textArea.parentNode.insertBefore(wrapper, textArea);
+      wrapper.appendChild(textArea);
+    }
+
+    // Create enhance button
+    const button = document.createElement('button');
+    button.textContent = 'Enhance';
+    button.className = 'extension-button';
+    
+    // Check initial state
+    chrome.storage.local.get(['enhanceButtonEnabled'], (result) => {
+      if (result.enhanceButtonEnabled !== false) {
+        button.classList.add('enabled');
+      }
+    });
+    
+    wrapper.appendChild(button);
+  });
+}
+
+document.removeEventListener('click', window.existingClickHandler);
 
 const API_BASE_URL = 'http://127.0.0.1:5000';
 document.addEventListener('DOMContentLoaded', function () {
