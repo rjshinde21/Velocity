@@ -35,6 +35,7 @@ window.addEventListener('storage', (e) => {
     checkAuthState();
   }
 });
+const state = {
   isEnabled: false,
   isInitialized: false,
   selectedLLM: 'General', // Default LLM type
