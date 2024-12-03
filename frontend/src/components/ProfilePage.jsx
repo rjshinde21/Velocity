@@ -32,6 +32,7 @@ const ProfilePage = ({pricingRef}) => {
         checkAuthAndFetchTokens();
     }, [navigate, isUpdating]);
     const fetchUserProfile = async () => {
+        console.log("fetching user profile: http://127.0.0.1:3000/api/users/profile/"+userId)
         try {
             const response = await fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
                 headers: {

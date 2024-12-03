@@ -4,7 +4,7 @@ const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 export const setAuthData = (userData, authInfo) => {
   try {
     // Store auth data with 'shared' prefix for cross-platform access
-    localStorage.setItem('sharedToken', authInfo.token);
+    localStorage.setItem('token', authInfo.token);
     localStorage.setItem('sharedUserId', authInfo.userId);
     localStorage.setItem('sharedUser', JSON.stringify(userData));
     localStorage.setItem('sharedLoginTime', new Date().getTime().toString());
@@ -19,7 +19,7 @@ export const setAuthData = (userData, authInfo) => {
 
 export const getSharedAuthData = () => {
   try {
-    const token = localStorage.getItem('sharedToken');
+    const token = localStorage.getItem('token');
     const userId = localStorage.getItem('sharedUserId');
     const userData = JSON.parse(localStorage.getItem('sharedUser') || 'null');
     const loginTime = localStorage.getItem('sharedLoginTime');
@@ -37,7 +37,7 @@ export const getSharedAuthData = () => {
 };
 
 export const clearSharedAuthData = () => {
-  localStorage.removeItem('sharedToken');
+  localStorage.removeItem('token');
   localStorage.removeItem('sharedUserId');
   localStorage.removeItem('sharedUser');
   localStorage.removeItem('sharedLoginTime');

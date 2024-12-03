@@ -1,3 +1,5 @@
+let userId= "";
+let token = "";
 async function checkFeatureAccess(featureId) {
   try {
     const userId = localStorage.getItem('userId');
@@ -5,7 +7,7 @@ async function checkFeatureAccess(featureId) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify({ userId })
     });
@@ -25,7 +27,7 @@ async function recordFeatureUsage(featureId) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify({ userId })
     });
@@ -38,6 +40,47 @@ async function recordFeatureUsage(featureId) {
   } catch (error) {
     console.error('Error recording feature usage:', error);
     throw error;
+  }
+}
+function updateHeaderUI() {
+  if (!userId || !token) {
+      // User is not logged in
+      signupButton.innerHTML = `
+          <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
+          Sign Up
+      `;
+      signupButton.classList.add('not-logged-in');
+      
+      // Add click event listener for login redirect
+      //signupButton.addEventListener('click', navigateToLogin);
+      
+      // Hide credits button and logout button
+      if (editButton) editButton.style.display = 'none';
+    
+  } else {
+      // User is logged in
+      // Show logout button
+      
+      // Remove the login redirect listener
+      signupButton.classList.remove('not-logged-in');
+      console.log("checking user id:"+userId);
+      // Fetch and display user info
+      fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
+          method: 'GET',
+          headers: {
+              'Authorization': `Bearer ${token}`
+          }
+      })
+      .then(response => response.json())
+      .then(data => {
+          signupButton.innerHTML = `
+              <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
+              Hi ${data.data.user.name}!
+          `;
+          // Show credits button
+          if (editButton) editButton.style.display = 'flex';
+      })
+      .catch(error => console.error('Error fetching user profile:', error));
   }
 }
 
@@ -92,6 +135,51 @@ function showError(message) {
     adjustPopupSize();
   }
 }
+document.addEventListener('DOMContentLoaded', () => {
+  // Check current auth state
+  chrome.storage.local.get(['userId','token','isAuthenticated', 'userName', 'userEmail'], (data) => {
+    if (data.userEmail) {
+      // Update UI for logged in state
+      document.getElementById('signupButton').textContent = `${data.userName}`;
+      // Enable extension features
+      console.log("enable features" + data.token);
+      userId = data.userId;
+      token = data.token;
+      localStorage.setItem('userId',userId);
+      localStorage.setItem('token',token);
+      console.log("token:" + token);
+      console.log("user Id:" + userId);
+      updateCreditDisplay();
+      updateHeaderUI();
+
+
+      //enableFeatures();
+    } else {
+      // Show login prompt
+      document.getElementById('signupButton').textContent = 'Please log in via the web app';
+      // Disable extension features
+      //disableFeatures();
+      console.log("disable features");
+    }
+  });
+});
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === 'AUTH_STATE_CHANGED') {
+    // Update extension UI based on new auth state
+    if (message.data.userEmail) {
+      document.getElementById('signupButton').textContent = `Logged in as ${message.data.userName}`;
+//      enableFeatures();
+      console.log("enable features");
+
+    } else {
+      document.getElementById('signupButton').textContent = 'Please log in via the web app';
+      //disableFeatures();
+      console.log("disable features");
+
+    }
+  }
+});
+
 async function sendRequest() {
   let promptHistoryId = null;
   let creditsDeducted = false;
@@ -258,7 +346,7 @@ async function savePromptToHistory(userId, promptText, aiType) {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
           },
           body: JSON.stringify({
               user_id: userId,
@@ -286,7 +374,7 @@ async function updatePromptTokens(promptId, tokensUsed) {
           method: 'PATCH',
           headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
           },
           body: JSON.stringify({
               tokens_used: tokensUsed
@@ -409,7 +497,7 @@ function handleParsedResponse(parsedResponse) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
                 body: JSON.stringify({
                     user_id: userId,
@@ -516,7 +604,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const imageUploadText = document.querySelector('.image-upload-text');
   
   const iconImage = document.getElementById('generateIcon');
-  const logoutButton = document.querySelector('button[onclick="logout()"]');
+  //const logoutButton = document.querySelector('button[onclick="logout()"]');
 
   
   // Placeholder image path
@@ -823,7 +911,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const signupButton = document.getElementById('signupButton');
   const dropdownMenu = document.getElementById('dropdownMenu');
   const editButton = document.getElementById('editButton');
-  const logoutButton = document.getElementById('logoutButton');
+  //const logoutButton = document.getElementById('logoutButton');
   const editDropdownMenu = document.getElementById('editDropdownMenu');
   const accountButton = document.getElementById('accountButton');
   const editDeleteButtons = document.getElementById('editDeleteButtons');
@@ -831,70 +919,28 @@ document.addEventListener('DOMContentLoaded', function () {
     window.location.replace('login.html');
 }
 
-function updateHeaderUI() {
-  if (!userId || !token) {
-      // User is not logged in
-      signupButton.innerHTML = `
-          <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
-          Sign Up
-      `;
-      signupButton.classList.add('not-logged-in');
-      
-      // Add click event listener for login redirect
-      signupButton.addEventListener('click', navigateToLogin);
-      
-      // Hide credits button and logout button
-      if (editButton) editButton.style.display = 'none';
-      if (logoutButton) logoutButton.style.display = 'none';
-  } else {
-      // User is logged in
-      // Show logout button
-      if (logoutButton) logoutButton.style.display = 'flex';
-      
-      // Remove the login redirect listener
-      signupButton.classList.remove('not-logged-in');
-      
-      // Fetch and display user info
-      fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
-          method: 'GET',
-          headers: {
-              'Authorization': `Bearer ${token}`
-          }
-      })
-      .then(response => response.json())
-      .then(data => {
-          signupButton.innerHTML = `
-              <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
-              Hi ${data.data.user.name}!
-          `;
-          // Show credits button
-          if (editButton) editButton.style.display = 'flex';
-      })
-      .catch(error => console.error('Error fetching user profile:', error));
-  }
-}
 
 
-if (logoutButton) {
-  logoutButton.addEventListener('click', function(e) {
-      e.preventDefault();
-      try {
-          localStorage.clear();
-          sessionStorage.clear();
+// if (logoutButton) {
+//   logoutButton.addEventListener('click', function(e) {
+//       e.preventDefault();
+//       try {
+//           localStorage.clear();
+//           sessionStorage.clear();
           
-          // Clear cookies
-          document.cookie.split(";").forEach(function(c) {
-              document.cookie = c.replace(/^ +/, "")
-                  .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-          });
+//           // Clear cookies
+//           document.cookie.split(";").forEach(function(c) {
+//               document.cookie = c.replace(/^ +/, "")
+//                   .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+//           });
           
-          window.location.replace('login.html');
-      } catch (error) {
-          console.error('Logout failed:', error);
-          showError('Logout failed. Please try again.');
-      }
-  });
-}
+//           window.location.replace('login.html');
+//       } catch (error) {
+//           console.error('Logout failed:', error);
+//           showError('Logout failed. Please try again.');
+//       }
+//   });
+// }
 
 
   // Initially hide the dropdowns
@@ -958,94 +1004,36 @@ function areAdvancedOptionsSelected() {
   return advancedOptionsSelected.size > 0;
 }
 
-
-
-// document.getElementById('editButton1').addEventListener('click', function () {
-//   window.location.href = 'topup.html'; // Replace 'topup.html' with your URL
-// });
-
-
-// pricing.js
-
-// document.addEventListener('DOMContentLoaded', function () {
-//   const monthlyBtn = document.getElementById('monthlyBtn');
-//   const yearlyBtn = document.getElementById('yearlyBtn');
-
-//   // Toggle between monthly and yearly
-//   monthlyBtn.addEventListener('click', function () {
-//     monthlyBtn.classList.add('active');
-//     yearlyBtn.classList.remove('active');
-//     updatePrices('monthly');
-//   });
-
-//   yearlyBtn.addEventListener('click', function () {
-//     yearlyBtn.classList.add('active');
-//     monthlyBtn.classList.remove('active');
-//     updatePrices('yearly');
-//   });
-
-//   // Function to update prices based on billing period
-//   function updatePrices(period) {
-//     const prices = {
-//       monthly: {
-//         creator: '₹499',
-//         masterMind: '₹999'
-//       },
-//       yearly: {
-//         creator: '₹4,999',
-//         masterMind: '₹9,999'
-//       }
-//     };
-
-//     // Update prices on the cards
-//     const creatorPrice = document.querySelector('.pricing-card:nth-child(2) .text-2xl');
-//     const masterPrice = document.querySelector('.pricing-card:nth-child(3) .text-2xl');
-
-//     creatorPrice.textContent = prices[period].creator;
-//     masterPrice.textContent = prices[period].masterMind;
-
-//     // Add a small animation to price changes
-//     [creatorPrice, masterPrice].forEach(el => {
-//       el.style.transform = 'scale(1.1)';
-//       setTimeout(() => {
-//         el.style.transform = 'scale(1)';
-//       }, 200);
-//     });
-//   }
-// });
-
-
-
-
 // Assuming the user ID is available, otherwise you can retrieve it from localStorage, cookies, etc.
 let lastSavedPromptId = null;
 let lastTokensUsed = 0; // To track tokens used in the last operation
-const userId = localStorage.getItem('userId');
-const token = localStorage.getItem('userToken');
-console.log("token:" + token);
 // const userId = 'user123'; // Replace with the actual user ID (from session, localStorage, etc.)
 
 // Fetch User Profile data
-fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
-  method: 'GET',
-  headers: {
-    'Authorization': `Bearer ${token}` // Add the Authorization header with the token
-  }
-})
-  .then(response => response.json())
-  .then(data => {
-    // Assuming the API response has a 'name' field for the user's name
-    const userName = data.data.user.name;
-    console.log("data:" + data.data.user.name);
-    // Update the "Hii Nikhil" button with the user's name
-    document.getElementById('signupButton').textContent = `Hii ${userName}`; 
-    // signupButton
-    // document.getElementById('signupButton').textContent = ` ${userName}`;
-  })
-  .catch(error => console.error('Error fetching user profile:', error));
+// console.log("checking user id:"+userId);
+// fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
+//   method: 'GET',
+//   headers: {
+//     'Authorization': `Bearer ${token}` // Add the Authorization header with the token
+//   }
+// })
+//   .then(response => response.json())
+//   .then(data => {
+//     // Assuming the API response has a 'name' field for the user's name
+//     const userName = data.data.user.name;
+//     console.log("data:" + data.data.user.name);
+//     // Update the "Hii Nikhil" button with the user's name
+//     document.getElementById('signupButton').textContent = `Hii ${userName}`; 
+//     // signupButton
+//     // document.getElementById('signupButton').textContent = ` ${userName}`;
+//   })
+//   .catch(error => console.error('Error fetching user profile:', error));
 
 // Function to fetch and update credit display
 async function updateCreditDisplay() {
+  console.log("checkng user id:"+userId + `http://127.0.0.1:3000/api/token-types/${userId}`);
+  console.log("checkng token:"+token);
+
   try {
     const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
       method: 'GET',
@@ -1054,6 +1042,7 @@ async function updateCreditDisplay() {
       }
     });
     const data = await response.json();
+    console.log("data:"+data.data.token_received);
     const tokensReceived = data.data.token_received;
     const tokensUsed = data.data.tokens_used;
     document.getElementById('editButton').textContent = `${tokensReceived - tokensUsed} Credits`;
@@ -1433,9 +1422,6 @@ async function verifyAndRecordFeatures(hasImage) {
   }
 }
 
-
-
-
 function resetInterface() {
   // Enable input
   resetAdvancedOptions();
@@ -1500,19 +1486,19 @@ function getSelectedAdvancedOptionsCount() {
     }
 
     // Add click event listener to logout button
-    if (logoutButton) {
-      // Remove the inline onclick attribute
-      logoutButton.removeAttribute('onclick');
+    // if (logoutButton) {
+    //   // Remove the inline onclick attribute
+    //   logoutButton.removeAttribute('onclick');
 
-      // Add event listener
-      logoutButton.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        logout();
-      });
-    } else {
-      console.warn('Logout button not found in the DOM');
-    }
+    //   // Add event listener
+    //   logoutButton.addEventListener('click', function (e) {
+    //     e.preventDefault();
+    //     e.stopPropagation();
+    //     logout();
+    //   });
+    // } else {
+    //   console.warn('Logout button not found in the DOM');
+    // }
 
     // Make logout function available globally
     window.logout = logout;

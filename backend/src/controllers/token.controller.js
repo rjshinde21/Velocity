@@ -28,7 +28,7 @@ const tokenController = {
     async getTokenById(req, res) {
         try {
             const id = parseInt(req.params.id);
-            // console.log('Requesting token with ID:', id);
+            console.log('Requesting token with ID:', id);
 
             if (isNaN(id)) {
                 return res.status(400).json({
@@ -38,7 +38,7 @@ const tokenController = {
             }
 
             const token = await Token.getTokenById(id);
-            // console.log('Token found:', token);
+            console.log('Token found:', token);
 
             if (!token) {
                 return res.status(404).json({
@@ -46,7 +46,7 @@ const tokenController = {
                     message: `Token with ID ${id} not found`
                 });
             }
-
+            console.log("returning");
             return res.status(200).json({
                 success: true,
                 data: token

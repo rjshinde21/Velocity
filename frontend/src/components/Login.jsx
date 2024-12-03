@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect  } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../config/firebaseConfig';
-import { setAuthData, getSharedAuthData, isSharedSessionValid } from '../utils/authUtils';
 import velocitylogo from "../assets/velocitylogo.png";
 import googleLogo from '../assets/googleLogo.png';
 import ThreeDLogo from './3dLogo/ThreeDLogo';
-
+import {setAuthData} from '../utils/authUtils'
 const Login = ({setIsLoggedIn}) => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -17,34 +16,16 @@ const Login = ({setIsLoggedIn}) => {
     email: '',
     password: '',
   });
-
   useEffect(() => {
-    // Check for redirect result on component mount
-    checkRedirectResult();
-  }, []);
-
-  const checkRedirectResult = async () => {
-    try {
-      const result = await getRedirectResult(auth);
-      if (result) {
-        await handleGoogleAuthResult(result.user);
-      }
-    } catch (error) {
-      console.error('Redirect result error:', error);
-      setMessage(<span style={{ color: 'red' }}>Failed to complete Google sign-in. Please try again.</span>);
-    }
-  };
-
-  useEffect(() => {
-    // Check if user is already logged in
-    if (isSharedSessionValid()) {
-      const authData = getSharedAuthData();
-      if (authData.token) {
-        setIsLoggedIn(true);
-        navigate('/profile');
-      }
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('sharedUser');
+    
+    if (storedToken && storedUser) {
+      setIsLoggedIn(true);
+      navigate('/profile');
     }
   }, [navigate, setIsLoggedIn]);
+
 
 
   const validateField = (field, value) => {
@@ -182,25 +163,46 @@ const Login = ({setIsLoggedIn}) => {
   const handleGoogleSignIn = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
+    setMessage(<span style={{ color: '#2563eb' }}>Connecting to Google...</span>);
+
     try {
       const provider = new GoogleAuthProvider();
-      // Use redirect instead of popup
-      await signInWithRedirect(auth, provider);
-      // The result will be handled in checkRedirectResult after redirect
+      provider.addScope('email');
+      provider.addScope('profile');
+      
+      await signInWithPopup(auth, provider);
+      
+      // Let the App.jsx auth observer handle the rest
+      setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
+      
+      // Add a small delay before redirect to show success message
+      setTimeout(() => {
+        navigate('/profile');
+      }, 1000);
+      
     } catch (error) {
       console.error('Google Sign In Error:', error);
       setMessage(<span style={{ color: 'red' }}>Failed to connect with Google. Please try again.</span>);
+    } finally {
       setIsLoading(false);
     }
   };
 
+
+
+
+
   const handleSuccessfulLogin = (userData, token) => {
-    setAuthData(userData, {
-      token: token,
-      userId: userData.id
-    });
-    
+    // setAuthData(userData, {
+    //   token: token,
+    //   userId: userData.id
+    // });
+    console.log("successfull login");
+    localStorage.setItem('token', token);
+    localStorage.setItem('userId', userData.id);
+    localStorage.setItem('userEmail', userData.email);
+    localStorage.setItem('userName', userData.username);
+
     setIsLoggedIn(true);
     setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
     setTimeout(() => navigate('/profile'), 1000);
