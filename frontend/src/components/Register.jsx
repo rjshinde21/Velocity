@@ -82,24 +82,24 @@ const Register = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage('');
-
+  
     const errors = {
       name: validateField('name', name),
       email: validateField('email', email),
       password: validateField('password', password),
       confirmPassword: validateField('confirmPassword', confirmPassword)
     };
-
+  
     setFieldErrors(errors);
-
+  
     if (Object.values(errors).some(error => error)) {
       setMessage(<span style={{ color: 'red' }}>Please fix the errors before submitting</span>);
       return;
     }
-
+  
     setIsLoading(true);
     setMessage(<span style={{ color: '#2563eb' }}>Processing registration...</span>);
-
+  
     try {
       const response = await fetch('http://127.0.0.1:3000/api/users/register', {
         method: 'POST',
@@ -112,12 +112,18 @@ const Register = () => {
           password,
         }),
       });
-
+  
       const data = await response.json();
-
+  
       if (response.ok) {
+        // Store user data in localStorage
+        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('userId', data.data.user.id);
+        localStorage.setItem('userEmail', data.data.user.email);
+        localStorage.setItem('userName', data.data.user.username || name); // Fallback to name if username not provided
+  
         setMessage(<span style={{ color: 'green' }}>Registration successful! Redirecting...</span>);
-        setTimeout(() => navigate('/login'), 2000);
+        setTimeout(() => navigate('/profile'), 2000);
       } else {
         switch (response.status) {
           case 400:
@@ -142,12 +148,12 @@ const Register = () => {
     e.preventDefault();
     setIsLoading(true);
     setMessage(<span style={{ color: '#2563eb' }}>Connecting to Google...</span>);
-
+  
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-
+  
       const apiResponse = await fetch('http://127.0.0.1:3000/api/users/register', {
         method: 'POST',
         headers: {
@@ -160,14 +166,16 @@ const Register = () => {
           avatar: user.photoURL
         })
       });
-
+  
       const data = await apiResponse.json();
-
+  
       if (apiResponse.ok) {
-        setAuthData(data.data.user, {
-          token: data.data.token,
-          userId: data.data.user.id
-        });
+        // Store user data in localStorage
+        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('userId', data.data.user.id);
+        localStorage.setItem('userEmail', data.data.user.email);
+        localStorage.setItem('userName', data.data.user.username || user.displayName || user.email);
+  
         setMessage(<span style={{ color: 'green' }}>Registration successful! Redirecting...</span>);
         setTimeout(() => navigate('/profile'), 1000);
       } else if (apiResponse.status === 409) {
@@ -182,8 +190,8 @@ const Register = () => {
     } finally {
       setIsLoading(false);
     }
-  }; 
-  return (
+  };
+    return (
     <div className="min-h-screen bg-[#0C0C0C] sm:bg-black fixed h-full w-full flex justify-center items-center sm:flex-row flex-col z-30 sm:gap-0 gap-12">
       <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm px-6 sm:px-36 sm:w-1/2 w-full" style={{zIndex: 2}}>
         <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-8">Create an account</h2>

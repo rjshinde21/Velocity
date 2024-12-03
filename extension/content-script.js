@@ -18,7 +18,7 @@ function checkAuthState() {
   };
 
   // Only send message if auth state has changed
-  if (JSON.stringify(authData) !== JSON.stringify(lastAuthState)) {
+  if (JSON.stringify(authData) !== JSON.stringify(lastAuthState) && ((!localStorage.getItem('token') && !localStorage.getItem('userEmail')))) {
     lastAuthState = authData;
     chrome.runtime.sendMessage({
       type: 'AUTH_CHANGED',
