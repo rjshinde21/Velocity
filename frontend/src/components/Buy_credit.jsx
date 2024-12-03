@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import velocitylogo from '../assets/velocitylogo.png';
 
 const BuyCredits = () => {
   const [selectedAmount, setSelectedAmount] = useState(null);
@@ -22,12 +23,12 @@ const BuyCredits = () => {
     <div className="min-h-screen bg-black text-white p-8 flex flex-col items-center">
       {/* Logo */}
       <div className="flex items-center gap-2 mb-16">
-        <span className="text-2xl">✓</span>
+        <span className="text-2xl"><img src={velocitylogo} className="h-6 sm:h-8" alt="Velocity Logo" /></span>
         <span className="text-2xl">Velocity</span>
       </div>
 
       {/* Main Content */}
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-lg">
         <h1 className="text-2xl mb-8 text-center">Buy Credits</h1>
 
         {/* Credit Options Grid */}
@@ -38,8 +39,8 @@ const BuyCredits = () => {
               onClick={() => handleAmountSelect(amount, credits)}
               className={`
                 py-4 px-6 rounded-xl text-xl
-                ${selectedAmount === amount 
-                  ? 'bg-gray-700 border-2 border-blue-500' 
+                ${selectedAmount === amount
+                  ? 'bg-gray-700 border-2 border-blue-500'
                   : 'bg-gray-800 hover:bg-gray-700'}
                 transition-all duration-200
               `}
@@ -58,15 +59,17 @@ const BuyCredits = () => {
         </div>
 
         {/* Next Button */}
-        <button 
-          className="w-full max-w-xs mx-auto block py-3 px-8 rounded-full bg-black border border-blue-500 hover:bg-gray-900 transition-colors duration-200 relative group"
+        <button
+          className="w-auto mx-auto block py-5 px-12 rounded-full bg-black border border-blue-500 hover:bg-gray-900 transition-colors duration-200 relative group"
           style={{
             boxShadow: '0 0 20px rgba(59, 130, 246, 0.5)'
           }}
         >
-          <span className="relative z-10">Next</span>
+          <span className="relative z-10 text-xl font-semibold">Next</span>
           <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-600 to-blue-400 opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
         </button>
+
+
       </div>
     </div>
   );

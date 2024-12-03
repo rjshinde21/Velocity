@@ -34,7 +34,7 @@ const BuiltFor = () => {
   <div className="max-w-7xl mx-auto py-6">
     <h2 className="text-4xl text-center mb-16 text-white">Built For</h2>
     
-    <div className="flex flex-col gap-12">
+    <div className="flex flex-col gap-12 pb-6">
       {/* First row - 3 items */}
       <div className="flex flex-col md:flex-row gap-8 justify-center">
         {categories.slice(0, 3).map((category, index) => (

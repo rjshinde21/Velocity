@@ -38,50 +38,51 @@ const HowItWorks = () => {
   ];
 
   return (
-    <div className="relative w-full min-h-screen bg-black text-white p-8">
-      {/* Background Image Layer */}
+    <div className="relative min-h-screen bg-black">
+      {/* Background Image Container */}
       <div
-        className="absolute inset-0 bg-center bg-cover opacity-50 pt-12"
+        className="absolute inset-0 bg-center bg-cover opacity-50"
         style={{
           backgroundImage: "url('https://toteminteractive.in/velosty/mask.png')",
         }}
-      ></div>
-      <div className="relative max-w-7xl mx-auto">
-        {/* Heading */}
-        <h1 className="text-4xl font-light mt-12 ml-24 text-left">How It Works</h1>
+      />
 
-        <div className="flex flex-col lg:flex-row gap-20">
-          {/* Left side - Steps */}
-          <div className="flex p-6 flex-col justify-center items-center space-y-2 lg:w-2/5">
-            {steps.map((step, index) => (
-              <div
-                key={index}
-                className="flex flex-col w-2/3 p-6 rounded-lg bg-[rgba(0,0,0,0.3)] border border-gray-800 backdrop-blur-sm transition-transform hover:transform hover:-translate-y-1"
-              >
-                <div className="flex flex-row items-center space-x-2">
-                  <div className="flex-shrink-0 p-2 bg-[rgba(0,128,203,0.1)] rounded-lg">
-                    {step.icon}
+      {/* Content Container */}
+      <div className="relative w-full px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+          {/* Left Section */}
+          <div className="w-full lg:w-1/2 px-4">
+            <h1 className="text-3xl sm:text-4xl font-light mb-8 text-white text-center lg:text-left lg:ml-24">
+              How It Works
+            </h1>
+            <div className="flex flex-col items-center space-y-4 w-full lg:w-3/4">
+              {steps.map((step, index) => (
+                <div
+                  key={index}
+                  className="flex flex-col w-full sm:w-4/5 lg:w-2/3 p-4 sm:p-6 rounded-lg bg-[rgba(0,0,0,0.3)] border border-gray-800 backdrop-blur-sm transition-transform transform hover:translate-y-2"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-[rgba(0,128,203,0.1)] p-2 rounded-lg">
+                      {step.icon}
+                    </div>
+                    <h3 className="text-base sm:text-lg text-white">{step.title}</h3>
                   </div>
-                  <h3 className="text-base font-medium text-white">
-                    {step.title}
-                  </h3>
+                  <p className="text-gray-400 text-xs sm:text-sm ml-4 sm:ml-8">
+                    {step.description}
+                  </p>
                 </div>
-
-                <p className="text-xs text-gray-400 mt-2 ml-2">
-                  {step.description}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           {/* Right side - Video Placeholder */}
-          <div className="lg:w-2/5">
+          <div className="lg:w-1/2 items-start">
             <div
-              className="relative rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800"
-              style={{ aspectRatio: '514/588' }}
+              className="relative rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 h-4/5"
+              style={{ aspectRatio: '677/766' }}
             >
               <video
-                src="https://toteminteractive.in/velosty/Extension.mp4"
+                src="https://toteminteractive.in/velosty/Extensionnew.mp4"
                 className="w-full h-full object-cover"
                 autoPlay
                 loop
@@ -89,7 +90,6 @@ const HowItWorks = () => {
                 controls
               />
             </div>
-
           </div>
         </div>
       </div>
