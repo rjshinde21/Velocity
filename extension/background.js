@@ -1,4 +1,5 @@
 let ports = [];
+let injectedTabs = new Set();
 
 chrome.runtime.onConnect.addListener((port) => {
     ports.push(port);
@@ -9,16 +10,6 @@ chrome.runtime.onConnect.addListener((port) => {
     });
   });
   
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.type === 'LOGIN_STATUS') {
-      chrome.storage.local.set({ 'token': request.token, 'userData': request.userData });
-      // Broadcast to all extension pages
-      chrome.runtime.sendMessage({ type: 'AUTH_CHANGED', isLoggedIn: true });
-    } else if (request.type === 'LOGOUT') {
-      chrome.storage.local.remove(['token', 'userData']);
-      chrome.runtime.sendMessage({ type: 'AUTH_CHANGED', isLoggedIn: false });
-    }
-  });
   
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && 
@@ -57,22 +48,72 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
       });
     }
+    else if (message.action === 'updateTabs') {
+      chrome.storage.local.set({ 'enhanceButtonEnabled': message.enabled });
+      updateAllTabs(message.enabled);
+    }
     // Always return true for asynchronous response
     return true;
   });
-      chrome.runtime.onInstalled.addListener(function() {
-      // Initialize storage
-      chrome.storage.local.get(['userToken'], function(result) {
-          if (!result.userToken) {
-              chrome.action.setPopup({ popup: 'login.html' });
-          } else {
-              chrome.action.setPopup({ popup: 'phase1.html' });
-          }
-      });
+  
+  // chrome.storage.onChanged.addListener(function(changes, namespace) {
+  //     if (changes.token && changes.token.newValue) {
+  //         chrome.action.setPopup({ popup: 'phase1.html' });
+  //     }
+  // });
+
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && !injectedTabs.has(tabId) && isValidUrl(tab.url)) {
+      injectContentScript(tabId);
+    }
   });
   
-  chrome.storage.onChanged.addListener(function(changes, namespace) {
-      if (changes.userToken && changes.userToken.newValue) {
-          chrome.action.setPopup({ popup: 'phase1.html' });
-      }
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    injectedTabs.delete(tabId);
   });
+  
+  function isValidUrl(url) {
+    return url && !url.startsWith('chrome://') && 
+           !url.startsWith('brave://') && 
+           !url.startsWith('chrome-extension://');
+  }
+  
+  async function injectContentScript(tabId) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content-script.js']
+      });
+      
+      injectedTabs.add(tabId);
+      
+      const state = await chrome.storage.local.get(['enhanceButtonEnabled']);
+      await chrome.tabs.sendMessage(tabId, {
+        action: 'toggleEnhanceButton',
+        enabled: state.enhanceButtonEnabled === true
+      });
+    } catch (error) {
+      console.log(`Script injection failed for tab ${tabId}:`, error);
+    }
+  }
+  
+
+  
+  async function updateAllTabs(enabled) {
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      if (isValidUrl(tab.url)) {
+        if (!injectedTabs.has(tab.id)) {
+          await injectContentScript(tab.id);
+        }
+        try {
+          await chrome.tabs.sendMessage(tab.id, {
+            action: 'toggleEnhanceButton',
+            enabled
+          });
+        } catch (error) {
+          console.log(`Could not update tab ${tab.id}:`, error);
+        }
+      }
+    }
+  }

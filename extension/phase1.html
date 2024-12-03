@@ -659,6 +659,97 @@ color: #C9C9C9;
       #imageUpload {
         display: none;
       }
+
+      .extension-button {
+    position: absolute !important;
+    bottom: 5px !important;
+    right: 5px !important;
+    padding: 5px 10px !important;
+    background: linear-gradient(180deg, #000000 0%, #008ACB 100%) !important;
+    color: white !important;
+    border: 1px solid #444444 !important;
+    border-radius: 5px !important;
+    cursor: pointer !important;
+    z-index: 999999 !important;
+    display: none !important;
+    font-size: 12px !important;
+    transition: all 0.3s ease !important;
+  }
+
+  .extension-button.enabled {
+    display: block !important;
+  }
+
+  .extension-button:hover {
+    box-shadow: 0 0 10px #008ACB !important;
+  }
+
+  .enhance-popover {
+    position: absolute !important;
+    bottom: 40px !important;
+    right: 5px !important;
+    background: rgba(0, 0, 0, 0.95) !important;
+    border: 1px solid #444444 !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
+    color: white !important;
+    z-index: 999999 !important;
+    min-width: 200px !important;
+    max-width: 300px !important;
+  }
+
+  .enhance-actions {
+    display: flex !important;
+    gap: 10px !important;
+    margin-top: 10px !important;
+  }
+
+  .enhance-actions button {
+    flex: 1 !important;
+    padding: 5px 10px !important;
+    background: linear-gradient(180deg, #000000 0%, #008ACB 100%) !important;
+    border: 1px solid #444444 !important;
+    border-radius: 5px !important;
+    color: white !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    transition: all 0.3s ease !important;
+  }
+
+  .enhance-actions button:hover {
+    box-shadow: 0 0 10px #008ACB !important;
+  }
+
+  .enhance-controls {
+    margin-top: 12px;
+    margin-bottom: 20px;
+    background: rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+  }
+
+  .enhance-controls:hover {
+    border-color: #008ACB;
+    box-shadow: 0 0 10px rgba(0, 138, 203, 0.1);
+  }
+
+  /* Use the same styling as your existing buttons */
+  .enhance-controls .style-button {
+    display: flex;
+    border: 1.5px solid #353535;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: transparent;
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .enhance-controls .style-button:hover {
+    background-color: #000000;
+  }
+
       .input-container {
         /* position: relative; */
                width: 100%;
@@ -755,10 +846,10 @@ color: #C9C9C9;
 <body>
   <div class="w-full flex items-center justify-between text-white text-lg font-normal font-amenti h-[60px] relative px-4">
     <!-- Logout button - hidden by default, shown when logged in -->
-    <!-- <button id="logoutButton" class="flex items-center gap-2 text-white text-sm hover:text-[#008ACB] transition-colors" style="display: none;">
+    <button id="logoutButton" class="flex items-center gap-2 text-white text-sm hover:text-[#008ACB] transition-colors" style="display: none;">
         <img src="./assets/logout.png" alt="Logout" class="h-4 w-4">
         <span>Log Out</span>
-    </button> -->
+    </button>
     
     <!-- Empty div to maintain spacing when logout is hidden -->
     <div class="w-[100px]"></div>
@@ -802,6 +893,15 @@ color: #C9C9C9;
 
 
 <div class="title">Select your AI model</div>
+<div class="enhance-controls bg-black/40 rounded-2xl border border-[#444444] p-4 mb-4 mx-4">
+  <div class="flex items-center justify-between mb-4">
+      <h3 id="enhance-button" class="text-[#C9C9C9] font-normal">Enhance Button</h3>
+      <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="enhanceToggle" class="peer sr-only" checked>
+          <div class="w-11 h-6 bg-[#222222] peer-focus:outline-none rounded-full peer dark:bg-[#222222] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#008ACB]"></div>
+      </label>
+  </div>
+</div>
 <div class="radio-group">
     <div class="radio-button">
       <input type="radio" id="option1" name="option" value="General">
@@ -912,6 +1012,8 @@ color: #C9C9C9;
 
 
   <script src="popup.js"></script>
+  <script src="content-script.js"></script>
+
 </body>
 </html>
 
