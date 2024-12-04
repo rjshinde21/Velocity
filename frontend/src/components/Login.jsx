@@ -94,7 +94,7 @@ const Login = ({setIsLoggedIn}) => {
       });
 
       const data = await response.json();
-
+      console.log("login api data:"+data);
       if (response.ok) {
         handleSuccessfulLogin(data.data.user, data.data.token);
       } else {
@@ -108,77 +108,53 @@ const Login = ({setIsLoggedIn}) => {
     }
   };
   
-  const handleGoogleAuthResult = async (googleUser) => {
-    setIsLoading(true);
-    setMessage(<span style={{ color: '#2563eb' }}>Processing Google sign-in...</span>);
 
-    try {
-      const apiResponse = await fetch('http://localhost:3000/api/users/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: googleUser.email,
-          googleId: googleUser.uid,
-        })
-      });
-
-      const data = await apiResponse.json();
-
-      if (apiResponse.ok) {
-        handleSuccessfulLogin(data.data.user, data.data.token);
-      } else if (apiResponse.status === 404) {
-        // User doesn't exist, try registering
-        const registerResponse = await fetch('http://localhost:3000/api/users/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: googleUser.displayName || googleUser.email,
-            email: googleUser.email,
-            googleId: googleUser.uid,
-            avatar: googleUser.photoURL
-          })
-        });
-
-        if (registerResponse.ok) {
-          const registerData = await registerResponse.json();
-          handleSuccessfulLogin(registerData.data.user, registerData.data.token);
-        } else {
-          throw new Error('Registration failed');
-        }
-      } else {
-        throw new Error(data.message || 'Login failed');
-      }
-    } catch (error) {
-      console.error('Google auth processing error:', error);
-      setMessage(<span style={{ color: 'red' }}>Failed to process Google sign-in. Please try again.</span>);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleGoogleSignIn = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setMessage(<span style={{ color: '#2563eb' }}>Connecting to Google...</span>);
-
+  
     try {
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
       provider.addScope('profile');
       
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
       
-      // Let the App.jsx auth observer handle the rest
-      setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
-      
-      // Add a small delay before redirect to show success message
-      setTimeout(() => {
-        navigate('/profile');
-      }, 1000);
+      // Try to login with Google credentials
+      const response = await fetch('http://localhost:3000/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: user.email,
+          googleId: user.uid,
+        })
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
+        setTimeout(() => {
+          navigate('/profile');
+        }, 1000);
+      } else if (response.status === 404) {
+        setMessage(
+          <span style={{ color: 'red' }}>
+            Account does not exist. Please{' '}
+            <Link to="/register" className="text-[#008ACB] hover:text-[#4bb8eb]">
+              register
+            </Link>
+            {' '}first.
+          </span>
+        );
+      } else {
+        throw new Error(data.message || 'Login failed');
+      }
       
     } catch (error) {
       console.error('Google Sign In Error:', error);
@@ -187,7 +163,7 @@ const Login = ({setIsLoggedIn}) => {
       setIsLoading(false);
     }
   };
-
+  
 
 
 
