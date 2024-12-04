@@ -21,7 +21,7 @@ function App() {
     <Router>
       <main className="bg-primary overflow-hidden scrollbar scrollbar-thumb-slate-50 scrollbar-track-slate-800">
         <AppContent />
-        <Footer />
+        {/* <Footer /> */}
       </main>
     </Router>
   );
