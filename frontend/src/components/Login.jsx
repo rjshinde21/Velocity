@@ -138,6 +138,7 @@ const Login = ({setIsLoggedIn}) => {
       const data = await response.json();
   
       if (response.ok) {
+        handleSuccessfulLogin(data.data.user, data.data.token);
         setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
         setTimeout(() => {
           navigate('/profile');
@@ -173,7 +174,7 @@ const Login = ({setIsLoggedIn}) => {
     //   token: token,
     //   userId: userData.id
     // });
-    console.log("successfull login");
+    console.log("successfull login" + userData.email);
     localStorage.setItem('token', token);
     localStorage.setItem('userId', userData.id);
     localStorage.setItem('userEmail', userData.email);
