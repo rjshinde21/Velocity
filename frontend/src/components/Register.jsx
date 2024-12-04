@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../config/firebaseConfig';
@@ -23,6 +23,7 @@ const Register = () => {
   });
 
   const validateField = (field, value) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     let error = '';
     switch (field) {
       case 'name':
@@ -30,7 +31,7 @@ const Register = () => {
         else if (value.length < 2) error = 'Name must be at least 2 characters';
         break;
       case 'email':
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
         if (!value) error = 'Email is required';
         else if (!emailRegex.test(value)) error = 'Please enter a valid email';
         break;
