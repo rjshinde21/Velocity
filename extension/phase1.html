@@ -8,7 +8,7 @@
   <style>
     #logoutButton, #editButton, #signupButton {
     transition: all 0.3s ease;
-    height: auto;
+    height: 30px;
     padding: 0px 10px;
     border-radius: 12px;
     font-size: 14px;
@@ -131,14 +131,27 @@
         background-color: #008acb;
         border-radius: 4px;
       }
-      .title{
-height: 80px;
+      .title1{
+height: 50px;
 display: flex;
+justify-content: center;
+background-color: #005F7F;
+
+font-weight: lighter;
+align-items: center;
+font-size: large;
+color: #C9C9C9;
+/* font-family: 'Inter'; */
+
+      }
+      .title{
+height: 50px;
+display: flex;
+background-color: transparent;
 justify-content: center;
 font-weight: lighter;
 align-items: center;
 font-size: large;
-padding-top: 20px;
 color: #C9C9C9;
 /* font-family: 'Inter'; */
 
@@ -146,7 +159,7 @@ color: #C9C9C9;
       .radio-group {
         display: flex;
         gap: 8px;
-        padding: 2px;
+        padding: 1px;
         justify-content: center;
         flex-wrap: wrap;
         margin-bottom: 5%;
@@ -165,8 +178,8 @@ color: #C9C9C9;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        width: 75px;
-        height: 75px;
+        width: 72px;
+        height: 72px;
         font-size: 12px;
         color: white;
         border-radius: 6px;
@@ -187,7 +200,7 @@ color: #C9C9C9;
 
       .button-group {
   display: flex;
-  gap: 5px;
+  gap: 8px;
   justify-content: center;
   padding-top: 10px;
 
@@ -489,7 +502,7 @@ color: #C9C9C9;
         /* padding-right: 40px; Make room for the icon */
         width: 100%; /* Adjust width to account for padding and border */
         color: #999999;
-        padding: 15px;
+        padding: 30px;
         /* margin-top: 10px; */
         height: 80px;
       }
@@ -589,10 +602,7 @@ color: #C9C9C9;
         flex-grow: 1;
         margin-right: 10px;
       }
-      .profileicon {
-    height: 13px;
-    width: 13px;
-}
+     
       /* .copy-button {
       background-color: #008ACB;
       border: none;
@@ -686,11 +696,11 @@ color: #C9C9C9;
 
   .enhance-popover {
     position: absolute !important;
-    bottom: 40px !important;
-    right: 5px !important;
+    /* bottom: 40px !important; */
+    /* right: 5px !important; */
     background: rgba(0, 0, 0, 0.95) !important;
     border: 1px solid #444444 !important;
-    border-radius: 8px !important;
+    /* border-radius: 8px !important; */
     padding: 12px !important;
     color: white !important;
     z-index: 999999 !important;
@@ -721,8 +731,7 @@ color: #C9C9C9;
   }
 
   .enhance-controls {
-    margin-top: 12px;
-    margin-bottom: 20px;
+   
     background: rgba(0, 0, 0, 0.4);
     transition: all 0.3s ease;
   }
@@ -739,7 +748,7 @@ color: #C9C9C9;
     justify-content: flex-start;
     align-items: center;
     gap: 8px;
-    padding: 8px 16px;
+    /* padding: 8px 16px; */
     background-color: transparent;
     border-radius: 9999px;
     cursor: pointer;
@@ -754,8 +763,8 @@ color: #C9C9C9;
         /* position: relative; */
                width: 100%;
                margin-top: 0%;
-               padding-left: 5%;
-               padding-right: 5%;
+               padding-left: 4%;
+               padding-right: 4%;
         /* padding-top: 50px; */
         /* padding: 10% 0% 0% 10%; */
 
@@ -768,8 +777,12 @@ color: #C9C9C9;
     font-style: italic;
     background: linear-gradient(to bottom, #008ACB4D, #6ACFFF4D);
     border: 1px solid #008ACB;
-    margin: 5px 15px 5px 0;
+    margin: 12px 15px 5px 0;
+    position: absolute; /* Position relative to the nearest positioned ancestor */
+    top: 0; /* Aligns to the top */
+    right: 0; /* Aligns to the left */
 }
+
 
 
 .profileicon {
@@ -796,6 +809,111 @@ color: #C9C9C9;
 }
 #editButton:hover {
     box-shadow: 0 0 10px #FFC107;
+}
+
+.premium-enhance-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 20px auto;
+  position: relative;
+}
+
+.premium-enhance-control {
+  position: relative;
+  width: auto;
+  min-width: 300px;
+  background: linear-gradient(145deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.1));
+  border-radius: 12px;
+  padding: 2px;
+  overflow: hidden;
+}
+
+.premium-enhance-control::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+  border-radius: 14px;
+  z-index: -1;
+  animation: borderShine 3s linear infinite;
+  background-size: 200% 100%;
+}
+
+.premium-enhance-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 10px;
+  backdrop-filter: blur(5px);
+}
+
+.premium-enhance-text {
+  color: #fbbf24;
+  font-size: 14px;
+  font-weight: 500;
+  margin-right: 24px;
+}
+
+.premium-toggle {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+
+.toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(251, 191, 36, 0.2);
+  transition: 0.4s;
+  border-radius: 34px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  bottom: 4px;
+  background-color: #fbbf24;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+.button-group label.selected {
+  background-color: rgba(0, 138, 203, 0.1);
+  border-color: #008ACB;
+}
+.button-group label.selected .dot {
+  background-color: #008ACB;
+}
+
+.toggle-input:checked + .toggle-slider {
+  background-color: rgba(245, 158, 11, 0.6);
+}
+
+.toggle-input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+@keyframes borderShine {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
       #deleteButton {
@@ -844,72 +962,47 @@ color: #C9C9C9;
   </style>
 </head>
 <body>
-  <div class="w-full flex items-center justify-between text-white text-lg font-normal font-amenti h-[60px] relative px-4">
-    <!-- Logout button - hidden by default, shown when logged in -->
-    <button id="logoutButton" class="flex items-center gap-2 text-white text-sm hover:text-[#008ACB] transition-colors" style="display: none;">
-        <img src="./assets/logout.png" alt="Logout" class="h-4 w-4">
-        <span>Log Out</span>
-    </button>
+  <div class="flex title1 justify-between items-center">
+    <div class="flex items-center">
+        <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto">
+        <span class="text-white ml-4">Velocity</span>
+    </div>
     
-    <!-- Empty div to maintain spacing when logout is hidden -->
-    <div class="w-[100px]"></div>
-
-    <!-- Center logo - always visible -->
-    <!-- Right side buttons container -->
-    <div class="flex-none relative">
-        <div style="height: 50px; display:flex; align-items:center; gap: 10px;">
-            <!-- Token/Credits button - hidden by default, shown when logged in -->
-            <button id="editButton" class="flex items-center gap-2" style="display: none;">
-                <span><img src="./assets/coin.png" alt="coin"></span>
-                <span class="credit-amount">0</span>
-            </button>
-            
-            <!-- Credits dropdown menu -->
-            <div id="editDropdownMenu" class="absolute text-xs font-normal font-amenti mt-[47px] bg-black border border-[#222222] rounded-[12px] shadow-xl overflow-hidden" style="display: none;">
-                <ul class="py-7 px-4 space-y-2">
-                    <li>
-                        <div class="flex items-center text-xs text-left hover:bg-[#2a2a2a] cursor-pointer transition-colors mt-4">
-                            Credit Balance of today
-                        </div>
-                    </li>
-                    <li>
-                        <div style="border-bottom: 1px solid #444444;" class="flex items-center text-xs hover:bg-[#2a2a2a] text-white cursor-pointer transition-colors pb-4">
-                            <p style="padding-bottom: 12px;">
-                                <span class="text-2xl credit-amount">0</span> Credits Left
-                            </p>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- Sign Up/User Info button -->
-            <button id="signupButton" class="text-white flex gap-2 items-center space-x-2">
-                <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
-                <span>Sign Up</span>
-            </button>
-        </div>
+    <div class="flex items-center gap-4">
+        <button id="editButton" class="flex items-center gap-2 text-white" style="display: none;">
+            <span><img src="./assets/coin.png" alt="coin"></span>
+            <span class="credit-amount">0</span>
+        </button>
+        
+        <button id="signupButton" class="text-white space-x-2 flex items-center">
+            <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
+            <span>Sign Up</span>
+        </button>
     </div>
 </div>
 
-
-<div class="title">Select your AI model</div>
-<div class="enhance-controls bg-black/40 rounded-2xl border border-[#444444] p-4 mb-4 mx-4">
-  <div class="flex items-center justify-between mb-4">
-      <h3 id="enhance-button" class="text-[#C9C9C9] font-normal">Enhance Button</h3>
-      <label class="relative inline-flex items-center cursor-pointer">
-          <input type="checkbox" id="enhanceToggle" class="peer sr-only" checked>
-          <div class="w-11 h-6 bg-[#222222] peer-focus:outline-none rounded-full peer dark:bg-[#222222] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#008ACB]"></div>
+<div class="premium-enhance-wrapper">
+  <div class="premium-enhance-control">
+    <div class="premium-enhance-content">
+      <h3 class="premium-enhance-text">Toggle Enhance Button</h3>
+      <label class="premium-toggle">
+        <input type="checkbox" id="enhanceToggle" class="toggle-input" checked>
+        <div class="toggle-slider"></div>
       </label>
+    </div>
   </div>
 </div>
+<div class="title">Select Your AI Model</div>
+
 <div class="radio-group">
     <div class="radio-button">
-      <input type="radio" id="option1" name="option" value="General">
-      <label class="radio-button selected" for="option1">
-        <img src="./assets/radiobutton1.png" alt="General">
+      <input type="radio" id="option1" name="option" value="Stability.ai">
+      <label class="radio-button" for="option1">
+        <img src="./assets/radiobutton1.png" alt="Stability.ai">
         <!-- <span>General</span> -->
       </label>
     </div>
+
     <div class="radio-button">
       <input type="radio" id="option2" name="option" value="GPT 4o">
       <label class="radio-button" for="option2">
@@ -918,23 +1011,30 @@ color: #C9C9C9;
       </label>
     </div>
     <div class="radio-button">
-      <input type="radio" id="option3" name="option" value="Midjourney">
+      <input type="radio" id="option3" name="option" value="Claude">
       <label class="radio-button" for="option3">
-        <img src="./assets/radiobutton3.png" alt="Midjourney">
+        <img src="./assets/radiobutton3.png" alt="Claude">
         <!-- <span>Midjourney</span> -->
       </label>
     </div>
     <div class="radio-button">
-      <input type="radio" id="option4" name="option" value="Playground">
+      <input type="radio" id="option4" name="option" value="Midjourney">
       <label class="radio-button" for="option4">
-        <img src="./assets/radiobutton4.png" alt="Playground">
+        <img src="./assets/radiobutton4.png" alt="Midjourney">
         <!-- <span>Meta AI</span> -->
       </label>
     </div>
     <div class="radio-button">
-      <input type="radio" id="option5" name="option" value="DALLE">
+      <input type="radio" id="option5" name="option" value="Ranway">
       <label class="radio-button" for="option5">
-        <img src="./assets/radiobutton5.png" alt="DALLE">
+        <img src="./assets/radiobutton5.png" alt="Ranway">
+        <!-- <span>Meta AI</span> -->
+      </label>
+    </div>
+    <div class="radio-button">
+      <input type="radio" id="option6" name="option" value="Ranway">
+      <label class="radio-button" for="option6">
+        <img src="./assets/radiobutton6.png" alt="Ranway">
         <!-- <span>Meta AI</span> -->
       </label>
     </div>
@@ -951,30 +1051,31 @@ color: #C9C9C9;
     </div>
     <div class="needs">Choose Your Style to Match Your Needs</div>
     <div class="button-group">
-        <input type="radio" name="option" id="descriptive">
+        <input type="radio" name="style-option" id="descriptive">
         <label for="descriptive">
           <span class="dot"></span>
           <span class="button-text">Descriptive</span>
         </label>
       
-        <input type="radio" name="option" id="creative">
+        <input type="radio" name="style-option" id="creative">
         <label for="creative">
           <span class="dot"></span>
           <span class="button-text">Creative</span>
         </label>
       
-        <input type="radio" name="option" id="professional" checked>
+        <input type="radio" name="style-option" id="professional">
         <label for="professional">
           <span class="dot"></span>
           <span class="button-text">Professional</span>
         </label>
       
-        <input type="radio" name="option" id="concise">
+        <input type="radio" name="style-option" id="concise">
         <label for="concise">
           <span class="dot"></span>
           <span class="button-text">Concise</span>
         </label>
       </div>
+
 
   
   <!-- <div class="image-upload-container">
@@ -996,7 +1097,7 @@ color: #C9C9C9;
       Category cards will be dynamically inserted here
 
   </div> -->
-  <div class="flex justify-center mt-4">
+  <div class="flex justify-center mt-6">
     <button id="sendButton" class="generate-button flex justify-center items-center w-full"> <!-- Added width for full button -->
       <span class="mx-auto">Generate</span> <!-- Center text -->
       <!-- <img id="generateIcon" src="./assets/Rectangle 32.png" alt="Generate" class="ml-2" /> Space between text and image -->
@@ -1004,10 +1105,7 @@ color: #C9C9C9;
   </div>   
   <div class="w-full bg-[#00141C] flex items-center justify-between text-white text-lg font-normal font-amenti h-[60px] relative px-4">
 
-  <div class="flex items-center justify-center flex-grow gap-2">
-    <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto mr-2">
-    <span>Velocity</span>
-</div>
+ 
 </div>
 
 
