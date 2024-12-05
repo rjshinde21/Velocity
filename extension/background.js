@@ -1,15 +1,62 @@
 let ports = [];
 let injectedTabs = new Set();
+let authState = null; // Store auth state in memory
+chrome.storage.local.get([
+  'isAuthenticated',
+  'token',
+  'userId',
+  'userName',
+  'userEmail'
+], (result) => {
+  authState = {
+    isAuthenticated: result.isAuthenticated,
+    token: result.token,
+    userId: result.userId,
+    userName: result.userName,
+    userEmail: result.userEmail
+  };
+});
 
 chrome.runtime.onConnect.addListener((port) => {
-    ports.push(port);
-    console.log('New connection established');
-  
-    port.onDisconnect.addListener(() => {
-      ports = ports.filter(p => p !== port);
-    });
+  ports.push(port);
+  console.log('New connection established');
+
+  // Send current auth state to new connection if it exists
+  if (authState) {
+    try {
+      port.postMessage({
+        type: 'AUTH_STATE_CHANGED',
+        data: authState
+      });
+    } catch (error) {
+      console.error('Error sending initial auth state:', error);
+    }
+  }
+
+  port.onDisconnect.addListener(() => {
+    ports = ports.filter(p => p !== port);
   });
-  
+});
+
+async function checkUserTokens(token, userId) {
+  try {
+    const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await response.json();
+    return {
+      hasTokens: data.data.token_received > data.data.tokens_used,
+      remainingTokens: data.data.token_received - data.data.tokens_used
+    };
+  } catch (error) {
+    console.error('Error checking tokens:', error);
+    return { hasTokens: false, remainingTokens: 0 };
+  }
+}
+
   
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && 
@@ -26,6 +73,9 @@ chrome.runtime.onConnect.addListener((port) => {
     console.log('Received message:', message);
   
     if (message.type === 'AUTH_CHANGED') {
+      // Update stored auth state
+      authState = message.data;
+      
       // Store auth data
       chrome.storage.local.set({
         isAuthenticated: message.data.isAuthenticated,
@@ -48,13 +98,42 @@ chrome.runtime.onConnect.addListener((port) => {
         });
       });
     }
-    else if (message.action === 'updateTabs') {
-      chrome.storage.local.set({ 'enhanceButtonEnabled': message.enabled });
-      updateAllTabs(message.enabled);
+    if (message.action === 'updateTabs') {
+      // First check authentication and tokens
+      chrome.storage.local.get(['token', 'isAuthenticated', 'userId'], async (result) => {
+        if (!result.isAuthenticated || !result.token) {
+          // User is not authenticated
+          sendResponse({
+            success: false,
+            error: 'Please log in to use this feature',
+            type: 'auth'
+          });
+          return;
+        }
+  
+        // Check tokens
+        const tokenStatus = await checkUserTokens(result.token, result.userId);
+        if (!tokenStatus.hasTokens) {
+          sendResponse({
+            success: false,
+            error: 'Insufficient tokens. Please purchase more tokens to continue.',
+            type: 'tokens',
+            remainingTokens: tokenStatus.remainingTokens
+          });
+          return;
+        }
+  
+        // If all checks pass, proceed with the update
+        chrome.storage.local.set({ 'enhanceButtonEnabled': message.enabled });
+        updateAllTabs(message.enabled);
+        sendResponse({ success: true });
+      });
+      return true; // Will respond asynchronously
     }
     // Always return true for asynchronous response
     return true;
   });
+  
   
   // chrome.storage.onChanged.addListener(function(changes, namespace) {
   //     if (changes.token && changes.token.newValue) {
@@ -67,6 +146,7 @@ chrome.runtime.onConnect.addListener((port) => {
       injectContentScript(tabId);
     }
   });
+  
   
   chrome.tabs.onRemoved.addListener((tabId) => {
     injectedTabs.delete(tabId);
@@ -92,6 +172,12 @@ chrome.runtime.onConnect.addListener((port) => {
         action: 'toggleEnhanceButton',
         enabled: state.enhanceButtonEnabled === true
       });
+      if (authState) {
+        await chrome.tabs.sendMessage(tabId, {
+          type: 'AUTH_STATE_CHANGED',
+          data: authState
+        });
+      }
     } catch (error) {
       console.log(`Script injection failed for tab ${tabId}:`, error);
     }
@@ -105,15 +191,17 @@ chrome.runtime.onConnect.addListener((port) => {
       if (isValidUrl(tab.url)) {
         if (!injectedTabs.has(tab.id)) {
           await injectContentScript(tab.id);
-        }
-        try {
-          await chrome.tabs.sendMessage(tab.id, {
-            action: 'toggleEnhanceButton',
-            enabled
-          });
-        } catch (error) {
-          console.log(`Could not update tab ${tab.id}:`, error);
+        } else {
+          try {
+            await chrome.tabs.sendMessage(tab.id, {
+              action: 'toggleEnhanceButton',
+              enabled
+            });
+          } catch (error) {
+            console.log(`Could not update tab ${tab.id}:`, error);
+          }
         }
       }
     }
   }
+  

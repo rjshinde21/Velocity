@@ -62,7 +62,6 @@ const ProfilePage = ({pricingRef}) => {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                credentials: 'include'
             });
             if (response.status === 401) {
                 localStorage.clear();
