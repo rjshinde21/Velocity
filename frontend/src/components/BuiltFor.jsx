@@ -32,17 +32,17 @@ const BuiltFor = () => {
   return (
   <div className="w-full" style={{ backgroundColor: '#090909' }}>
   <div className="max-w-7xl mx-auto py-6">
-    <h2 className="text-4xl text-center mb-16 text-white">Built For</h2>
+    <h2 className="text-4xl text-center mb-12 mt-8 text-white">Built For</h2>
     
-    <div className="flex flex-col gap-12 pb-6">
+    <div className="flex flex-col gap-12 pb-12">
       {/* First row - 3 items */}
-      <div className="flex flex-col md:flex-row gap-8 justify-center">
+      <div className="flex flex-col md:flex-row gap-20 justify-center">
         {categories.slice(0, 3).map((category, index) => (
           <div 
             key={index}
             className="flex flex-col items-center text-center max-w-sm"
           >
-            <div className="w-28 h-28 bg-gray-900 rounded-lg mb-6 flex items-center justify-center overflow-hidden">
+            <div className="w-48 h-48 bg-gray-900 rounded-lg mb-6 flex items-center justify-center overflow-hidden">
               <img
                 src={category.img}
                 alt={category.title}
@@ -68,7 +68,7 @@ const BuiltFor = () => {
             key={index + 3}
             className="flex flex-col items-center text-center max-w-sm"
           >
-            <div className="w-28 h-28 bg-gray-900 rounded-lg mb-6 flex items-center justify-center overflow-hidden">
+            <div className="w-48 h-48 bg-gray-900 rounded-lg mb-6 flex items-center justify-center overflow-hidden">
               <img
                 src={category.img}
                 alt={category.title}

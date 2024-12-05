@@ -167,18 +167,18 @@ const Footer = () => {
           </div>
 
           {/* Designer credit and logo section */}
-          <div className="space-y-6 sm:space-y-8">
+          <div className="space-y-6 sm:space-y-0">
             <p className="text-xs sm:text-sm">Designed by TOTEM INTERACTIVE</p>
 
             {/* Logo and social icons */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-0">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-0 sm:gap-0">
               {/* VELOCITY Text */}
               <div className="text-5xl sm:text-7xl md:text-9xl font-bold tracking-wider">
                 VELOCITY
               </div>
 
               {/* Social Icons */}
-              <div className="flex gap-4 mt-12">
+              <div className="flex gap-4 mt-20 mr-14">
                 <a
                   href="https://www.instagram.com/totem.interactive?igsh=MXRscW14NDNwOGdtbA=="
                   className="hover:text-white transition-colors"
