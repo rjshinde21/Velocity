@@ -52,7 +52,7 @@ const HowItWorks = () => {
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
           {/* Left Section */}
           <div className="w-full lg:w-1/2 px-4">
-            <h1 className="text-3xl sm:text-4xl font-light mb-8 text-white text-center lg:text-left lg:ml-24">
+            <h1 className="text-3xl sm:text-4xl font-light mb-8 text-white text-center lg:text-left lg:ml-20">
               How It Works
             </h1>
             <div className="flex flex-col items-center space-y-4 w-full lg:w-3/4 pt-10">
