@@ -1,7 +1,7 @@
 let userId= "";
 let token = "";
-let selectedPlatform = 'General'; // Default platform
-let selectedStyle = 'professional'; // Default style
+let selectedStyle = null; // Default value
+let selectedPlatform = null;   // Default value
 
 async function checkFeatureAccess(featureId) {
   try {
@@ -22,6 +22,53 @@ async function checkFeatureAccess(featureId) {
     throw error;
   }
 }
+function addUnselectCapability() {
+  // Style radio handling
+  document.querySelectorAll('.button-group input[type="radio"]').forEach(input => {
+    const existingHandler = input.onclick;
+    input.onclick = async function(e) {
+      if (this.checked && this.dataset.wasChecked === 'true') {
+        this.checked = false;
+        this.dataset.wasChecked = 'false';
+        selectedStyle = null;
+        await chrome.storage.local.remove('selectedStyle');
+      } else {
+        document.querySelectorAll('.button-group input[type="radio"]').forEach(radio => {
+          radio.dataset.wasChecked = 'false';
+        });
+        this.dataset.wasChecked = 'true';
+        selectedStyle = this.id;
+        await chrome.storage.local.set({ selectedStyle });
+      }
+      
+      if (existingHandler) existingHandler.call(this, e);
+    };
+  });
+
+  // Platform radio handling
+  document.querySelectorAll('.radio-group input[type="radio"]').forEach(input => {
+    const existingHandler = input.onclick;
+    input.onclick = async function(e) {
+      if (this.checked && this.dataset.wasChecked === 'true') {
+        this.checked = false;
+        this.dataset.wasChecked = 'false';
+        selectedPlatform = null;
+        await chrome.storage.local.remove('selectedPlatform');
+      } else {
+        document.querySelectorAll('.radio-group input[type="radio"]').forEach(radio => {
+          radio.dataset.wasChecked = 'false';
+        });
+        this.dataset.wasChecked = 'true';
+        selectedPlatform = this.value;
+        await chrome.storage.local.set({ selectedPlatform });
+      }
+      
+      if (existingHandler) existingHandler.call(this, e);
+      if (typeof updateEnhanceParameters === 'function') updateEnhanceParameters();
+    };
+  });
+}
+
 
 async function recordFeatureUsage(featureId) {
   try {
@@ -233,14 +280,15 @@ document.addEventListener('DOMContentLoaded', () => {
       //enableFeatures();
     } else {
       // Show login prompt
-      document.getElementById('signupButton').textContent = 'Please log in via the web app';
+      document.getElementById('signupButton').textContent = 'Login';
       // Disable extension features
       //disableFeatures();
       console.log("disable features");
     }
   });
 });
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log("on popup received message:"+message);
   if (message.type === 'AUTH_STATE_CHANGED') {
     // Update extension UI based on new auth state
     if (message.data.userEmail) {
@@ -249,7 +297,7 @@ chrome.runtime.onMessage.addListener((message) => {
       console.log("enable features");
 
     } else {
-      document.getElementById('signupButton').textContent = 'Please log in via the web app';
+      document.getElementById('signupButton').textContent = 'Login';
       //disableFeatures();
       console.log("disable features");
 
@@ -260,30 +308,40 @@ chrome.runtime.onMessage.addListener((message) => {
 async function sendRequest() {
   let promptHistoryId = null;
   let creditsDeducted = false;
-  let usageRecorded = false;
 
   try {
     const promptInput = document.getElementById('promptInput');
-    const imageUpload = document.getElementById('imageUpload');
     const prompt = promptInput.value.trim();
-    const selectedAIType = getSelectedRadioValue();
-    const userId = localStorage.getItem('userId');
+
+    if (!prompt) {
+      showError('Please enter a prompt text');
+      return;
+    }
+
+    // if (!selectedStyle || !selectedPlatform) {
+    //   showError('Please select both a style and a platform');
+    //   return;
+    // }
 
     showLoading('Processing request...');
+
+    // Verify features and check credits
+    const canProceed = await verifyAndRecordFeatures();
+    if (!canProceed) {
+      return;
+    }
 
     // Create and send request
     const formData = new FormData();
     const requestData = {
       prompt: prompt,
-      style: getSelectedStyle(),
-      AIType: selectedAIType || 'default'
+      style: selectedStyle,
+      AIType: selectedPlatform
     };
 
     formData.append('data', JSON.stringify(requestData));
 
- 
-
-    // Make the actual API request first
+    // Make the API request
     const response = await fetch('http://127.0.0.1:2000/process', {
       method: 'POST',
       body: formData,
@@ -300,52 +358,22 @@ async function sendRequest() {
       throw new Error(data.error);
     }
 
-    // Once we have a successful response, save to history
+    // Save to history
     try {
-      const promptData = await savePromptToHistory(userId, prompt, selectedAIType);
+      const promptData = await savePromptToHistory(userId, prompt, selectedPlatform);
       if (promptData.success) {
         promptHistoryId = promptData.data.history_id;
-        lastSavedPromptId = promptHistoryId; // Set this for copy functionality
-        console.log('Prompt saved with ID:', promptHistoryId);
+        lastSavedPromptId = promptHistoryId;
       }
     } catch (historyError) {
       console.error('Error saving prompt to history:', historyError);
-      // Continue execution even if history save fails
     }
 
-    // Record features and deduct credits only after successful response
-    try {
-      // Basic prompt
-      if (promptUsed) {
-        await recordFeatureUsage('1');
-        await handleCreditDeduction('basic_prompt');
-      }
+    // Process credit deductions
+    await handleCreditDeductions();
+    creditsDeducted = true;
 
-      // Image feature
-      if (imageUpload && imageUpload.files.length > 0) {
-        await recordFeatureUsage('3');
-        await handleCreditDeduction('image_prompt');
-      }
-
-      // Advanced features
-      if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
-        await recordFeatureUsage('2');
-        for (const optionId of advancedOptionsSelected) {
-          await handleCreditDeduction(`advanced_prompt_${optionId}`);
-        }
-      }
-
-      creditsDeducted = true;
-      usageRecorded = true;
-
-    } catch (creditError) {
-      console.error('Error handling credits/usage:', creditError);
-      // If credit deduction fails, we should still show the response
-      // but log the error and notify the user
-      showError('Warning: Error processing credits. Please contact support.');
-    }
-
-    // Finally, handle the response
+    // Handle the response
     if (data.response) {
       handleParsedResponse(data.response);
     } else {
@@ -354,29 +382,14 @@ async function sendRequest() {
 
   } catch (error) {
     console.error('Request failed:', error);
-    
-    // Clean up any partial operations if needed
-    if (promptHistoryId && (!creditsDeducted || !usageRecorded)) {
-      try {
-        // Add cleanup code here if needed
-        console.log('Cleaning up partial operations...');
-      } catch (cleanupError) {
-        console.error('Error during cleanup:', cleanupError);
-      }
-    }
-
-    // Show appropriate error message
-    if (error.message.includes('Failed to fetch')) {
-      showError('Unable to connect to server. Please make sure the backend is running.');
-    } else {
-      showError(`Error: ${error.message}`);
-    }
+    showError(`Error: ${error.message}`);
   } finally {
-    // Always reset the interface
-    document.getElementById('promptInput').disabled = false;
     resetInterface();
   }
 }
+
+
+
 const oldHandler = document.onclick;
 document.onclick = null;
 
@@ -486,13 +499,23 @@ function getSelectedCategories() {
   return selectedCategories;
 }
 function getSelectedStyle() {
-  const selectedStyle = document.querySelector('.button-group input[type="radio"]:checked');
-  return selectedStyle ? selectedStyle.id : 'professional'; // Default to professional if none selected
+  const selectedRadio = document.querySelector('.button-group input[type="radio"]:checked');
+  selectedStyle = selectedRadio ? selectedRadio.id : null;
+  return selectedStyle;
 }
+
+// Modified function to get selected platform that works with existing code
+function getSelectedPlatform() {
+  const selectedRadio = document.querySelector('.radio-group input[type="radio"]:checked');
+  selectedPlatform = selectedRadio ? selectedRadio.value : '';
+  return selectedPlatform;
+}
+
 
 
 function handleParsedResponse(parsedResponse) {
   const responseDiv = document.getElementById('response');
+  console.log("parsed response:"+parsedResponse);
   if (!responseDiv) {
     console.error('Response div not found');
     return;
@@ -706,12 +729,11 @@ function updateTabsWithState(isEnabled) {
 function initializeRadioGroup() {
   const radioButtons = document.querySelectorAll('.radio-button');
   radioButtons.forEach(button => {
-    button.addEventListener('click', function() {
-      // Remove selected class from all buttons
-      radioButtons.forEach(btn => btn.classList.remove('selected'));
-      // Add selected class to clicked button
-      this.classList.add('selected');
-      // Map the button to platform selection
+    button.addEventListener('click', async function() {
+      const img = this.querySelector('img');
+      const imgSrc = img.src.split('/').pop();
+      const platform = imgSrc.split('.')[0];
+      
       const platformMap = {
         'radiobutton1': 'General',
         'radiobutton2': 'GPT4',
@@ -719,44 +741,80 @@ function initializeRadioGroup() {
         'radiobutton4': 'Playground',
         'radiobutton5': 'DALLE'
       };
-      // Get platform from image source
-      const img = this.querySelector('img');
-      const imgSrc = img.src.split('/').pop();
-      const platform = imgSrc.split('.')[0];
+      
+      radioButtons.forEach(btn => btn.classList.remove('selected'));
+      this.classList.add('selected');
+      
       selectedPlatform = platformMap[platform] || 'General';
-      // Update content script with new parameters
+      chrome.storage.local.set({ selectedPlatform });
       updateEnhanceParameters();
     });
   });
 }
+
 // Add this function to handle style selection
+
 function initializeStyleButtons() {
-  const styleButtons = document.querySelectorAll('.button-group .button-text');
+  const styleButtons = document.querySelectorAll('.button-group input[type="radio"]');
   styleButtons.forEach(button => {
     button.addEventListener('click', function() {
-      // Remove selected class from all buttons
-      styleButtons.forEach(btn => btn.classList.remove('selected'));
-      // Add selected class to clicked button
-      this.classList.add('selected');
-      // Update selected style
-      selectedStyle = this.textContent.toLowerCase();
-      // Update content script with new parameters
+      selectedStyle = this.id;
+      chrome.storage.local.set({ selectedStyle });
       updateEnhanceParameters();
     });
   });
 }
+
+
+
+function loadSavedSelections() {
+  chrome.storage.local.get(['selectedStyle', 'selectedPlatform'], (result) => {
+    // Restore style selection
+    if (result.selectedStyle) {
+      const styleLabel = document.querySelector(`label[for="${result.selectedStyle}"]`);
+      if (styleLabel) {
+        const input = document.getElementById(result.selectedStyle);
+        if (input) input.checked = true;
+        styleLabel.classList.add('selected');
+      }
+    }
+
+    // Restore platform selection (existing code)
+    if (result.selectedPlatform) {
+      const platformMap = {
+        'General': 'radiobutton1',
+        'GPT4': 'radiobutton2',
+        'Midjourney': 'radiobutton3',
+        'Playground': 'radiobutton4',
+        'DALLE': 'radiobutton5'
+      };
+      
+      const buttonId = platformMap[result.selectedPlatform];
+      if (buttonId) {
+        const radioButton = document.querySelector(`[src*="${buttonId}"]`)?.closest('.radio-button');
+        if (radioButton) {
+          radioButton.classList.add('selected');
+        }
+      }
+    }
+  });
+}
+
+
+
 // Add this function to update enhance button parameters
 function updateEnhanceParameters() {
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
     if (!tabs[0]?.id) return;
     chrome.tabs.sendMessage(tabs[0].id, {
       action: 'updateEnhanceParameters',
-      platform: selectedPlatform,
+      platform: getSelectedPlatform(),
       style: selectedStyle,
       enabled: document.getElementById('enhanceToggle').checked
     });
   });
 }
+
 
 
 function initializeEnhanceToggle() {
@@ -1200,13 +1258,17 @@ function getSelectedValues() {
 });
 
 
+document.addEventListener('DOMContentLoaded', function() {
+  // Delay the initialization slightly to ensure it doesn't interfere with other scripts
+  setTimeout(addUnselectCapability, 100);
+});
 
 // dropdown
 document.addEventListener('DOMContentLoaded', function () {
   initializeEnhanceToggle();
   initializeRadioGroup();
   initializeStyleButtons();
-
+  //loadSavedSelections();
   const signupButton = document.getElementById('signupButton');
   const dropdownMenu = document.getElementById('dropdownMenu');
   const editButton = document.getElementById('editButton');
@@ -1272,14 +1334,14 @@ document.addEventListener('DOMContentLoaded', function () {
   // });
 
   // Close dropdowns when clicking outside
-  document.addEventListener('click', function (e) {
-    if (e.target !== signupButton && e.target !== editButton && !dropdownMenu.contains(e.target) && !editDropdownMenu.contains(e.target) && e.target !== accountButton) {
-      dropdownMenu.style.display = 'none';
-      editDropdownMenu.style.display = 'none'; // Hide Edit dropdown
-      signupButton.style.display = 'flex'; // Show Sign Up button again
-      editDeleteButtons.style.display = 'none'; // Hide Edit/Delete buttons
-    }
-  });
+  // document.addEventListener('click', function (e) {
+  //   if (e.target !== signupButton && e.target !== editButton && e.target !== accountButton) {
+  //     //dropdownMenu.style.display = 'none';
+  //     //editDropdownMenu.style.display = 'none'; // Hide Edit dropdown
+  //     signupButton.style.display = 'flex'; // Show Sign Up button again
+  //     editDeleteButtons.style.display = 'none'; // Hide Edit/Delete buttons
+  //   }
+  // });
 
   // Close dropdowns when pressing Escape key
   document.addEventListener('keydown', function (e) {
@@ -1293,15 +1355,6 @@ document.addEventListener('DOMContentLoaded', function () {
   // Initial UI update
   updateHeaderUI();
 });
-
-// advancedOptionsButton?.addEventListener('click', function () {
-//   categoriesContainer.classList.toggle('hidden2');
-//   setTimeout(adjustPopupSize, 100);
-// });
-
-function areAdvancedOptionsSelected() {
-  return advancedOptionsSelected.size > 0;
-}
 
 // Assuming the user ID is available, otherwise you can retrieve it from localStorage, cookies, etc.
 let lastSavedPromptId = null;
@@ -1418,126 +1471,9 @@ function handleCreditDeduction(feature) {
 
 // Feature usage tracking
 let promptUsed = false;
-let advancedOptionsUsed = false;
-let imageGuidanceUsed = false;
-const advancedOptionsSelected = new Set();
 
-function initializeAdvancedOptions() {
-  // Wait for elements to be available
-  const observer = new MutationObserver((mutations, obs) => {
-      const advancedOptionButtons = document.querySelectorAll('.dropdown-card');
-      if (advancedOptionButtons.length) {
-          obs.disconnect(); // Stop observing once elements are found
-          setupAdvancedOptionListeners(advancedOptionButtons);
-      }
-  });
 
-  // Start observing the document with the configured parameters
-  observer.observe(document, {
-      childList: true,
-      subtree: true
-  });
-}
-
-function setupAdvancedOptionListeners(buttons) {
-    buttons.forEach(button => {
-        button.addEventListener('click', function(event) {
-            event.stopPropagation();
-            
-            const selectElement = this.querySelector('.dropdown-card-select');
-            if (!selectElement) return;
-            
-            const optionId = selectElement.innerText.trim();
-            const dropdown = this.closest('.dropdown');
-            
-            // If this item is already selected, deselect it
-            if (this.classList.contains('selected')) {
-                this.classList.remove('selected');
-                advancedOptionsSelected.delete(optionId);
-                
-                // Reset dropdown button text
-                const dropdownButton = dropdown?.querySelector('.dropdown-button span');
-                if (dropdownButton) {
-                    const defaultText = dropdown.getAttribute('data-default-text') || 'Select Option';
-                    dropdownButton.textContent = defaultText;
-                }
-            } else {
-                // Deselect all other items in this dropdown
-                const allCardsInDropdown = dropdown?.querySelectorAll('.dropdown-card');
-                allCardsInDropdown?.forEach(card => {
-                    const cardOptionId = card.querySelector('.dropdown-card-select')?.innerText.trim();
-                    if (cardOptionId) {
-                        advancedOptionsSelected.delete(cardOptionId);
-                    }
-                    card.classList.remove('selected');
-                });
-                
-                // Select this item
-                this.classList.add('selected');
-                advancedOptionsSelected.add(optionId);
-                
-                // Update dropdown button text
-                const dropdownButton = dropdown?.querySelector('.dropdown-button span');
-                if (dropdownButton) {
-                    dropdownButton.textContent = optionId;
-                }
-            }
-
-            // Update usage flag
-            advancedOptionsUsed = advancedOptionsSelected.size > 0;
-
-            // Debug logging
-            console.log('Current advanced options:', Array.from(advancedOptionsSelected));
-            console.log('Advanced options used:', advancedOptionsUsed);
-            
-            // Update UI
-            //updateAdvancedOptionsUI();
-        });
-    });
-}
-function resetAdvancedOptions() {
-  // Clear the tracking set
-  advancedOptionsSelected.clear();
-  advancedOptionsUsed = false;
-
-  // Reset UI elements
-  document.querySelectorAll('.dropdown-card').forEach(card => {
-      card.classList.remove('selected');
-  });
-
-  // Reset dropdown button texts to their defaults
-  document.querySelectorAll('.dropdown').forEach(dropdown => {
-      const defaultText = dropdown.getAttribute('data-default-text') || 'Select Option';
-      const buttonSpan = dropdown.querySelector('.dropdown-button span');
-      if (buttonSpan) {
-          buttonSpan.textContent = defaultText;
-      }
-  });
-
-  // Close all dropdowns
-  //closeAllDropdowns();
-
-  // Reset any visual indicators
-  //updateAdvancedOptionsUI();
-  
-  console.log('Advanced options reset');
-}
-
-// function updateAdvancedOptionsUI() {
-//   const advancedOptionsButton = document.getElementById('advancedOptionsButton');
-//   if (advancedOptionsButton) {
-//       advancedOptionsButton.classList.toggle('active', advancedOptionsUsed);
-//   }
-// }
-
-function getAdvancedOptionsState() {
-  return {
-      used: advancedOptionsUsed,
-      selectedOptions: Array.from(advancedOptionsSelected),
-      count: advancedOptionsSelected.size
-  };
-}
-document.addEventListener('DOMContentLoaded', initializeAdvancedOptions);
+//document.addEventListener('DOMContentLoaded', initializeRadioGroups);
 
 // Event listener for basic prompt
 document.getElementById('promptInput').addEventListener('change', function () {
@@ -1581,27 +1517,6 @@ advancedOptionButtons.forEach(button => {
   });
 });
 
-// Event listener for image upload
-// document.getElementById('imageUpload').addEventListener('change', function () {
-//   const allowedExtensions = ['jpg', 'jpeg', 'png', 'svg'];
-
-//   if (this.files.length > 0) {
-//     const file = this.files[0];
-//     const fileExtension = file.name.split('.').pop().toLowerCase();
-
-//     if (!allowedExtensions.includes(fileExtension)) {
-//       alert('Only image files (jpg, jpeg, png) are allowed!');
-//       this.value = ''; // Clear the file input
-//       imageGuidanceUsed = false; // Reset usage tracking
-//       return;
-//     }
-
-//     imageGuidanceUsed = true; // Mark image guidance as used
-//   } else {
-//     imageGuidanceUsed = false; // Reset if no files are selected
-//   }
-// });
-
 // Event listener for generate button
 document.getElementById('sendButton').addEventListener('click', async function () {
   if (!userId || !token) {
@@ -1638,9 +1553,25 @@ document.getElementById('sendButton').addEventListener('click', async function (
   }
 });
 
-async function verifyAndRecordFeatures(hasImage) {
+async function verifyAndRecordFeatures() {
   try {
-    // Get current token balance first
+    
+    const currentStyle = getSelectedStyle();
+    const currentPlatform = getSelectedPlatform();
+    const { selectedStyle, selectedPlatform } = await chrome.storage.local.get([
+      'selectedStyle',
+      'selectedPlatform'
+  ]);
+  
+    // if (!currentStyle) {
+    //   throw new Error('Please select a style');
+    // }
+
+    // if (!currentPlatform) {
+    //   throw new Error('Please select a platform');
+    // }
+
+    // Get current token balance
     const tokenResponse = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
       method: 'GET',
       headers: {
@@ -1661,20 +1592,32 @@ async function verifyAndRecordFeatures(hasImage) {
     
     // Calculate total required tokens
     let requiredTokens = 0;
-    if (promptUsed) {
-      const basicFeature = creditsData.data.find(credit => credit.feature === 'basic_prompt');
-      requiredTokens += basicFeature?.credits || 0;
+
+    // Add base prompt cost
+    const basicFeature = creditsData.data.find(credit => credit.feature === 'basic_prompt');
+    console.log("basic feature cost:"+basicFeature?.credits);
+    requiredTokens += basicFeature?.credits || 0;
+    console.log("required tokens:"+requiredTokens + "Selected style:"+selectedStyle + "selected platform:"+selectedPlatform);
+
+    if(selectedStyle){
+    // Add style cost
+    const styleFeature = creditsData.data.find(credit => 
+      credit.feature === `style_prompt`
+    );
+    if (styleFeature) {
+      requiredTokens += styleFeature.credits;
     }
-    if (hasImage) {
-      const imageFeature = creditsData.data.find(credit => credit.feature === 'image_prompt');
-      requiredTokens += imageFeature?.credits || 0;
+  }
+  if(selectedPlatform){
+
+    // Add platform cost
+    const platformFeature = creditsData.data.find(credit => 
+      credit.feature === `platform`
+    );
+    if (platformFeature) {
+      requiredTokens += platformFeature.credits;
     }
-    if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
-      [...advancedOptionsSelected].forEach(option => {
-        const advancedFeature = creditsData.data.find(credit => credit.feature === `advanced_prompt_${option}`);
-        requiredTokens += advancedFeature?.credits || 0;
-      });
-    }
+  }
 
     // Check if enough tokens are available
     if (availableTokens < requiredTokens) {
@@ -1682,86 +1625,99 @@ async function verifyAndRecordFeatures(hasImage) {
       return false;
     }
 
-    // Proceed with feature access checks
-    if (promptUsed) {
-      const basicAccess = await checkFeatureAccess('1');
-      if (!basicAccess.data.canUse) {
-        showError(basicAccess.data.reason === 'timeout'
-          ? `Basic features locked until ${new Date(basicAccess.data.timeoutUntil).toLocaleTimeString()}`
-          : `Daily limit reached for basic features (${basicAccess.data.usageCount}/${basicAccess.data.dailyLimit})`);
-        return false;
-      }
+    // Verify feature access
+    const accessChecks = await Promise.all([
+      checkFeatureAccess('1'), // Basic
+      checkFeatureAccess('2'), // Style
+      checkFeatureAccess('3')  // Platform
+    ]);
+
+    const [basicAccess, styleAccess, platformAccess] = accessChecks;
+
+    // Check each access result
+    if (!basicAccess.data.canUse) {
+      showError(basicAccess.data.reason === 'timeout'
+        ? `Basic features locked until ${new Date(basicAccess.data.timeoutUntil).toLocaleTimeString()}`
+        : `Daily limit reached for basic features`);
+      return false;
     }
 
-    if (hasImage) {
-      const imageAccess = await checkFeatureAccess('3');
-      if (!imageAccess.data.canUse) {
-        showError(imageAccess.data.reason === 'timeout'
-          ? `Image features locked until ${new Date(imageAccess.data.timeoutUntil).toLocaleTimeString()}`
-          : `Daily limit reached for image features (${imageAccess.data.usageCount}/${imageAccess.data.dailyLimit})`);
-        return false;
-      }
+    if (!styleAccess.data.canUse) {
+      showError(styleAccess.data.reason === 'timeout'
+        ? `Style features locked until ${new Date(styleAccess.data.timeoutUntil).toLocaleTimeString()}`
+        : `Daily limit reached for style features`);
+      return false;
     }
 
-    if (advancedOptionsUsed && advancedOptionsSelected.size > 0) {
-      const advancedAccess = await checkFeatureAccess('2');
-      if (!advancedAccess.data.canUse) {
-        showError(advancedAccess.data.reason === 'timeout'
-          ? `Advanced features locked until ${new Date(advancedAccess.data.timeoutUntil).toLocaleTimeString()}`
-          : `Daily limit reached for advanced features (${advancedAccess.data.usageCount}/${advancedAccess.data.dailyLimit})`);
-        return false;
-      }
+    if (!platformAccess.data.canUse) {
+      showError(platformAccess.data.reason === 'timeout'
+        ? `Platform features locked until ${new Date(platformAccess.data.timeoutUntil).toLocaleTimeString()}`
+        : `Daily limit reached for platform features`);
+      return false;
     }
 
     return true;
   } catch (error) {
     console.error('Error checking feature access:', error);
-    showError("Error verifying feature access. Please try again.");
+    showError(error.message || "Error verifying feature access. Please try again.");
     return false;
   }
 }
 
+
+async function handleCreditDeductions() {
+  const { selectedStyle, selectedPlatform } = await chrome.storage.local.get([
+    'selectedStyle',
+    'selectedPlatform'
+]);
+
+  try {
+    // Record basic prompt usage and deduct credits
+    await recordFeatureUsage('1');
+    await handleCreditDeduction('basic_prompt');
+    console.log("is style selected:"+selectedStyle);
+    // Record style usage and deduct credits
+    if (selectedStyle) {
+      await recordFeatureUsage('2');
+      await handleCreditDeduction(`style_prompt`);
+    }
+    console.log("is platform selected:"+selectedPlatform);
+    // Record platform usage and deduct credits
+    if (selectedPlatform) {
+      await recordFeatureUsage('3');
+      await handleCreditDeduction(`platform`);
+    }
+    
+    // Update the display
+    await updateCreditDisplay();
+    return true;
+  } catch (error) {
+    console.error('Error handling credit deductions:', error);
+    showError('Error processing credits. Please contact support.');
+    return false;
+  }
+}
+
+
+
 function resetInterface() {
   // Enable input
-  resetAdvancedOptions();
-    
-  // Enable input
   document.getElementById('promptInput').disabled = false;
-  
-  // Reset flags
-  promptUsed = false;
-  imageGuidanceUsed = false;
-  
-  // Clear image upload
-  const imageUpload = document.getElementById('imageUpload');
-  if (imageUpload) {
-      imageUpload.value = '';
-      const imageUploadText = document.querySelector('.image-upload-text');
-      if (imageUploadText) {
-          imageUploadText.textContent = 'Image Guidance';
-      }
-  }
   
   // Clear prompt input
   const promptInput = document.getElementById('promptInput');
   if (promptInput) {
-      promptInput.value = '';
+    promptInput.value = '';
   }
   
   // Update credits display
   updateCreditDisplay();
-
 }
 
 
 
 // Initial credit display update when page loads
 updateCreditDisplay();
-
-// Helper function to get selected advanced options count
-function getSelectedAdvancedOptionsCount() {
-  return advancedOptionsSelected.size;
-}
 
     // Define logout function
     function logout() {
@@ -1783,21 +1739,4 @@ function getSelectedAdvancedOptionsCount() {
         alert('Logout failed. Please try again.');
       }
     }
-
-    // Add click event listener to logout button
-    // if (logoutButton) {
-    //   // Remove the inline onclick attribute
-    //   logoutButton.removeAttribute('onclick');
-
-    //   // Add event listener
-    //   logoutButton.addEventListener('click', function (e) {
-    //     e.preventDefault();
-    //     e.stopPropagation();
-    //     logout();
-    //   });
-    // } else {
-    //   console.warn('Logout button not found in the DOM');
-    // }
-
-    // Make logout function available globally
     window.logout = logout;

@@ -62,7 +62,6 @@ const ProfilePage = ({pricingRef}) => {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                credentials: 'include'
             });
             if (response.status === 401) {
                 localStorage.clear();
@@ -338,13 +337,12 @@ const ProfilePage = ({pricingRef}) => {
     return (
         <div className="flex flex-col md:flex h-screen w-screen overflow-x-hidden">
           {/* Buy Credit Modal */}
-          <BuyCredit
-            isTopUpModalOpen={isTopUpModalOpen}
-            setIsTopUpModalOpen={setIsTopUpModalOpen}
-            topUpAmount={topUpAmount}
-            setTopUpAmount={setTopUpAmount}
-            handlePayment={handlePayment}
-          />
+          <BuyCredit 
+        isOpen={isTopUpModalOpen}
+        onClose={() => setIsTopUpModalOpen(false)}
+        setTopUpAmount={setTopUpAmount}
+        handlePayment={handlePayment}
+      />
     
           {/* Credits section for desktop only */}
           <div className="hidden absolute items-end md:flex md:w-[485px] flex-shrink-0 bg-black h-full justify-center">

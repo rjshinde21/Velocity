@@ -20,7 +20,11 @@ function App() {
   return (
     <Router>
       <main className="bg-primary overflow-hidden scrollbar scrollbar-thumb-slate-50 scrollbar-track-slate-800">
-        <AppContent />
+      <Routes>
+          <Route path="/privacypolicy" element={<PrivacyPolicy />} />
+          <Route path="/terms-and-conditions" element={<TermsConditions />} />
+          <Route path="/*" element={<AppContent />} />
+        </Routes>
         <Footer />
       </main>
     </Router>
