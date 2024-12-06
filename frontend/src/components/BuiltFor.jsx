@@ -32,9 +32,9 @@ const BuiltFor = () => {
   return (
   <div className="w-full" style={{ backgroundColor: '#090909' }}>
   <div className="max-w-7xl mx-auto py-6">
-    <h2 className="text-4xl text-center mb-12 mt-8 text-white">Built For</h2>
+    <h2 className="font-[Amenti] text-4xl text-center mb-12 mt-8 text-white">Built For</h2>
     
-    <div className="flex flex-col gap-12 pb-12">
+    <div className="flex flex-col gap-20 pb-12">
       {/* First row - 3 items */}
       <div className="flex flex-col md:flex-row gap-20 justify-center">
         {categories.slice(0, 3).map((category, index) => (

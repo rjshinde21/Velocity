@@ -153,11 +153,11 @@ const Footer = () => {
           {/* Main content */}
           <div className="mb-8 sm:mb-12 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 sm:gap-8">
             <div className="flex flex-col gap-4 items-start">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight">
                 GENERATE SMARTER<br />
                 PROMPTS. FASTER.
               </h1>
-              <p className="text-sm sm:text-base text-gray-700">
+              <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
                 Transform your ideas with precision and creativity
               </p>
             </div>
@@ -168,24 +168,28 @@ const Footer = () => {
 
           {/* Designer credit and logo section */}
           <div className="space-y-6 sm:space-y-0">
-            <p className="text-xs sm:text-sm">Designed by TOTEM INTERACTIVE</p>
+            <p className="text-xs sm:text-sm text-center sm:text-left">
+              Designed by TOTEM INTERACTIVE
+            </p>
 
             {/* Logo and social icons */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-0 sm:gap-0">
+            <div className="flex flex-col sm:flex-row items-center sm:items-center justify-between gap-6">
               {/* VELOCITY Text */}
-              <div className="text-5xl sm:text-7xl md:text-9xl font-bold tracking-wider">
+              <div
+                className="font-[Amenti] text-[3rem] sm:text-[5rem] md:text-[8rem] lg:text-[10rem] xl:text-[12rem] font-bold tracking-wider leading-none text-center sm:text-left"
+              >
                 VELOCITY
               </div>
 
               {/* Social Icons */}
-              <div className="flex gap-4 mt-20 mr-14">
+              <div className="flex gap-4 mt-28 mr-14">
                 <a
                   href="https://www.instagram.com/totem.interactive?igsh=MXRscW14NDNwOGdtbA=="
                   className="hover:text-white transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Instagram size={20} className="sm:w-6 sm:h-6" />
+                  <Instagram size={24} className="sm:w-6 sm:h-6" />
                 </a>
                 <a
                   href="https://www.linkedin.com/company/totem-interactive/posts/?feedView=all"
@@ -193,7 +197,7 @@ const Footer = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Linkedin size={20} className="sm:w-6 sm:h-6" />
+                  <Linkedin size={24} className="sm:w-6 sm:h-6" />
                 </a>
               </div>
             </div>
@@ -205,3 +209,4 @@ const Footer = () => {
 };
 
 export default Footer;
+

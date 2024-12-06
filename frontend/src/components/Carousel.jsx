@@ -13,6 +13,7 @@ import img11 from "../assets/carousel11.png";
 import img12 from "../assets/carousel12.png";
 import grid1 from "../assets/grid.png";
 import girl from "../assets/girl_img.png";
+import noise from "../assets/noise.png";
 
 const Carousel = ({ speed = 30000 }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -67,10 +68,10 @@ const Carousel = ({ speed = 30000 }) => {
 
   const handleDragMove = (e) => {
     if (!isDragging) return;
-    
+
     const currentPosition = e.type === 'mousemove' ? e.pageX : e.touches[0].pageX;
     const difference = startPosition - currentPosition;
-    
+
     if (Math.abs(difference) > 50) { // Minimum drag distance
       if (difference > 0 && currentSlide < testimonials.length - 1) {
         setCurrentSlide(prev => prev + 1);
@@ -105,7 +106,7 @@ const Carousel = ({ speed = 30000 }) => {
             <div key={i} className="border border-gray-700" />
           ))}
         </div>
-        
+
         <div className="relative w-full max-w-4xl">
           <div className="flex justify-center mb-8">
             <div
@@ -118,83 +119,86 @@ const Carousel = ({ speed = 30000 }) => {
             </div>
           </div>
 
-          <div 
-            ref={slideContainerRef}
-            className="flex gap-6 w-full justify-center"
-            onMouseDown={handleDragStart}
-            onMouseMove={handleDragMove}
-            onMouseUp={handleDragEnd}
-            onMouseLeave={handleDragEnd}
-            onTouchStart={handleDragStart}
-            onTouchMove={handleDragMove}
-            onTouchEnd={handleDragEnd}
-            style={{
-              cursor: isDragging ? 'grabbing' : 'grab',
-              userSelect: 'none'
-            }}
-          >
-            <div className="bg-[#0B0B0B] rounded-3xl p-6 sm:p-8 relative w-full max-w-lg transition-transform duration-300">
-              <div className="flex items-start gap-4 sm:gap-6">
-                <img
-                  src={testimonials[currentSlide].image}
-                  alt="Profile"
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover"
-                  draggable="false"
-                />
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="text-lg sm:text-2xl font-light text-white mb-2">
-                      {testimonials[currentSlide].name}
-                    </h3>
-                    <p className="text-gray-400 text-sm sm:text-base">
-                      {testimonials[currentSlide].role}
+          {/* Main Content Area */}
+          <div className="relative flex items-center">
+            {/* Left Arrow */}
+            <button
+              onClick={() => setCurrentSlide((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))}
+              className="absolute left-0 sm:-left-10 text-gray-700 text-3xl sm:text-4xl p-0"
+            >
+              &lt;
+            </button>
+
+            <div
+              ref={slideContainerRef}
+              className="flex gap-6 w-full justify-center"
+              onMouseDown={handleDragStart}
+              onMouseMove={handleDragMove}
+              onMouseUp={handleDragEnd}
+              onMouseLeave={handleDragEnd}
+              onTouchStart={handleDragStart}
+              onTouchMove={handleDragMove}
+              onTouchEnd={handleDragEnd}
+              style={{
+                cursor: isDragging ? "grabbing" : "grab",
+                userSelect: "none",
+              }}
+            >
+              <div
+                className="bg-[#0B0B0B] rounded-3xl p-6 sm:p-8 relative w-full max-w-lg transition-transform duration-300"
+                style={{
+                  backgroundImage: `url(${noise})`, // Set the noise image as the background
+                  backgroundSize: "cover", // Ensures the image covers the whole div
+                  backgroundPosition: "center", // Centers the background image
+                }}
+              >
+                <div className="flex items-start gap-4 sm:gap-6">
+                  <img
+                    src={testimonials[currentSlide].image}
+                    alt="Profile"
+                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover"
+                    draggable="false"
+                  />
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="text-lg sm:text-2xl font-light text-white mb-2">
+                        {testimonials[currentSlide].name}
+                      </h3>
+                      <p className="text-gray-400 text-sm sm:text-base">
+                        {testimonials[currentSlide].role}
+                      </p>
+                    </div>
+                    <p className="text-gray-300 leading-relaxed text-sm sm:text-base">
+                      {testimonials[currentSlide].quote}
                     </p>
                   </div>
-                  <p className="text-gray-300 leading-relaxed text-sm sm:text-base">
-                    {testimonials[currentSlide].quote}
-                  </p>
                 </div>
               </div>
             </div>
 
-            {/* <div className="bg-[#0B0B0B] rounded-3xl p-6 sm:p-8 relative w-full max-w-lg transition-transform duration-300">
-              <div className="flex items-start gap-4 sm:gap-6">
-                <img
-                  src={testimonials[currentSlide].image}
-                  alt="Profile"
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover"
-                  draggable="false"
-                />
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="text-lg sm:text-2xl font-light text-white mb-2">
-                      {testimonials[currentSlide].name}
-                    </h3>
-                    <p className="text-gray-400 text-sm sm:text-base">
-                      {testimonials[currentSlide].role}
-                    </p>
-                  </div>
-                  <p className="text-gray-300 leading-relaxed text-sm sm:text-base">
-                    {testimonials[currentSlide].quote}
-                  </p>
-                </div>
-              </div>
-            </div> */}
+            {/* Right Arrow */}
+            <button
+              onClick={() => setCurrentSlide((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1))}
+              className="absolute right-0 sm:-right-8 text-gray-700 text-3xl sm:text-4xl p-0"
+            >
+              &gt;
+            </button>
           </div>
 
+          {/* Dots for navigation */}
           <div className="flex justify-center gap-2 mt-6">
             {testimonials.map((_, index) => (
               <button
                 key={index}
-                className={`w-6 h-1 sm:w-8 transition-colors rounded-full ${
-                  index === currentSlide ? "bg-white" : "bg-gray-600"
-                }`}
+                className={`w-6 h-1 sm:w-8 transition-colors rounded-full ${index === currentSlide ? "bg-white" : "bg-gray-600"
+                  }`}
                 onClick={() => setCurrentSlide(index)}
               />
             ))}
           </div>
         </div>
       </div>
+
 
       {/* Main Heading Section */}
       <div className="w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">

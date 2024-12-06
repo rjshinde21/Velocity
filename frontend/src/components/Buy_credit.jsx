@@ -87,7 +87,7 @@ const BuyCredits = ({ isOpen, onClose, setTopUpAmount, handlePayment }) => {
               boxShadow: '0 0 20px rgba(59, 130, 246, 0.5)'
             }}
           >
-            <span className="relative z-10 text-xl text-white font-semibold font-[Inter]">Next</span>
+            <span className="relative z-10 text-xl font-semibold font-[Inter]" style="color: #008ACB;">Next</span>
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-600 to-blue-400 opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
           </button>
         </div>

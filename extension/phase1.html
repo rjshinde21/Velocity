@@ -107,7 +107,7 @@
         display: flex;
         flex-direction: column;
         padding: 10px;
-        overflow-y: auto;
+        overflow-y: hidden;
         flex-grow: 1;
         position: relative;
         z-index: 0;
@@ -561,7 +561,7 @@ color: #C9C9C9;
         color: white;
         overflow: hidden; /* Prevent content from spilling out */
         white-space: nowrap; /* Prevent text wrapping */
-        padding: 15px 20px;
+        padding: 10px 20px;
         text-align: center;
         margin-bottom: 20px;
         max-width: 150px;
@@ -777,17 +777,37 @@ color: #C9C9C9;
     font-style: italic;
     background: linear-gradient(to bottom, #008ACB4D, #6ACFFF4D);
     border: 1px solid #008ACB;
-    margin: 12px 15px 5px 0;
+    margin: 10px 15px 5px 0;
     position: absolute; /* Position relative to the nearest positioned ancestor */
     top: 0; /* Aligns to the top */
     right: 0; /* Aligns to the left */
 }
+.mleft{
+  margin-left: 45px;
+}
 
+.mleft img {
+    margin-right: 6px; /* Adds space between the image and text */
+    height: 20px;
+}
+
+#generateIcon{
+  width: 16px;
+  height: 16px;
+  margin-left: 0px;
+
+}
 
 
 .profileicon {
     height: 13px;
     width: 13px;
+    margin-right: 4px;
+}
+.coinicon {
+    height: 13px;
+    width: 13px;
+    /* margin-right: 0px; */
 }
 
 #editDropdownMenu {
@@ -805,8 +825,11 @@ color: #C9C9C9;
     font-style: italic;
     border: 1px solid #F7AA1C;
     background: linear-gradient(to bottom, #f7aa1c4d, #f1d49f4d);
-    margin: 5px 0;
+    margin: 5px 5px;
+    position: relative; /* Enable relative positioning */
+    left: 32px; /* Move 10px to the right */
 }
+
 #editButton:hover {
     box-shadow: 0 0 10px #FFC107;
 }
@@ -962,15 +985,15 @@ color: #C9C9C9;
   </style>
 </head>
 <body>
-  <div class="flex title1 justify-between items-center">
-    <div class="flex items-center">
+  <div class="flex title1 justify-between items-center" style="background-color: #00141D;">
+    <div class="mleft flex items-center">
         <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto">
         <span class="text-white ml-4">Velocity</span>
     </div>
     
     <div class="flex items-center gap-4">
         <button id="editButton" class="flex items-center gap-2 text-white" style="display: none;">
-            <span><img src="./assets/coin.png" alt="coin"></span>
+            <span><img class="coinicon" src="./assets/coin.png" alt="coin"></span>
             <span class="credit-amount">0</span>
         </button>
         
@@ -980,6 +1003,7 @@ color: #C9C9C9;
         </button>
     </div>
 </div>
+
 
 <div class="premium-enhance-wrapper">
   <div class="premium-enhance-control">
@@ -1042,13 +1066,15 @@ color: #C9C9C9;
 
   <div class="scrollable-container">
     <div id="response"></div>
-    
-    <div class="input-container">
+    <div class="input-container" style="position: relative; display: inline-block;">
       <textarea 
-        id="promptInput" 
-        class="w-full bg-black/40 rounded-2xl" 
-        placeholder="Add your prompt here"></textarea>
-    </div>
+          id="promptInput" 
+          class="w-full bg-black/40 rounded-2xl pl-10" 
+          placeholder="Add your prompt here"></textarea>
+      <img src="./assets/copy 1.png" alt="icon" 
+           style="position: absolute; top: 50%; right: 40px; transform: translateY(-50%); width: 20px; height: 20px;">
+  </div>
+  
     <div class="needs">Choose Your Style to Match Your Needs</div>
     <div class="button-group">
         <input type="radio" name="style-option" id="descriptive">
@@ -1099,11 +1125,11 @@ color: #C9C9C9;
   </div> -->
   <div class="flex justify-center mt-6">
     <button id="sendButton" class="generate-button flex justify-center items-center w-full"> <!-- Added width for full button -->
+      <img id="generateIcon" src="./assets/Rectangle 32.png" alt="Generate" class="ml-2" />
       <span class="mx-auto">Generate</span> <!-- Center text -->
-      <!-- <img id="generateIcon" src="./assets/Rectangle 32.png" alt="Generate" class="ml-2" /> Space between text and image -->
     </button>
   </div>   
-  <div class="w-full bg-[#00141C] flex items-center justify-between text-white text-lg font-normal font-amenti h-[60px] relative px-4">
+  <!-- <div class="w-full bg-[#00141C] flex items-center justify-between text-white text-lg font-normal font-amenti h-[60px] relative px-4"> -->
 
  
 </div>

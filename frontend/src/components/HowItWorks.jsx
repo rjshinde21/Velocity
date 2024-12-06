@@ -52,14 +52,14 @@ const HowItWorks = () => {
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
           {/* Left Section */}
           <div className="w-full lg:w-1/2 px-4">
-            <h1 className="text-3xl sm:text-4xl font-light mb-8 text-white text-center lg:text-left lg:ml-20">
+            <h1 className="font-[Amenti] text-3xl sm:text-4xl font-light mb-8 text-white text-center lg:text-left lg:ml-20">
               How It Works
             </h1>
             <div className="flex flex-col items-center space-y-4 w-full lg:w-3/4 pt-10">
               {steps.map((step, index) => (
                 <div
                   key={index}
-                  className="flex flex-col w-full sm:w-4/5 lg:w-2/3 p-4 sm:p-6 rounded-lg bg-[rgba(0,0,0,0.3)] border border-gray-800 backdrop-blur-sm transition-transform transform hover:translate-y-2"
+                  className="flex flex-col w-full sm:w-4/5 lg:w-2/3 p-4 sm:p-6 rounded-2xl bg-[rgba(0,0,0,0.3)] border border-gray-800 backdrop-blur-sm transition-transform transform hover:translate-y-2"
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <div className="bg-[rgba(0,128,203,0.1)] p-2 rounded-lg">
