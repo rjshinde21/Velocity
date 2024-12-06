@@ -6,7 +6,7 @@ let selectedPlatform = null;   // Default value
 async function checkFeatureAccess(featureId) {
   try {
     const userId = localStorage.getItem('userId');
-    const response = await fetch(`http://127.0.0.1:3000/api/credit/credits/${featureId}/access`, {
+    const response = await fetch(`http://127.0.0.1:3001/api/credit/credits/${featureId}/access`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -73,7 +73,7 @@ function addUnselectCapability() {
 async function recordFeatureUsage(featureId) {
   try {
     const userId = localStorage.getItem('userId');
-    const response = await fetch(`http://127.0.0.1:3000/api/credit/use/${featureId}`, {
+    const response = await fetch(`http://127.0.0.1:3001/api/credit/use/${featureId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -189,7 +189,7 @@ function updateHeaderUI() {
       signupButton.classList.remove('not-logged-in');
       console.log("checking user id:"+userId);
       // Fetch and display user info
-      fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
+      fetch(`http://127.0.0.1:3001/api/users/profile/${userId}`, {
           method: 'GET',
           headers: {
               'Authorization': `Bearer ${token}`
@@ -312,9 +312,14 @@ async function sendRequest() {
   try {
     const promptInput = document.getElementById('promptInput');
     const prompt = promptInput.value.trim();
+    const CHAR_LIMIT = 1100;
 
     if (!prompt) {
       showError('Please enter a prompt text');
+      return;
+    }
+    if (prompt.length > CHAR_LIMIT) {
+      showError(`Input too long. Please keep your text under ${CHAR_LIMIT} characters.`);
       return;
     }
 
@@ -435,7 +440,7 @@ function adjustPopupSize() {
 
 async function savePromptToHistory(userId, promptText, aiType) {
   try {
-      const response = await fetch('http://127.0.0.1:3000/api/history/prompts', {
+      const response = await fetch('http://127.0.0.1:3001/api/history/prompts', {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
@@ -463,7 +468,7 @@ async function savePromptToHistory(userId, promptText, aiType) {
 }
 async function updatePromptTokens(promptId, tokensUsed) {
   try {
-      const response = await fetch(`http://127.0.0.1:3000/api/history/prompts/${promptId}`, {
+      const response = await fetch(`http://127.0.0.1:3001/api/history/prompts/${promptId}`, {
           method: 'PATCH',
           headers: {
               'Content-Type': 'application/json',
@@ -596,7 +601,7 @@ function handleParsedResponse(parsedResponse) {
             }
 
             // Then save the copied response with the tokens used
-            const saveResponseResponse = await fetch('http://127.0.0.1:3000/api/history/responses', {
+            const saveResponseResponse = await fetch('http://127.0.0.1:3001/api/history/responses', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -950,6 +955,7 @@ const API_BASE_URL = 'http://127.0.0.1:5000';
 document.addEventListener('DOMContentLoaded', function () {
   const sendButton = document.getElementById('sendButton');
   const promptInput = document.getElementById('promptInput');
+  const CHAR_LIMIT = 1100;
   //const categoriesContainer = document.getElementById('categories-container');
   const responseDiv = document.getElementById('response');
   //const advancedOptionsButton = document.getElementById('advancedOptionsButton');
@@ -966,6 +972,59 @@ document.addEventListener('DOMContentLoaded', function () {
   const radioGroup = document.querySelector('.radio-group');
 
   //categoriesContainer.classList.add('hidden2');
+  const errorContainer = document.createElement('div');
+  errorContainer.className = 'error-message-container text-red-500 text-sm mt-1';
+  promptInput.parentNode.appendChild(errorContainer);
+  promptInput.parentElement.style.position = 'relative';
+
+  // Create character counter
+  const charCounter = document.createElement('div');
+  charCounter.className = 'char-counter';
+  charCounter.style.cssText = `
+    position: absolute;
+    bottom: -15px;
+    right: 12px;
+    color: #666;
+    font-size: 12px;
+    pointer-events: none;
+    user-select: none;
+    background: transparent;
+  `;
+  promptInput.parentNode.appendChild(charCounter);
+
+  // Update character count and check limit
+  function updateCharCount(input) {
+    const currentLength = input.value.length;
+    charCounter.textContent = `${currentLength}/${CHAR_LIMIT}`;
+    
+    if (currentLength > CHAR_LIMIT) {
+      input.classList.add('border-2', 'border-red-500');
+      errorContainer.textContent = 'Input too long. Please keep your text under 1100 characters.';
+      charCounter.classList.remove('text-gray-400');
+      charCounter.classList.add('text-red-500');
+    } else {
+      input.classList.remove('border-2', 'border-red-500');
+      errorContainer.textContent = '';
+      charCounter.classList.remove('text-red-500');
+      charCounter.classList.add('text-gray-400');
+    }
+  }
+
+  // Add input and paste event listeners
+  promptInput.addEventListener('input', function() {
+    updateCharCount(this);
+  });
+
+  promptInput.addEventListener('paste', function(e) {
+    const pastedText = e.clipboardData.getData('text');
+    if ((this.value.length + pastedText.length) > CHAR_LIMIT) {
+      e.preventDefault();
+      errorContainer.textContent = 'Pasted text would exceed character limit';
+    }
+  });
+
+  // Initialize character count
+  updateCharCount(promptInput);
 
  
 
@@ -1363,7 +1422,7 @@ let lastTokensUsed = 0; // To track tokens used in the last operation
 
 // Fetch User Profile data
 // console.log("checking user id:"+userId);
-// fetch(`http://127.0.0.1:3000/api/users/profile/${userId}`, {
+// fetch(`http://127.0.0.1:3001/api/users/profile/${userId}`, {
 //   method: 'GET',
 //   headers: {
 //     'Authorization': `Bearer ${token}` // Add the Authorization header with the token
@@ -1383,11 +1442,11 @@ let lastTokensUsed = 0; // To track tokens used in the last operation
 
 // Function to fetch and update credit display
 async function updateCreditDisplay() {
-  console.log("checkng user id:"+userId + `http://127.0.0.1:3000/api/token-types/${userId}`);
+  console.log("checkng user id:"+userId + `http://127.0.0.1:3001/api/token-types/${userId}`);
   console.log("checkng token:"+token);
 
   try {
-    const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+    const response = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1409,7 +1468,7 @@ async function updateCreditDisplay() {
 // This is the function that will be triggered when the "Generate" button is clicked
 function handleCreditDeduction(feature) {
   return new Promise((resolve, reject) => {
-      fetch('http://127.0.0.1:3000/api/credit/credits', {
+      fetch('http://127.0.0.1:3001/api/credit/credits', {
           method: 'GET',
           headers: {
               'Authorization': `Bearer ${token}`
@@ -1423,7 +1482,7 @@ function handleCreditDeduction(feature) {
               return;
           }
 
-          fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+          fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
               method: 'GET',
               headers: {
                   'Authorization': `Bearer ${token}`,
@@ -1443,7 +1502,7 @@ function handleCreditDeduction(feature) {
                   const updatedTokensUsed = tokensUsed + featureCredit.credits;
                   lastTokensUsed = featureCredit.credits; // Track tokens used
 
-                  fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+                  fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
                       method: 'PUT',
                       headers: {
                           'Content-Type': 'application/json',
@@ -1572,7 +1631,7 @@ async function verifyAndRecordFeatures() {
     // }
 
     // Get current token balance
-    const tokenResponse = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+    const tokenResponse = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1582,7 +1641,7 @@ async function verifyAndRecordFeatures() {
     const availableTokens = tokenData.data.token_received - tokenData.data.tokens_used;
 
     // Get feature costs
-    const creditsResponse = await fetch('http://127.0.0.1:3000/api/credit/credits', {
+    const creditsResponse = await fetch('http://127.0.0.1:3001/api/credit/credits', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`

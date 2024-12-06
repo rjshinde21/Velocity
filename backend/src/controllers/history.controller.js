@@ -117,7 +117,7 @@ const historyController = {
     getUserHistory: async (req, res) => {
         try {
             const { user_id } = req.query;  // Changed from params to query
-            const { type, limit = 10, offset = 0 } = req.query;
+            const { type, limit = 50, offset = 0 } = req.query;
 
             if (!user_id) {
                 return res.status(400).json({
@@ -142,11 +142,11 @@ const historyController = {
             }
 
             query += ` ORDER BY h.created_at DESC LIMIT ? OFFSET ?`;
-
+            
             const params = type 
                 ? [user_id, type, parseInt(limit), parseInt(offset)]
                 : [user_id, parseInt(limit), parseInt(offset)];
-
+            //console.log("query:"+query +"and params:" + params);
             const [results] = await db.execute(query, params);
 
             res.json({

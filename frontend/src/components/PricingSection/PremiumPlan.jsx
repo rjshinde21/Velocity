@@ -55,7 +55,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
         }
 
         const response = await fetch(
-          `http://127.0.0.1:3000/api/users/profile/${userId}`,
+          `http://127.0.0.1:3001/api/users/profile/${userId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -150,7 +150,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
   
       // Step 1: Update the plan
       const planResponse = await fetch(
-        `http://127.0.0.1:3000/api/plans/${userData.user_id}`,
+        `http://127.0.0.1:3001/api/plans/${userData.user_id}`,
         {
           method: "PUT",
           headers: {
@@ -177,7 +177,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
   
       // Step 2: Fetch the current token data
       const currentDataResponse = await fetch(
-        `http://127.0.0.1:3000/api/token-types/${userData.user_id}`,
+        `http://127.0.0.1:3001/api/token-types/${userData.user_id}`,
         {
           method: "GET",
           headers: {
@@ -199,7 +199,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
   
       // Step 3: Fetch the plan's token_received value (100 for Premium plan)
       const planTokenReceivedResponse = await fetch(
-        `http://127.0.0.1:3000/api/plans/2`, // Assuming `2` is the Premium plan
+        `http://127.0.0.1:3001/api/plans/2`, // Assuming `2` is the Premium plan
         {
           method: "GET",
           headers: {
@@ -226,7 +226,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
   
       // Step 5: Update the token data with the new value
       const tokenResponse = await fetch(
-        `http://127.0.0.1:3000/api/token-types/${userData.user_id}`,
+        `http://127.0.0.1:3001/api/token-types/${userData.user_id}`,
         {
           method: "PUT",
           headers: {

@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loginButton2.addEventListener('click', function(e) {
             e.preventDefault();
             // Redirect to web app's login page for Google auth
-            window.open('http://localhost:3000/login', '_blank');
+            window.open('http://localhost:3001/login', '_blank');
         });
     }
 
@@ -39,7 +39,7 @@ async function checkWebAppAuthStatus() {
     if (token && userId) {
         try {
             // Verify token with backend
-            const response = await fetch(`http://localhost:3000/api/users/profile/${userId}`, {
+            const response = await fetch(`http://localhost:3001/api/users/profile/${userId}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -84,7 +84,7 @@ async function loginUser() {
     }
 
     try {
-        const response = await fetch('http://localhost:3000/api/users/login', {
+        const response = await fetch('http://localhost:3001/api/users/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -172,7 +172,7 @@ function setLoading(isLoading) {
     
 async function checkAuthAndRedirect(token, userId) {
     try {
-        const response = await fetch(`http://localhost:3000/api/users/profile/${userId}`, {
+        const response = await fetch(`http://localhost:3001/api/users/profile/${userId}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,

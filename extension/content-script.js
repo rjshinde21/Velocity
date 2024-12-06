@@ -79,7 +79,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Check tokens
         try {
-          const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+          const response = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${token}`
@@ -371,7 +371,7 @@ const PLATFORM_CONFIG = {
     console.log("token:?"+token);
     try {
       // Get feature credits
-      const creditsResponse = await fetch('http://127.0.0.1:3000/api/credit/credits', {
+      const creditsResponse = await fetch('http://127.0.0.1:3001/api/credit/credits', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -385,7 +385,7 @@ const PLATFORM_CONFIG = {
       }
   
       // Get user's token balance
-      const balanceResponse = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+      const balanceResponse = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -403,7 +403,7 @@ const PLATFORM_CONFIG = {
         const updatedTokensUsed = tokensUsed + featureCredit.credits;
         
         // Update tokens
-        await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+        await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -458,7 +458,7 @@ const PLATFORM_CONFIG = {
       // Ensure aiType is a string
       const aiTypeString = String(aiType || 'General');
   
-      const response = await fetch('http://127.0.0.1:3000/api/history/prompts', {
+      const response = await fetch('http://127.0.0.1:3001/api/history/prompts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -494,7 +494,7 @@ const PLATFORM_CONFIG = {
         throw new Error('User authentication required');
       }
   
-      const response = await fetch(`http://127.0.0.1:3000/api/history/prompts/${promptId}`, {
+      const response = await fetch(`http://127.0.0.1:3001/api/history/prompts/${promptId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -529,7 +529,7 @@ const PLATFORM_CONFIG = {
       // Ensure aiType is a string
       const aiTypeString = String(aiType || 'General');
   
-      const response = await fetch('http://127.0.0.1:3000/api/history/responses', {
+      const response = await fetch('http://127.0.0.1:3001/api/history/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -554,6 +554,53 @@ const PLATFORM_CONFIG = {
       console.error('Error saving response to history:', error);
       throw error;
     }
+  }
+  
+  function addCharacterLimitation(inputElement) {
+    const CHAR_LIMIT = 1100;
+    
+    // Create character counter
+    const charCounter = document.createElement('div');
+    charCounter.className = 'velocity-char-counter';
+    charCounter.style.cssText = `
+      position: absolute;
+      bottom: 8px;
+      right: 48px;
+      color: #666;
+      font-size: 12px;
+      pointer-events: none;
+      user-select: none;
+      background: transparent;
+      z-index: 999999;
+    `;
+  
+    // Handle all text changes
+    function updateCharCount() {
+      const text = inputElement.value || inputElement.textContent || '';
+      const length = text.length;
+      
+      // Update counter
+      charCounter.textContent = `${length}/${CHAR_LIMIT}`;
+      
+      // Update counter color based on length
+      if (length > CHAR_LIMIT) {
+        charCounter.style.color = '#ef4444';
+      } else {
+        charCounter.style.color = '#666';
+      }
+    }
+  
+    // Listen for all possible text input events
+    inputElement.addEventListener('input', updateCharCount);  // Catches typing, pasting, cutting, deleting
+    inputElement.addEventListener('keydown', updateCharCount); // Catches keyboard shortcuts
+    inputElement.addEventListener('paste', updateCharCount);  // Specifically catch paste events
+    inputElement.addEventListener('cut', updateCharCount);   // Specifically catch cut events
+    inputElement.addEventListener('delete', updateCharCount); // Catch delete operations
+    inputElement.addEventListener('change', updateCharCount); // Catch any other changes
+    
+    // Initialize counter
+    updateCharCount();
+    return charCounter;
   }
   
   
@@ -586,9 +633,11 @@ const PLATFORM_CONFIG = {
           singlePrompt: true
         }))}`
       });
-  
+      console.log("raw response:"+response);
+      //const response = {"prompts":[{"prompt":"Imagine a world where trial is not a test of guilt or innocence, but rather a ritual to awaken the hidden abilities of the accused. Design an immersive and surreal courtroom where the defendant's powers are revealed through an ancient dance, with each step unlocking a new dimension of their potential. The judge is an enigmatic being with the power to manipulate reality itself, using their gaze to guide the defendant through this transformative experience."},{"prompt":"Envision a futuristic city where trial has evolved into a high-stakes competition between rival factions vying for control. The defendants are advanced AI entities that have developed sentience, and their trials are broadcasted as spectacular events in zero-gravity arenas. Each faction must strategically deploy their unique technologies and cybernetic enhancements to outmaneuver and defeat their opponents in an intricate ballet of light, sound, and energy."},{"prompt":"In this post-apocalyptic wasteland, trial has become an ancient art form passed down through generations of survivors. The accused are presented before the 'Council of Elders', who evaluate their worthiness for membership in society by challenging them to create innovative solutions using scavenged materials from the ruins. As each member presents their creations, they must also navigate complex web-like puzzles that shift and adapt based on their successes or failures."}]}
       const data = await response.json();
-      const parsedResponse = JSON.parse(data.response);
+      const parsedResponse = JSON.parse(data.json());
+      //const parsedResponse = response;
   
       if (!parsedResponse.prompts || !parsedResponse.prompts.length) {
         throw new Error('No prompts received from server');
@@ -612,7 +661,9 @@ const PLATFORM_CONFIG = {
     const wrapper = document.createElement('div');
     wrapper.className = 'velocity-wrapper';
     inputElement.dataset.hasEnhanceButton = 'true';
-    
+
+    const charCounter = addCharacterLimitation(inputElement);
+
     const button = document.createElement('button');
     button.className = 'velocity-enhance-button';
     
@@ -625,7 +676,7 @@ const PLATFORM_CONFIG = {
       }
   
       try {
-        const response = await fetch(`http://127.0.0.1:3000/api/token-types/${result.userId}`, {
+        const response = await fetch(`http://127.0.0.1:3001/api/token-types/${result.userId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${result.token}`
@@ -686,8 +737,19 @@ const PLATFORM_CONFIG = {
         return;
       }
 
-      const text = inputElement.value || inputElement.textContent;
+      const text = inputElement.value || inputElement.textContent || '';
       if (!text) return;
+      
+      // Check character limit before processing
+      if (text.length > 1100) {
+        button.style.background = 'linear-gradient(180deg, #FF4444 0%, #CC0000 100%)';
+        setTimeout(() => {
+          button.style.background = '';
+        }, 1000);
+        return;
+      }
+  
+      
       try {
         showLoading();
         const enhancedText = await enhancePrompt(text);
@@ -711,6 +773,7 @@ const PLATFORM_CONFIG = {
    if (!inputElement.closest('.velocity-wrapper')) {
     inputElement.parentNode.insertBefore(wrapper, inputElement);
     wrapper.appendChild(inputElement);
+    wrapper.appendChild(charCounter); // Add the character counter
     wrapper.appendChild(button);
   }
   // Add visibility based on state
