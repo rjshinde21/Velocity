@@ -26,51 +26,45 @@ function addUnselectCapability() {
   // Style radio handling
   document.querySelectorAll('.button-group input[type="radio"]').forEach(input => {
     const existingHandler = input.onclick;
-    input.onclick = function(e) {
+    input.onclick = async function(e) {
       if (this.checked && this.dataset.wasChecked === 'true') {
         this.checked = false;
         this.dataset.wasChecked = 'false';
         selectedStyle = null;
+        await chrome.storage.local.remove('selectedStyle');
       } else {
         document.querySelectorAll('.button-group input[type="radio"]').forEach(radio => {
           radio.dataset.wasChecked = 'false';
         });
         this.dataset.wasChecked = 'true';
         selectedStyle = this.id;
+        await chrome.storage.local.set({ selectedStyle });
       }
       
-      // Call existing handler if it exists
-      if (existingHandler) {
-        existingHandler.call(this, e);
-      }
+      if (existingHandler) existingHandler.call(this, e);
     };
   });
 
   // Platform radio handling
-  document.querySelectorAll('#radio-group input[type="radio"]').forEach(input => {
+  document.querySelectorAll('.radio-group input[type="radio"]').forEach(input => {
     const existingHandler = input.onclick;
-    input.onclick = function(e) {
+    input.onclick = async function(e) {
       if (this.checked && this.dataset.wasChecked === 'true') {
         this.checked = false;
         this.dataset.wasChecked = 'false';
         selectedPlatform = null;
+        await chrome.storage.local.remove('selectedPlatform');
       } else {
-        document.querySelectorAll('#radio-group input[type="radio"]').forEach(radio => {
+        document.querySelectorAll('.radio-group input[type="radio"]').forEach(radio => {
           radio.dataset.wasChecked = 'false';
         });
         this.dataset.wasChecked = 'true';
         selectedPlatform = this.value;
+        await chrome.storage.local.set({ selectedPlatform });
       }
       
-      // Call existing handler if it exists
-      if (existingHandler) {
-        existingHandler.call(this, e);
-      }
-      
-      // Update enhance parameters if the function exists
-      if (typeof updateEnhanceParameters === 'function') {
-        updateEnhanceParameters();
-      }
+      if (existingHandler) existingHandler.call(this, e);
+      if (typeof updateEnhanceParameters === 'function') updateEnhanceParameters();
     };
   });
 }
@@ -286,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
       //enableFeatures();
     } else {
       // Show login prompt
-      document.getElementById('signupButton').textContent = 'Please log in via the web app';
+      document.getElementById('signupButton').textContent = 'Login';
       // Disable extension features
       //disableFeatures();
       console.log("disable features");
@@ -303,7 +297,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log("enable features");
 
     } else {
-      document.getElementById('signupButton').textContent = 'Please log in via the web app';
+      document.getElementById('signupButton').textContent = 'Login';
       //disableFeatures();
       console.log("disable features");
 
@@ -324,10 +318,10 @@ async function sendRequest() {
       return;
     }
 
-    if (!selectedStyle || !selectedPlatform) {
-      showError('Please select both a style and a platform');
-      return;
-    }
+    // if (!selectedStyle || !selectedPlatform) {
+    //   showError('Please select both a style and a platform');
+    //   return;
+    // }
 
     showLoading('Processing request...');
 
@@ -512,8 +506,8 @@ function getSelectedStyle() {
 
 // Modified function to get selected platform that works with existing code
 function getSelectedPlatform() {
-  const selectedRadio = document.querySelector('#radio-group input[type="radio"]:checked');
-  selectedPlatform = selectedRadio ? selectedRadio.value : 'General';
+  const selectedRadio = document.querySelector('.radio-group input[type="radio"]:checked');
+  selectedPlatform = selectedRadio ? selectedRadio.value : '';
   return selectedPlatform;
 }
 
@@ -736,13 +730,10 @@ function initializeRadioGroup() {
   const radioButtons = document.querySelectorAll('.radio-button');
   radioButtons.forEach(button => {
     button.addEventListener('click', async function() {
-      // Remove selected class from all buttons
-      radioButtons.forEach(btn => btn.classList.remove('selected'));
+      const img = this.querySelector('img');
+      const imgSrc = img.src.split('/').pop();
+      const platform = imgSrc.split('.')[0];
       
-      // Add selected class to clicked button
-      this.classList.add('selected');
-      
-      // Map the button to platform selection
       const platformMap = {
         'radiobutton1': 'General',
         'radiobutton2': 'GPT4',
@@ -751,63 +742,45 @@ function initializeRadioGroup() {
         'radiobutton5': 'DALLE'
       };
       
-      // Get platform from image source
-      const img = this.querySelector('img');
-      const imgSrc = img.src.split('/').pop();
-      const platform = imgSrc.split('.')[0];
+      radioButtons.forEach(btn => btn.classList.remove('selected'));
+      this.classList.add('selected');
+      
       selectedPlatform = platformMap[platform] || 'General';
-      
-      // Save to storage
-      await chrome.storage.local.set({ selectedPlatform: selectedPlatform });
-      
-      // Update content script with new parameters
+      chrome.storage.local.set({ selectedPlatform });
       updateEnhanceParameters();
     });
   });
 }
 
 // Add this function to handle style selection
+
 function initializeStyleButtons() {
-  const styleButtons = document.querySelectorAll('.button-group .button-text');
+  const styleButtons = document.querySelectorAll('.button-group input[type="radio"]');
   styleButtons.forEach(button => {
-    button.addEventListener('click', async function() {
-      // Remove selected class from all buttons
-      styleButtons.forEach(btn => btn.classList.remove('selected'));
-      
-      // Add selected class to clicked button
-      this.classList.add('selected');
-      
-      // Update selected style
-      selectedStyle = this.textContent.toLowerCase();
-      
-      // Save to storage
-      await chrome.storage.local.set({ selectedStyle: selectedStyle });
-      
-      // Update enhance parameters if needed
+    button.addEventListener('click', function() {
+      selectedStyle = this.id;
+      chrome.storage.local.set({ selectedStyle });
       updateEnhanceParameters();
     });
   });
 }
-async function loadSavedSelections() {
-  try {
-    const { selectedStyle, selectedPlatform } = await chrome.storage.local.get([
-      'selectedStyle',
-      'selectedPlatform'
-    ]);
 
+
+
+function loadSavedSelections() {
+  chrome.storage.local.get(['selectedStyle', 'selectedPlatform'], (result) => {
     // Restore style selection
-    if (selectedStyle) {
-      const styleButton = document.querySelector(`.button-group .button-text[data-style="${selectedStyle}"]`);
-      if (styleButton) {
-        document.querySelectorAll('.button-group .button-text').forEach(btn => {
-          btn.classList.remove('selected');
-        });
-        styleButton.classList.add('selected');
+    if (result.selectedStyle) {
+      const styleLabel = document.querySelector(`label[for="${result.selectedStyle}"]`);
+      if (styleLabel) {
+        const input = document.getElementById(result.selectedStyle);
+        if (input) input.checked = true;
+        styleLabel.classList.add('selected');
       }
     }
 
-    // Restore platform selection
-    if (selectedPlatform) {
+    // Restore platform selection (existing code)
+    if (result.selectedPlatform) {
       const platformMap = {
         'General': 'radiobutton1',
         'GPT4': 'radiobutton2',
@@ -816,21 +789,18 @@ async function loadSavedSelections() {
         'DALLE': 'radiobutton5'
       };
       
-      const buttonId = platformMap[selectedPlatform];
+      const buttonId = platformMap[result.selectedPlatform];
       if (buttonId) {
-        const radioButton = document.querySelector(`#${buttonId}`);
+        const radioButton = document.querySelector(`[src*="${buttonId}"]`)?.closest('.radio-button');
         if (radioButton) {
-          document.querySelectorAll('.radio-button').forEach(btn => {
-            btn.classList.remove('selected');
-          });
           radioButton.classList.add('selected');
         }
       }
     }
-  } catch (error) {
-    console.error('Error loading saved selections:', error);
-  }
+  });
 }
+
+
 
 // Add this function to update enhance button parameters
 function updateEnhanceParameters() {
@@ -838,12 +808,13 @@ function updateEnhanceParameters() {
     if (!tabs[0]?.id) return;
     chrome.tabs.sendMessage(tabs[0].id, {
       action: 'updateEnhanceParameters',
-      platform: selectedPlatform,
+      platform: getSelectedPlatform(),
       style: selectedStyle,
       enabled: document.getElementById('enhanceToggle').checked
     });
   });
 }
+
 
 
 function initializeEnhanceToggle() {
@@ -1297,7 +1268,7 @@ document.addEventListener('DOMContentLoaded', function () {
   initializeEnhanceToggle();
   initializeRadioGroup();
   initializeStyleButtons();
-  loadSavedSelections();
+  //loadSavedSelections();
   const signupButton = document.getElementById('signupButton');
   const dropdownMenu = document.getElementById('dropdownMenu');
   const editButton = document.getElementById('editButton');
@@ -1587,7 +1558,11 @@ async function verifyAndRecordFeatures() {
     
     const currentStyle = getSelectedStyle();
     const currentPlatform = getSelectedPlatform();
-
+    const { selectedStyle, selectedPlatform } = await chrome.storage.local.get([
+      'selectedStyle',
+      'selectedPlatform'
+  ]);
+  
     // if (!currentStyle) {
     //   throw new Error('Please select a style');
     // }
@@ -1620,8 +1595,11 @@ async function verifyAndRecordFeatures() {
 
     // Add base prompt cost
     const basicFeature = creditsData.data.find(credit => credit.feature === 'basic_prompt');
+    console.log("basic feature cost:"+basicFeature?.credits);
     requiredTokens += basicFeature?.credits || 0;
+    console.log("required tokens:"+requiredTokens + "Selected style:"+selectedStyle + "selected platform:"+selectedPlatform);
 
+    if(selectedStyle){
     // Add style cost
     const styleFeature = creditsData.data.find(credit => 
       credit.feature === `style_prompt`
@@ -1629,6 +1607,8 @@ async function verifyAndRecordFeatures() {
     if (styleFeature) {
       requiredTokens += styleFeature.credits;
     }
+  }
+  if(selectedPlatform){
 
     // Add platform cost
     const platformFeature = creditsData.data.find(credit => 
@@ -1637,6 +1617,7 @@ async function verifyAndRecordFeatures() {
     if (platformFeature) {
       requiredTokens += platformFeature.credits;
     }
+  }
 
     // Check if enough tokens are available
     if (availableTokens < requiredTokens) {
