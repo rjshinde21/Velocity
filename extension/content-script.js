@@ -428,14 +428,14 @@ const PLATFORM_CONFIG = {
     try {
       // Basic prompt credit deduction
       await handleCreditDeduction('basic_prompt');
-  
+      console.log("style type"+state.styleType);
       // Style credit deduction if style is selected
-      if (state.styleType) {
+      if (state.styleType != '' && state.styleType) {
         await handleCreditDeduction('style_prompt');
       }
-  
+      console.log("platform type"+state.platform);
       // Platform credit deduction if platform is selected
-      if (state.platform) {
+      if (state.platform != '' && state.platform) {
         await handleCreditDeduction('platform');
       }
   
@@ -634,9 +634,11 @@ const PLATFORM_CONFIG = {
         }))}`
       });
       console.log("raw response:"+response);
+      
       //const response = {"prompts":[{"prompt":"Imagine a world where trial is not a test of guilt or innocence, but rather a ritual to awaken the hidden abilities of the accused. Design an immersive and surreal courtroom where the defendant's powers are revealed through an ancient dance, with each step unlocking a new dimension of their potential. The judge is an enigmatic being with the power to manipulate reality itself, using their gaze to guide the defendant through this transformative experience."},{"prompt":"Envision a futuristic city where trial has evolved into a high-stakes competition between rival factions vying for control. The defendants are advanced AI entities that have developed sentience, and their trials are broadcasted as spectacular events in zero-gravity arenas. Each faction must strategically deploy their unique technologies and cybernetic enhancements to outmaneuver and defeat their opponents in an intricate ballet of light, sound, and energy."},{"prompt":"In this post-apocalyptic wasteland, trial has become an ancient art form passed down through generations of survivors. The accused are presented before the 'Council of Elders', who evaluate their worthiness for membership in society by challenging them to create innovative solutions using scavenged materials from the ruins. As each member presents their creations, they must also navigate complex web-like puzzles that shift and adapt based on their successes or failures."}]}
       const data = await response.json();
-      const parsedResponse = JSON.parse(data.json());
+      console.log("response data"+data.response);
+      const parsedResponse = JSON.parse(data.response);
       //const parsedResponse = response;
   
       if (!parsedResponse.prompts || !parsedResponse.prompts.length) {

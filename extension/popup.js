@@ -331,10 +331,10 @@ async function sendRequest() {
     showLoading('Processing request...');
 
     // Verify features and check credits
-    const canProceed = await verifyAndRecordFeatures();
-    if (!canProceed) {
-      return;
-    }
+    // const canProceed = await verifyAndRecordFeatures();
+    // if (!canProceed) {
+    //   return;
+    // }
 
     // Create and send request
     const formData = new FormData();
@@ -1603,10 +1603,10 @@ document.getElementById('sendButton').addEventListener('click', async function (
     const hasImage = imageUpload && imageUpload.files.length > 0;
 
     // First verify access to all required features
-    const canProceed = await verifyAndRecordFeatures(hasImage);
-    if (!canProceed) {
-      return;
-    }
+    // const canProceed = await verifyAndRecordFeatures(hasImage);
+    // if (!canProceed) {
+    //   return;
+    // }
 
     // If verification passed, proceed with the request
     await sendRequest();
@@ -1732,11 +1732,12 @@ async function verifyAndRecordFeatures() {
 
 
 async function handleCreditDeductions() {
-  const { selectedStyle, selectedPlatform } = await chrome.storage.local.get([
-    'selectedStyle',
-    'selectedPlatform'
-]);
-
+//   const { selectedStyle, selectedPlatform } = await chrome.storage.local.get([
+//     'selectedStyle',
+//     'selectedPlatform'
+// ]);
+const selectedStyle = getSelectedStyle();
+const selectedPlatform = getSelectedPlatform();
   try {
     // Record basic prompt usage and deduct credits
     await recordFeatureUsage('1');
