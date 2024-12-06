@@ -1397,7 +1397,14 @@ async function updateCreditDisplay() {
     console.log("data:"+data.data.token_received);
     const tokensReceived = data.data.token_received;
     const tokensUsed = data.data.tokens_used;
-    document.getElementById('editButton').textContent = `${tokensReceived - tokensUsed} Credits`;
+    const remainingCredits = tokensReceived - tokensUsed;
+
+    // Update the button content with icon and credit count
+    const editButton = document.getElementById('editButton');
+    editButton.innerHTML = `
+      <span><img class="coinicon" src="./assets/coin.png" alt="coin"></span>
+      <span>${remainingCredits}</span>
+    `;
   } catch (error) {
     console.error('Error updating credit display:', error);
   }
