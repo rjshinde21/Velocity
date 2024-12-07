@@ -197,10 +197,13 @@ function updateHeaderUI() {
       })
       .then(response => response.json())
       .then(data => {
-          signupButton.innerHTML = `
-              <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
-              Hi ${data.data.user.name}!
-          `;
+        const username = data.data.user.name;
+        const displayName = username.length > 6 ? username.slice(0, 6) + '..' : username;
+        
+        signupButton.innerHTML = `
+            <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
+            Hi ${displayName}!
+        `;
           // Show credits button
           if (editButton) editButton.style.display = 'flex';
       })
@@ -1747,3 +1750,56 @@ updateCreditDisplay();
       }
     }
     window.logout = logout;
+
+    // Wait for the DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', function () {
+  const copyButton = document.getElementById('copyButton');
+  const textarea = document.getElementById('promptInput');
+  
+  copyButton.addEventListener('click', function () {
+      const textToCopy = textarea.value;
+      
+      if (!textToCopy) {
+          alert('Please enter text to copy');
+          return;
+      }
+      
+      // Copy the text to clipboard
+      navigator.clipboard.writeText(textToCopy)
+          .then(() => {
+              // Add the white animation class
+              copyButton.classList.add('white');
+              
+              // Remove the class after 2 seconds
+              setTimeout(() => {
+                  copyButton.classList.remove('white');
+              }, 2000);
+          })
+          .catch(() => {
+              // Fallback for older browsers
+              fallbackCopyTextToClipboard(textarea);
+          });
+  });
+  
+  // Fallback function for older browsers
+  function fallbackCopyTextToClipboard(textarea) {
+      try {
+          textarea.select();
+          textarea.setSelectionRange(0, 99999);
+          document.execCommand('copy');
+          window.getSelection().removeAllRanges();
+          
+          // Add the white animation class
+          copyButton.classList.add('white');
+          
+          // Remove the class after 2 seconds
+          setTimeout(() => {
+              copyButton.classList.remove('white');
+          }, 2000);
+      } catch (err) {
+          alert('Failed to copy text. Please try again.');
+          console.error('Failed to copy text:', err);
+      }
+  }
+});
+

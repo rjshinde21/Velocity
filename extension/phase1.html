@@ -934,6 +934,22 @@ color: #C9C9C9;
   transform: translateX(24px);
 }
 
+/* Add animation for the icon */
+.copy-icon.white {
+    filter: brightness(0) invert(1); /* Makes the icon white */
+    transition: filter 0.3s ease;   /* Smooth transition */
+    animation: revertColor 2s forwards; /* Animation to revert back */
+}
+
+@keyframes revertColor {
+    0% {
+        filter: brightness(0) invert(1);
+    }
+    100% {
+        filter: none; /* Reverts to original color */
+    }
+}
+
 @keyframes borderShine {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
@@ -1068,11 +1084,17 @@ color: #C9C9C9;
     <div id="response"></div>
     <div class="input-container" style="position: relative; display: inline-block;">
       <textarea 
-          id="promptInput" 
-          class="w-full bg-black/40 rounded-2xl pl-10" 
-          placeholder="Add your prompt here"></textarea>
-      <img src="./assets/copy 1.png" alt="icon" 
-           style="position: absolute; top: 50%; right: 40px; transform: translateY(-50%); width: 20px; height: 20px;">
+          id="promptInput"
+          class="w-full bg-black/40 rounded-2xl pl-10"
+          placeholder="Add your prompt here"
+      ></textarea>
+      <img 
+          src="./assets/copy 1.png" 
+          alt="copy icon"
+          id="copyButton"
+          class="copy-icon"
+          style="position: absolute; top: 50%; right: 40px; transform: translateY(-50%); width: 20px; height: 20px; cursor: pointer;"
+      >
   </div>
   
     <div class="needs">Choose Your Style to Match Your Needs</div>
