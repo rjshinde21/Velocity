@@ -40,7 +40,7 @@ chrome.runtime.onConnect.addListener((port) => {
 
 async function checkUserTokens(token, userId) {
   try {
-    const response = await fetch(`http://127.0.0.1:3000/api/token-types/${userId}`, {
+    const response = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`

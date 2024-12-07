@@ -106,7 +106,7 @@ const historyValidation = {
                 .messages({
                     'any.only': 'Type must be either input_prompt or copied_response'
                 }),
-            limit: Joi.number().integer().min(1).max(100).default(10)
+            limit: Joi.number().integer().min(1).max(100).default(50)
                 .messages({
                     'number.base': 'Limit must be a number',
                     'number.min': 'Limit must be at least 1',
