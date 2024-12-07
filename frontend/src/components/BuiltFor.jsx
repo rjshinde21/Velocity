@@ -30,7 +30,7 @@ const BuiltFor = () => {
   ];
 
   return (
-  <div className="w-full" style={{ backgroundColor: '#090909' }}>
+  <div className="w-full" style={{ backgroundColor: '#000000' }}>
   <div className="max-w-7xl mx-auto py-6">
     <h2 className="font-[Amenti] text-4xl text-center mb-12 mt-8 text-white">Built For</h2>
     
@@ -42,7 +42,7 @@ const BuiltFor = () => {
             key={index}
             className="flex flex-col items-center text-center max-w-sm"
           >
-            <div className="w-48 h-48 bg-gray-900 rounded-lg mb-6 flex items-center justify-center overflow-hidden">
+            <div className="w-40 h-40 bg-gray-900 rounded-lg mb-6 flex items-center justify-center overflow-hidden">
               <img
                 src={category.img}
                 alt={category.title}
@@ -68,7 +68,7 @@ const BuiltFor = () => {
             key={index + 3}
             className="flex flex-col items-center text-center max-w-sm"
           >
-            <div className="w-48 h-48 bg-gray-900 rounded-lg mb-6 flex items-center justify-center overflow-hidden">
+            <div className="w-40 h-40 bg-gray-900 rounded-lg mb-6 flex items-center justify-center overflow-hidden">
               <img
                 src={category.img}
                 alt={category.title}
@@ -80,7 +80,7 @@ const BuiltFor = () => {
               {category.title}
             </h3>
             
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-400 text-xs w-2/3">
               {category.description}
             </p>
           </div>
