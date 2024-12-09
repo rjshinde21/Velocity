@@ -160,7 +160,7 @@ class User {
         try {
             const query = 'SELECT tokens FROM usertable WHERE user_id = ?';
             const [rows] = await db.query(query, [user_id]);
-            return rows[0]?.tokens || 0;
+            return (rows[0] && rows[0].tokens) || 0;
         } catch (error) {
             console.error('Error getting tokens:', error);
             throw error;

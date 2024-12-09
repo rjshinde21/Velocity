@@ -18,7 +18,7 @@ import AppContent from './components/AppContent';
 
 function App() {
   return (
-    <Router basename="/velocity_lander">
+    <Router basename="/">
       <main className="bg-primary overflow-hidden scrollbar scrollbar-thumb-slate-50 scrollbar-track-slate-800">
         <AppContent />
         <Footer />

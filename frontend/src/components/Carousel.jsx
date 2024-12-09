@@ -20,6 +20,9 @@ const Carousel = ({ speed = 30000 }) => {
   const [startPosition, setStartPosition] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const slideContainerRef = useRef(null);
+  const generateUniqueId = () => {
+    return '_' + Math.random().toString(36).substr(2, 9);
+};
 
   const images = [
     img1,
@@ -35,7 +38,7 @@ const Carousel = ({ speed = 30000 }) => {
     img11,
     img12,
   ].map((image) => ({
-    id: crypto.randomUUID(),
+    id: generateUniqueId(),
     image,
   }));
 

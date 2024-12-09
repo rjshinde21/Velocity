@@ -154,7 +154,7 @@ const ProfilePage = ({pricingRef}) => {
             });
     
             console.log('All data cleared. Redirecting...');
-            window.location.href = 'velocity_lander/login';
+            window.location.href = '/login';
         } catch (error) {
             console.error('Logout failed:', error);
             alert('Logout failed. Please try again.');
