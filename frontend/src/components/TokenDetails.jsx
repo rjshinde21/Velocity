@@ -35,7 +35,7 @@ const TokenDetails = () => {
       setError(null);
 
       // console.log("Fetching tokens for user:", userId);
-      const response = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+      const response = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -95,7 +95,7 @@ const TokenDetails = () => {
   
       console.log("Initiating top-up for user:", userId);
         
-      const response = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+      const response = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,

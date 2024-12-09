@@ -717,7 +717,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // const userId = 'user123'; // Replace with the actual user ID (from session, localStorage, etc.)
   
   // Fetch User Profile data
-  fetch(`http://127.0.0.1:3001/api/users/profile/${userId}`, {
+  fetch(`https://thinkvelocity.in/api/api/users/profile/${userId}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}` // Add the Authorization header with the token
@@ -738,7 +738,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Function to fetch and update credit display
   async function updateCreditDisplay() {
     try {
-      const response = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+      const response = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -759,7 +759,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // This is the function that will be triggered when the "Generate" button is clicked
   function handleCreditDeduction(feature) {
     // First fetch available credits for the feature
-    fetch('http://127.0.0.1:3001/api/credit/credits', {
+    fetch('https://thinkvelocity.in/api/api/credit/credits', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}` // Add the Authorization header with the token
@@ -776,7 +776,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
   
         // Then check and update user's token balance
-        fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+        fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -799,7 +799,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (tokensReceived - tokensUsed >= featureCredit.credits) {
               const updatedTokensUsed = tokensUsed + featureCredit.credits;
   
-              fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+              fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',

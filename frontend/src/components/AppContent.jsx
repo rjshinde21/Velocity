@@ -35,7 +35,7 @@ function AppContent() {
       if (storedToken && storedUser) {
         try {
           // Make sure to include 'Bearer ' prefix with the token
-          const verifyResponse = await fetch('http://localhost:3001/api/users/verify-token', {
+          const verifyResponse = await fetch('https://thinkvelocity.in/api/api/users/verify-token', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${storedToken}`,
@@ -68,7 +68,7 @@ function AppContent() {
           const storedToken = localStorage.getItem('token');
           if (storedToken) {
             try {
-              const verifyResponse = await fetch('http://localhost:3001/api/users/verify-token', {
+              const verifyResponse = await fetch('https://thinkvelocity.in/api/api/users/verify-token', {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${storedToken}`,
@@ -92,7 +92,7 @@ function AppContent() {
           }
 
           // If no token or verification failed, proceed with login
-          const response = await fetch('http://localhost:3001/api/users/login', {
+          const response = await fetch('https://thinkvelocity.in/api/api/users/login', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

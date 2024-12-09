@@ -14,10 +14,6 @@ const historyValidation = {
                 'any.required': 'Prompt text is required',
                 'string.empty': 'Prompt text cannot be empty'
             }),
-            ai_type: Joi.string().required().messages({
-                'any.required': 'AI type is required',
-                'string.empty': 'AI type cannot be empty'
-            }),
             tokens_used: Joi.number().min(0).default(0).messages({
                 'number.base': 'Tokens used must be a number',
                 'number.min': 'Tokens used cannot be negative'
@@ -64,10 +60,6 @@ const historyValidation = {
                 Joi.string()
             ).required().messages({
                 'any.required': 'Original prompt ID is required'
-            }),
-            ai_type: Joi.string().required().messages({
-                'any.required': 'AI type is required',
-                'string.empty': 'AI type cannot be empty'
             }),
             tokens_used: Joi.number().min(0).default(0).messages({
                 'number.base': 'Tokens used must be a number',

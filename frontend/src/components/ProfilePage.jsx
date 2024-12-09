@@ -32,9 +32,9 @@ const ProfilePage = ({pricingRef}) => {
         checkAuthAndFetchTokens();
     }, [navigate, isUpdating]);
     const fetchUserProfile = async () => {
-        console.log("fetching user profile: http://127.0.0.1:3001/api/users/profile/"+userId)
+        console.log("fetching user profile: https://thinkvelocity.in/api/api/users/profile/"+userId)
         try {
-            const response = await fetch(`http://127.0.0.1:3001/api/users/profile/${userId}`, {
+            const response = await fetch(`https://thinkvelocity.in/api/api/users/profile/${userId}`, {
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
                     'Content-Type': 'application/json',
@@ -55,7 +55,7 @@ const ProfilePage = ({pricingRef}) => {
         try {
             setIsLoading(true);
             setError(null);
-            const response = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+            const response = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
@@ -95,7 +95,7 @@ const ProfilePage = ({pricingRef}) => {
         try {
             setIsUpdating(true);
             setError(null);
-            const response = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}/topup`, {
+            const response = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}/topup`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
@@ -164,7 +164,7 @@ const ProfilePage = ({pricingRef}) => {
     const handlePayment = async () => {
         try {
             // First create order on your backend
-            const orderResponse = await fetch('http://127.0.0.1:3001/api/create-order', {
+            const orderResponse = await fetch('https://thinkvelocity.in/api/api/create-order', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
@@ -187,7 +187,7 @@ const ProfilePage = ({pricingRef}) => {
                 handler: async function (response) {
                     try {
                         // Verify payment on backend
-                        const verifyResponse = await fetch('http://127.0.0.1:3001/api/verify-payment', {
+                        const verifyResponse = await fetch('https://thinkvelocity.in/api/api/verify-payment', {
                             method: 'POST',
                             headers: {
                                 'Authorization': `Bearer ${authToken}`,

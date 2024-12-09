@@ -6,7 +6,7 @@ let selectedPlatform = null;   // Default value
 async function checkFeatureAccess(featureId) {
   try {
     const userId = localStorage.getItem('userId');
-    const response = await fetch(`http://127.0.0.1:3001/api/credit/credits/${featureId}/access`, {
+    const response = await fetch(`https://thinkvelocity.in/api/api/credit/credits/${featureId}/access`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -73,7 +73,7 @@ function addUnselectCapability() {
 async function recordFeatureUsage(featureId) {
   try {
     const userId = localStorage.getItem('userId');
-    const response = await fetch(`http://127.0.0.1:3001/api/credit/use/${featureId}`, {
+    const response = await fetch(`https://thinkvelocity.in/api/api/credit/use/${featureId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -189,7 +189,7 @@ function updateHeaderUI() {
       signupButton.classList.remove('not-logged-in');
       console.log("checking user id:"+userId);
       // Fetch and display user info
-      fetch(`http://127.0.0.1:3001/api/users/profile/${userId}`, {
+      fetch(`https://thinkvelocity.in/api/api/users/profile/${userId}`, {
           method: 'GET',
           headers: {
               'Authorization': `Bearer ${token}`
@@ -350,7 +350,7 @@ async function sendRequest() {
     formData.append('data', JSON.stringify(requestData));
 
     // Make the API request
-    const response = await fetch('http://127.0.0.1:2000/process', {
+    const response = await fetch('https://thinkvelocity.in/python-api/process', {
       method: 'POST',
       body: formData,
     });
@@ -443,7 +443,7 @@ function adjustPopupSize() {
 
 async function savePromptToHistory(userId, promptText, aiType) {
   try {
-      const response = await fetch('http://127.0.0.1:3001/api/history/prompts', {
+      const response = await fetch('https://thinkvelocity.in/api/api/history/prompts', {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
@@ -471,7 +471,7 @@ async function savePromptToHistory(userId, promptText, aiType) {
 }
 async function updatePromptTokens(promptId, tokensUsed) {
   try {
-      const response = await fetch(`http://127.0.0.1:3001/api/history/prompts/${promptId}`, {
+      const response = await fetch(`https://thinkvelocity.in/api/api/history/prompts/${promptId}`, {
           method: 'PATCH',
           headers: {
               'Content-Type': 'application/json',
@@ -604,7 +604,7 @@ function handleParsedResponse(parsedResponse) {
             }
 
             // Then save the copied response with the tokens used
-            const saveResponseResponse = await fetch('http://127.0.0.1:3001/api/history/responses', {
+            const saveResponseResponse = await fetch('https://thinkvelocity.in/api/api/history/responses', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1118,7 +1118,7 @@ document.addEventListener('DOMContentLoaded', function () {
 //   document.head.appendChild(style);
 
 
-//   fetch('http://localhost:2000/get_categories')
+//   fetch('http://https://thinkvelocity.in/api/python-api/get_categories')
 //     .then(response => response.json())
 //     .then(categories => {
 //       console.log('Categories:', categories);
@@ -1425,7 +1425,7 @@ let lastTokensUsed = 0; // To track tokens used in the last operation
 
 // Fetch User Profile data
 // console.log("checking user id:"+userId);
-// fetch(`http://127.0.0.1:3001/api/users/profile/${userId}`, {
+// fetch(`https://thinkvelocity.in/api/api/users/profile/${userId}`, {
 //   method: 'GET',
 //   headers: {
 //     'Authorization': `Bearer ${token}` // Add the Authorization header with the token
@@ -1445,11 +1445,11 @@ let lastTokensUsed = 0; // To track tokens used in the last operation
 
 // Function to fetch and update credit display
 async function updateCreditDisplay() {
-  console.log("checkng user id:"+userId + `http://127.0.0.1:3001/api/token-types/${userId}`);
+  console.log("checkng user id:"+userId + `https://thinkvelocity.in/api/api/token-types/${userId}`);
   console.log("checkng token:"+token);
 
   try {
-    const response = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+    const response = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1478,7 +1478,7 @@ async function updateCreditDisplay() {
 // This is the function that will be triggered when the "Generate" button is clicked
 function handleCreditDeduction(feature) {
   return new Promise((resolve, reject) => {
-      fetch('http://127.0.0.1:3001/api/credit/credits', {
+      fetch('https://thinkvelocity.in/api/api/credit/credits', {
           method: 'GET',
           headers: {
               'Authorization': `Bearer ${token}`
@@ -1492,7 +1492,7 @@ function handleCreditDeduction(feature) {
               return;
           }
 
-          fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+          fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
               method: 'GET',
               headers: {
                   'Authorization': `Bearer ${token}`,
@@ -1512,7 +1512,7 @@ function handleCreditDeduction(feature) {
                   const updatedTokensUsed = tokensUsed + featureCredit.credits;
                   lastTokensUsed = featureCredit.credits; // Track tokens used
 
-                  fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+                  fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
                       method: 'PUT',
                       headers: {
                           'Content-Type': 'application/json',
@@ -1641,7 +1641,7 @@ async function verifyAndRecordFeatures() {
     // }
 
     // Get current token balance
-    const tokenResponse = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+    const tokenResponse = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1651,7 +1651,7 @@ async function verifyAndRecordFeatures() {
     const availableTokens = tokenData.data.token_received - tokenData.data.tokens_used;
 
     // Get feature costs
-    const creditsResponse = await fetch('http://127.0.0.1:3001/api/credit/credits', {
+    const creditsResponse = await fetch('https://thinkvelocity.in/api/api/credit/credits', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`

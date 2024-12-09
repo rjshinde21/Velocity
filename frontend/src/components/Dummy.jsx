@@ -33,7 +33,7 @@ const PremiumPlan = ({ planData }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:3001/api/plans/30', {
+      const response = await fetch('https://thinkvelocity.in/api/api/plans/30', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -102,7 +102,7 @@ const Register = () => {
     setMessage(<span style={{ color: '#2563eb' }}>Processing registration...</span>);
   
     try {
-      const response = await fetch('http://127.0.0.1:3001/api/users/register', {
+      const response = await fetch('https://thinkvelocity.in/api/api/users/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -155,7 +155,7 @@ const Register = () => {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
   
-      const apiResponse = await fetch('http://127.0.0.1:3001/api/users/register', {
+      const apiResponse = await fetch('https://thinkvelocity.in/api/api/users/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -3,22 +3,21 @@ const db = require('../config/database');
 
 const historyController = {
     // Save original prompt
-    savePrompt :async (req, res) => {
+    savePrompt: async (req, res) => {
         try {
-            const { prompt_text, ai_type, tokens_used = 0, user_id } = req.body;
+            const { prompt_text, ai_type = null, tokens_used = 0, user_id } = req.body;
             
             console.log('Received request body:', req.body); // Debug log
     
             // Additional input validation
-            if (!user_id || !prompt_text || !ai_type) {
-                console.log('Missing required fields:', { user_id, prompt_text, ai_type }); // Debug log
+            if (!user_id || !prompt_text) {
+                console.log('Missing required fields:', { user_id, prompt_text }); // Debug log
                 return res.status(400).json({
                     success: false,
                     message: 'Missing required fields',
                     details: {
                         user_id: !user_id ? 'missing' : 'present',
-                        prompt_text: !prompt_text ? 'missing' : 'present',
-                        ai_type: !ai_type ? 'missing' : 'present'
+                        prompt_text: !prompt_text ? 'missing' : 'present'
                     }
                 });
             }
@@ -29,7 +28,13 @@ const historyController = {
                 VALUES (?, 'input_prompt', ?, ?, ?)
             `;
     
-            const params = [user_id, prompt_text, ai_type, tokens_used];
+            // Ensure ai_type is null (not undefined) when not provided
+            const params = [
+                user_id, 
+                prompt_text, 
+                ai_type === undefined ? null : ai_type, 
+                tokens_used
+            ];
             console.log('Query params:', params); // Debug log
     
             const [result] = await db.execute(query, params);
@@ -59,8 +64,13 @@ const historyController = {
     // Save copied response
     saveResponse: async (req, res) => {
         try {
-            const { prompt_text, original_prompt_id, ai_type, user_id } = req.body;
-
+            const { 
+                prompt_text, 
+                original_prompt_id, 
+                ai_type = null, 
+                user_id 
+            } = req.body;
+    
             // Validate required fields
             if (!user_id) {
                 return res.status(400).json({
@@ -68,27 +78,36 @@ const historyController = {
                     message: 'User ID is required in request body'
                 });
             }
-
-            if (!prompt_text || !original_prompt_id || !ai_type) {
+    
+            if (!prompt_text || !original_prompt_id) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Prompt text, original prompt ID, and AI type are required'
+                    message: 'Prompt text and original prompt ID are required',
+                    details: {
+                        prompt_text: !prompt_text ? 'missing' : 'present',
+                        original_prompt_id: !original_prompt_id ? 'missing' : 'present'
+                    }
                 });
             }
-
+    
             const query = `
                 INSERT INTO prompt_history 
                 (user_id, content_type, prompt_text, original_prompt_id, ai_type) 
                 VALUES (?, 'copied_response', ?, ?, ?)
             `;
-
-            const [result] = await db.execute(query, [
+    
+            // Ensure ai_type is null (not undefined) when not provided
+            const params = [
                 user_id,
                 prompt_text,
                 original_prompt_id,
-                ai_type
-            ]);
-
+                ai_type === undefined ? null : ai_type
+            ];
+    
+            console.log('Query params:', params); // Debug log
+    
+            const [result] = await db.execute(query, params);
+    
             res.status(201).json({
                 success: true,
                 data: {
@@ -116,17 +135,20 @@ const historyController = {
     // Get user's history
     getUserHistory: async (req, res) => {
         try {
-            const { user_id } = req.query;  // Changed from params to query
-            const { type, limit = 50, offset = 0 } = req.query;
-
+            const { user_id, type } = req.query;
+            // Ensure limit and offset are numbers with default values
+            const limit = Number(req.query.limit) || 50;
+            const offset = Number(req.query.offset) || 0;
+    
             if (!user_id) {
                 return res.status(400).json({
                     success: false,
                     message: 'User ID is required in query parameters'
                 });
             }
-
-            let query = `
+    
+            // Build base query
+            let baseQuery = `
                 SELECT 
                     h.*, 
                     original.prompt_text as original_prompt
@@ -136,19 +158,24 @@ const historyController = {
                 WHERE h.user_id = ? 
                     AND h.is_deleted = FALSE
             `;
-
-            if (type) {
-                query += ` AND h.content_type = ?`;
+    
+            let params = [user_id];
+    
+            // Add type filter if provided
+            if (type && type.trim()) {
+                baseQuery += ` AND h.content_type = ?`;
+                params.push(type);
             }
-
-            query += ` ORDER BY h.created_at DESC LIMIT ? OFFSET ?`;
-            
-            const params = type 
-                ? [user_id, type, parseInt(limit), parseInt(offset)]
-                : [user_id, parseInt(limit), parseInt(offset)];
-            //console.log("query:"+query +"and params:" + params);
-            const [results] = await db.execute(query, params);
-
+    
+            // Add pagination using numbers directly in the query
+            const finalQuery = baseQuery + ` ORDER BY h.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+    
+            // Log for debugging
+            console.log('Final Query:', finalQuery);
+            console.log('Parameters:', params);
+    
+            const [results] = await db.execute(finalQuery, params);
+    
             res.json({
                 success: true,
                 data: results

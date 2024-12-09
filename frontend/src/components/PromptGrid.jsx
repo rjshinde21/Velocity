@@ -21,7 +21,7 @@ const PromptGrid = () => {
   const fetchPromptHistory = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://127.0.0.1:3001/api/history/user/history?user_id=${userId}`, {
+      const response = await fetch(`https://thinkvelocity.in/api/api/history/user/history?user_id=${userId}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'

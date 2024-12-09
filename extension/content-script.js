@@ -79,7 +79,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Check tokens
         try {
-          const response = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+          const response = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${token}`
@@ -371,7 +371,7 @@ const PLATFORM_CONFIG = {
     console.log("token:?"+token);
     try {
       // Get feature credits
-      const creditsResponse = await fetch('http://127.0.0.1:3001/api/credit/credits', {
+      const creditsResponse = await fetch('https://thinkvelocity.in/api/api/credit/credits', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -385,7 +385,7 @@ const PLATFORM_CONFIG = {
       }
   
       // Get user's token balance
-      const balanceResponse = await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+      const balanceResponse = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -403,7 +403,7 @@ const PLATFORM_CONFIG = {
         const updatedTokensUsed = tokensUsed + featureCredit.credits;
         
         // Update tokens
-        await fetch(`http://127.0.0.1:3001/api/token-types/${userId}`, {
+        await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -458,7 +458,7 @@ const PLATFORM_CONFIG = {
       // Ensure aiType is a string
       const aiTypeString = String(aiType || 'General');
   
-      const response = await fetch('http://127.0.0.1:3001/api/history/prompts', {
+      const response = await fetch('https://thinkvelocity.in/api/api/history/prompts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -494,7 +494,7 @@ const PLATFORM_CONFIG = {
         throw new Error('User authentication required');
       }
   
-      const response = await fetch(`http://127.0.0.1:3001/api/history/prompts/${promptId}`, {
+      const response = await fetch(`https://thinkvelocity.in/api/api/history/prompts/${promptId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -529,7 +529,7 @@ const PLATFORM_CONFIG = {
       // Ensure aiType is a string
       const aiTypeString = String(aiType || 'General');
   
-      const response = await fetch('http://127.0.0.1:3001/api/history/responses', {
+      const response = await fetch('https://thinkvelocity.in/api/api/history/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -623,7 +623,7 @@ const PLATFORM_CONFIG = {
       // Apply style transformation if valid
       const modifiedPrompt = styleTransform ? styleTransform.modifier(originalText) : originalText;
   
-      const response = await fetch('http://localhost:2000/process', {
+      const response = await fetch('https://thinkvelocity.in/python-api/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `data=${encodeURIComponent(JSON.stringify({
@@ -678,7 +678,7 @@ const PLATFORM_CONFIG = {
       }
   
       try {
-        const response = await fetch(`http://127.0.0.1:3001/api/token-types/${result.userId}`, {
+        const response = await fetch(`https://thinkvelocity.in/api/api/token-types/${result.userId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${result.token}`

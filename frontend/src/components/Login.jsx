@@ -85,7 +85,7 @@ const Login = ({setIsLoggedIn}) => {
     setMessage(<span style={{ color: '#2563eb' }}>Processing login...</span>);
 
     try {
-      const response = await fetch('http://localhost:3001/api/users/login', {
+      const response = await fetch('https://thinkvelocity.in/api/api/users/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,7 +124,7 @@ const Login = ({setIsLoggedIn}) => {
       const user = result.user;
       
       // Try to login with Google credentials
-      const response = await fetch('http://localhost:3001/api/users/login', {
+      const response = await fetch('https://thinkvelocity.in/api/api/users/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

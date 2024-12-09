@@ -95,7 +95,7 @@ function updateButtonVisibility() {
 // Single function to enhance inputs
 async function generateEnhancedPrompts(text) {
   try {
-    const response = await fetch('http://localhost:2000/process', {
+    const response = await fetch('https://thinkvelocity.in/python-api/process', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `data=${encodeURIComponent(JSON.stringify({

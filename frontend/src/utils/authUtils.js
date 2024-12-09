@@ -62,7 +62,7 @@ export const verifySharedToken = async () => {
   if (!token || !userId) return false;
   
   try {
-    const response = await fetch(`http://localhost:3001/api/users/profile/${userId}`, {
+    const response = await fetch(`https://thinkvelocity.in/api/api/users/profile/${userId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
