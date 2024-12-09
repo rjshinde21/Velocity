@@ -109,19 +109,19 @@ const Home = () => {
         <div className="absolute inset-0 bg-black opacity-0 flex" />
 
         <div className="relative z-10 flex flex-col items-center justify-center">
-          <h1 className="font-[Amenti] bg-gradient-text pt-30 text-3xl sm:text-6xl pb-4 text-center">
+          <h1 className="font-[Amenti] bg-gradient-text pt-10 text-3xl sm:text-6xl pb-4 text-center">
             Intelligent Prompts for <br />
             <span className="block text-center">Smarter Results</span>
           </h1>
           <p className="text-[#999999] font-[Inter] text-sm sm:text-lg">
             Redefine the way you generate AI-driven ideas
           </p>
-          <a href="https://chromewebstore.google.com/category/extensions?hl=en-US&utm_source=ext_sidebar" target="_blank">
+          {/* <a href="https://chromewebstore.google.com/category/extensions?hl=en-US&utm_source=ext_sidebar" target="_blank">
             <button className="glowing-button flex items-center gap-2 sm:mt-12 mt-6">
               <span>Try Now with sample prompt</span>
               <img src={star} alt="Star" />
             </button>
-          </a>
+          </a> */}
         </div>
         <HomeCards />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent via-[12%] bottom-0" />

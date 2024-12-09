@@ -48,11 +48,11 @@ const HowItWorks = () => {
       />
 
       {/* Content Container */}
-      <div className="relative w-full px-4 sm:px-6 lg:px-8 py-14">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+      <div className="relative w-full px-4 sm:px-6 lg:px-10 py-32">
+        <div className="max-w-7xl mx-auto flex flex-col items-center lg:flex-row lg:justify-between gap-10">
           {/* Left Section */}
           <div className="w-full lg:w-1/2 px-4">
-            <h1 className="font-[Amenti] text-3xl sm:text-4xl font-light mb-8 text-white text-center lg:text-left lg:ml-20">
+            <h1 className="font-[Amenti] text-3xl sm:text-4xl font-light  text-white text-center lg:text-left lg:ml-20">
               How It Works
             </h1>
             <div className="flex flex-col items-center space-y-4 w-full lg:w-3/4 pt-10">
@@ -76,25 +76,23 @@ const HowItWorks = () => {
           </div>
 
           {/* Right side - Video Placeholder */}
-          <div className="lg:w-1/2 items-start">
+          <div className="w-full lg:w-1/2 flex items-center justify-center px-4">
+          <div className="w-full max-w-md">
             <div
-              className="relative rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 h-4/5"
-              style={{ aspectRatio: '677/766' }}
+              className="relative rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 aspect-[4/5]"
             >
               <video
-                src="https://toteminteractive.in/velosty/Extensionnew.mp4"
-                className="w-full h-full object-cover pointer-events-none"
-                autoPlay
-                loop
-                muted
-                playsInline
-                disablePictureInPicture
-                controlsList="nodownload noplaybackrate"
-                preload="auto"
-              />
+              src="https://toteminteractive.in/velosty/Extensionnew.mp4"
+              className="absolute inset-0 w-full h-full object-cover"
+              autoPlay
+              loop
+              muted
+              controls
+            />
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

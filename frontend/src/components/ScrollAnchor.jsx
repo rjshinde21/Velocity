@@ -6,22 +6,22 @@ const ScrollAnchor = ({ howItWorksRef, freeTrialRef, pricingRef, carouselRef }) 
   const navigationItems = [
     {
       id: 1,
-      label: "How it works",
+      label: "Try Now",
       ref: howItWorksRef,
     },
     {
       id: 2,
-      label: "Pricing",
+      label: "How to use",
       ref: pricingRef,
     },
     {
       id: 3,
-      label: "Free Trial",
+      label: "Built For",
       ref: freeTrialRef,
     },
     {
       id: 4,
-      label: "Gallery",
+      label: "Reviews",
       ref: carouselRef,
     },
   ];
