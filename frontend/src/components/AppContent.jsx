@@ -24,6 +24,7 @@ function AppContent() {
   const pricingRef = useRef(null);
   const carouselRef = useRef(null);
   const builtRef  = useRef(null);
+  const homeRef = useRef(null);
 
   useEffect(() => {
     const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
@@ -179,12 +180,14 @@ function AppContent() {
             <>
               <Navbar
                 howItWorksRef={howItWorksRef}
-                freeTrialRef={freeTrialRef}
+                homeRef={homeRef}
+                // freeTrialRef={freeTrialRef}
                 carouselRef={carouselRef}
                 builtRef={builtRef}
                 isLoggedIn={isLoggedIn}
               />
-              <Home />
+              {/* <Home /> */}
+              <div ref={homeRef}><Home /></div>
               <div ref={howItWorksRef}><HowItWorks /></div>
               <div ref={builtRef}><BuiltFor /></div>
               <div ref={carouselRef}><Carousel /></div>

@@ -143,9 +143,10 @@
 
 
 import React from 'react';
+import { Link } from 'react-router-dom';  // Import Link
 import { Instagram, Linkedin } from 'lucide-react';
 
-const Footer = () => {
+const Footer = ({ isLoggedIn }) => {
   return (
     <footer className="bg-black text-gray-400 py-8 sm:py-16">
       <div className="container mx-auto px-4 sm:px-6">
@@ -161,9 +162,18 @@ const Footer = () => {
                 Transform your ideas with precision and creativity
               </p>
             </div>
-            <button className="bg-black text-white px-4 sm:px-6 py-3 sm:py-4 rounded-full border border-gray-700 hover:bg-gray-900 transition-colors whitespace-nowrap">
-              Get Started
-            </button>
+            {/* Conditional rendering based on isLoggedIn */}
+            {!isLoggedIn ? (
+              <Link to="/register">
+                <button className="bg-black text-white px-4 sm:px-6 py-3 sm:py-4 rounded-full border border-gray-700 hover:bg-gray-900 transition-colors whitespace-nowrap">
+                  Get Started
+                </button>
+              </Link>
+            ) : (
+              <Link to="/profile">
+                <UserRound className="border rounded-full w-8 h-8 sm:w-10 sm:h-10" />
+              </Link>
+            )}
           </div>
 
           {/* Designer credit and logo section */}
@@ -173,7 +183,7 @@ const Footer = () => {
             </p>
 
             {/* Logo and social icons */}
-            <div className="relative flex flex-col sm:flex-row items-center sm:items-center justify-between gap-4 sm:gap-6 px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+            <div className="relative flex flex-col sm:flex-row items-center sm:items-center justify-between gap-4 sm:gap-6 px-0 sm:px-0 lg:px-0 py-8 sm:py-12">
   {/* VELOCITY Text */}
   <div className="font-[Amenti] text-[2.5rem] sm:text-[4rem] md:text-[6rem] lg:text-[8rem] xl:text-[10rem] 
                   font-bold tracking-wider leading-none text-center sm:text-left

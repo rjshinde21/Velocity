@@ -1,41 +1,35 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import velocitylogo from "../assets/velocitylogo.png";
 import { Link } from "react-router-dom";
 import ScrollAnchor from "./ScrollAnchor";
 import { UserRound } from "lucide-react";
 
 const Navbar = ({
-  handleClick,
+  homeRef,
   howItWorksRef,
-  freeTrialRef,
   pricingRef,
+  builtRef,
   carouselRef,
   isLoggedIn,
-  
 }) => {
-  // const [isLoggedIn, setIsLoggedIn] = useState(false);
-  // const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  // useEffect(() => {
-  //   // Check for login status from localStorage
-  //   const userId = localStorage.getItem("userId");
-  //   const authToken = localStorage.getItem("token");
-  //   setIsLoggedIn(!!userId && !!authToken);
-  // }, [isLoggedIn]);
+  // Organize all refs into a single object
+  const scrollRefs = {
+    home: homeRef,
+    howItWorks: howItWorksRef,
+    pricing: pricingRef,
+    built: builtRef,
+    carousel: carouselRef,
+  };
 
   return (
     <div>
       <nav className="bg-transparent text-primary fixed w-full top-0 start-0 px-6 z-20">
         <div className="max-w-screen-xl flex flex-wrap items-center justify-between lg:mx-auto pt-5 sm:pt-12">
-          {/* <Link
+          <Link
             to="/"
             className={`flex items-center space-x-3 sm:w-auto ${
               !isLoggedIn ? "lg:w-[161px]" : "w-auto"
             }`}
-          > */}
-          <Link
-            to="/"
-            className={`flex items-center space-x-3 sm:w-auto ${!isLoggedIn ? 'lg:w-[161px]' : 'w-auto'}`}
           >
             <img
               src={velocitylogo}
@@ -44,12 +38,9 @@ const Navbar = ({
             />
           </Link>
 
-          <ScrollAnchor
-            howItWorksRef={howItWorksRef}
-            freeTrialRef={freeTrialRef}
-            pricingRef={pricingRef}
-            carouselRef={carouselRef}
-          />
+          {/* Pass organized refs to ScrollAnchor */}
+          <ScrollAnchor scrollRefs={scrollRefs} />
+
           {!isLoggedIn ? (
             <Link to="/register">
               <button className="navbtn rounded-[30px] bg-[#0a0a0a] py-[10px] sm:py-[16px] flex items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)] transition-all duration-200">
@@ -70,6 +61,5 @@ const Navbar = ({
     </div>
   );
 };
-
 
 export default Navbar;

@@ -87,7 +87,7 @@ const HowItWorks = () => {
               autoPlay
               loop
               muted
-              controls
+              controls={false} // Hides the video loader and controls
             />
             </div>
           </div>

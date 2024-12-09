@@ -31,7 +31,7 @@ const BuiltFor = () => {
 
   return (
     <div className="w-full" style={{ backgroundColor: '#000000' }}>
-      <div className="max-w-7xl mx-auto py-6">
+      <div className="max-w-7xl mx-auto py-20">
         <h2 className="font-[Amenti] text-4xl text-center mb-12 mt-8 text-white">Built For</h2>
         
         <div className="flex flex-col gap-20 pb-12">

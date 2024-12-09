@@ -39,21 +39,21 @@ const Carousel = ({ speed = 30000 }) => {
       name: "Shrishti Munjal",
       role: "CEO Zetoupe",
       image: girl,
-      testimonial: "Velocity feels like having a creative partner who just gets you. It takes the guesswork out of crafting prompts, saving me hours and delivering spot-on results. Intuitive, smooth"
+      testimonial: "Velocity feels like having a creative partner who just gets you. It takes the guesswork out of crafting prompts"
     },
     {
       id: 2,
       name: "Alex Chen",
       role: "Creative Director",
       image: girl,
-      testimonial: "The AI prompt suggestions have revolutionized our creative workflow. What used to take hours now takes minutes. Absolutely incredible tool!"
+      testimonial: "The AI prompt suggestions have revolutionized our creative workflow. Absolutely incredible tool!"
     },
     {
       id: 3,
       name: "Sarah Johnson",
       role: "Content Strategist",
       image: girl,
-      testimonial: "The interface is intuitive and the results are consistently impressive. It's become an indispensable part of our content creation process."
+      testimonial: "The interface is intuitive and the results are consistently impressive. It's become an indispensable part."
     }
   ];
 
@@ -78,7 +78,7 @@ const Carousel = ({ speed = 30000 }) => {
           width: "100%",
         }}
       >
-  <div className="relative min-h-[400px] md:min-h-[300px] lg:min-h-[200px] w-full">
+  <div className="relative min-h-[400px] md:min-h-[300px] lg:min-h-[200px] w-full py-16">
     {/* Background Image Container */}
     <div 
       className="absolute inset-0 bg-center bg-cover opacity-50"
