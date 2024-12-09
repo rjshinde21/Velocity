@@ -50,10 +50,9 @@ app.use(express.json());
 const connection = mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
-    password: '',
+    password: 'Velocity@2024',
     database: process.env.DB_NAME || 'velocitydb',
     port: 3306
-
 });
 
 // Routes
@@ -62,8 +61,23 @@ app.use('/api', tokenRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/credit', creditRoutes);
 app.use('/api/history', historyRoutes);
+app.get('*', (req, res, next) => {
+    console.log('Request path:', req.path);
+    next();
+});
+app.use((req, res, next) => {
+    console.log('Incoming request:', {
+        url: req.url,
+        path: req.path,
+        method: req.method,
+        headers: req.headers
+    });
+    next();
+});
 
-
+app.get('/test', (req, res) => {
+    res.json({ message: 'API is working!' });
+});
 const PORT = process.env.PORT || 3000;
 
 // Initialize database and start server
