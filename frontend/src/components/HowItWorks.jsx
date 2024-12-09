@@ -83,11 +83,14 @@ const HowItWorks = () => {
             >
               <video
                 src="https://toteminteractive.in/velosty/Extensionnew.mp4"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover pointer-events-none"
                 autoPlay
                 loop
                 muted
-                controls
+                playsInline
+                disablePictureInPicture
+                controlsList="nodownload noplaybackrate"
+                preload="auto"
               />
             </div>
           </div>
