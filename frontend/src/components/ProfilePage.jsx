@@ -234,7 +234,7 @@ const ProfilePage = ({pricingRef}) => {
         <div className="flex flex-col justify-between h-full px-6 sm:px-4 py-6 md:py-10 ">
             <div className="flex flex-col md:flex-row md:gap-16 lg:gap-32 items-center px-4 sm:mt-40">
                         <div className="text-center md:text-left mb-10 sm:mb-0">
-                            <button
+                            {/* <button
                                 className="bg-[#2C2C2C] hover:bg-gray-600 text-white text-sm px-4 py-2 rounded-lg font-[Inter] mb-4 flex gap-2 items-center mx-auto md:mx-0"
                                 onClick={handleClick}
                             >
@@ -248,7 +248,7 @@ const ProfilePage = ({pricingRef}) => {
                                     <path d={isEditing ? "M6 10h8v2H6v-2zm-2 4h12v2H4v-2z" : "M4 13V17H8L16.5 8.5L12.5 4.5L4 13ZM18.5 6L14 1.5L16.5 0L20 3.5L18.5 6Z"} />
                                 </svg>
                                 {isEditing ? "Save Profile" : "Edit Profile"}
-                            </button>
+                            </button> */}
                             {isEditing ? (
                                 <input
                                     className="text-white w-auto font-[Inter] text-2xl md:text-3xl bg-transparent border-b border-gray-500 focus:outline-none focus:border-white text-center md:text-left"
@@ -259,10 +259,10 @@ const ProfilePage = ({pricingRef}) => {
                             ) : (
                                 <h2 className="text-white font-[Inter] text-2xl md:text-3xl">{name}</h2>
                             )}
-                            <span className={`${isPremium ? 'bg-[#F7AA1C80]' : 'bg-[#D9D9D966]'} text-white text-xs px-3 py-1 rounded-lg gap-1 inline-flex items-center mt-2 italic`}>
+                            {/* <span className={`${isPremium ? 'bg-[#F7AA1C80]' : 'bg-[#D9D9D966]'} text-white text-xs px-3 py-1 rounded-lg gap-1 inline-flex items-center mt-2 italic`}>
                                 {isPremium && <img className="w-3 h-3" src={logo} alt="" />}
                                 {isPremium ? "Premium" : "Free Plan"} User
-                            </span>
+                            </span> */}
                         </div>
                     </div>
             <div className="w-full max-w-sm sm:px-4 sm:py-5">
@@ -351,7 +351,7 @@ const ProfilePage = ({pricingRef}) => {
     
           {/* Main content area */}
           <div className="flex-1 overflow-y-auto bg-black rounded-lg md:ml-[485px] sm:border-l border-l-[#2C2C2C]">
-            <div className="flex flex-col mt-20 lg:mt-40">
+            <div className="flex flex-col mt-0 lg:mt-0">
               {/* Profile Section */}
               <Link
                 to="/"
