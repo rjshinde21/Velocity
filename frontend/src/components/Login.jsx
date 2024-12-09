@@ -17,14 +17,35 @@ const Login = ({setIsLoggedIn}) => {
     password: '',
   });
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('sharedUser');
-    
-    if (storedToken && storedUser) {
-      setIsLoggedIn(true);
-      navigate('/profile');
-    }
+    // Check for existing session
+    const checkSession = async () => {
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('firebaseUser');
+      
+      if (storedToken && storedUser) {
+        try {
+          const verifyResponse = await fetch('https://thinkvelocity.in/api/api/users/verify-token', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${storedToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+  
+          if (verifyResponse.ok) {
+            setIsLoggedIn(true);
+            navigate('/profile');
+            return;
+          }
+        } catch (error) {
+          console.error('Session verification failed:', error);
+        }
+      }
+    };
+  
+    checkSession();
   }, [navigate, setIsLoggedIn]);
+  
 
 
 
@@ -96,6 +117,7 @@ const Login = ({setIsLoggedIn}) => {
       const data = await response.json();
       console.log("login api data:"+data);
       if (response.ok) {
+        localStorage.setItem('authMethod', 'email');
         handleSuccessfulLogin(data.data.user, data.data.token);
       } else {
         throw new Error(data.message || 'Login failed');
@@ -116,14 +138,12 @@ const Login = ({setIsLoggedIn}) => {
     setMessage(<span style={{ color: '#2563eb' }}>Connecting to Google...</span>);
   
     try {
+      // 1. Sign in with Google
       const provider = new GoogleAuthProvider();
-      provider.addScope('email');
-      provider.addScope('profile');
-      
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      // Try to login with Google credentials
+      // 2. Call your API
       const response = await fetch('https://thinkvelocity.in/api/api/users/login', {
         method: 'POST',
         headers: {
@@ -136,53 +156,67 @@ const Login = ({setIsLoggedIn}) => {
       });
   
       const data = await response.json();
-  
       if (response.ok) {
-        handleSuccessfulLogin(data.data.user, data.data.token);
-        setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
-        setTimeout(() => {
-          navigate('/profile');
-        }, 1000);
-      } else if (response.status === 404) {
-        setMessage(
-          <span style={{ color: 'red' }}>
-            Account does not exist. Please{' '}
-            <Link to="/register" className="text-[#008ACB] hover:text-[#4bb8eb]">
-              register
-            </Link>
-            {' '}first.
-          </span>
-        );
-      } else {
+        localStorage.setItem('authMethod', 'google');
+        //handleSuccessfulLogin(data.data.user, data.data.token);
+      }
+    
+      if (!response.ok) {
         throw new Error(data.message || 'Login failed');
       }
-      
+  
+      // 3. Store everything at once
+      const authData = {
+        token: data.data.token,
+        user: data.data.user,
+        firebase: {
+          uid: user.uid,
+          email: user.email
+        }
+      };
+  
+      // Store everything in one go
+      localStorage.setItem('token', authData.token);
+      localStorage.setItem('userId', authData.user.id);
+      localStorage.setItem('userEmail', authData.user.email);
+      localStorage.setItem('userName', authData.user.username);
+      localStorage.setItem('firebaseUser', JSON.stringify(authData.firebase));
+  
+      // 4. Update app state and navigate
+      setIsLoggedIn(true);
+      navigate('/profile', { replace: true });
+  
     } catch (error) {
-      console.error('Google Sign In Error:', error);
-      setMessage(<span style={{ color: 'red' }}>Failed to connect with Google. Please try again.</span>);
+      console.error('Login error:', error);
+      setMessage(<span style={{ color: 'red' }}>Login failed. Please try again.</span>);
+      // Clean up on error
+      localStorage.clear();
+      await auth.signOut();
     } finally {
       setIsLoading(false);
     }
   };
   
-
-
-
-
+  
   const handleSuccessfulLogin = (userData, token) => {
-    // setAuthData(userData, {
-    //   token: token,
-    //   userId: userData.id
-    // });
-    console.log("successfull login" + userData.email);
+    console.log("Storing login data for:", userData.email);
+    
+    // Store all necessary data
     localStorage.setItem('token', token);
     localStorage.setItem('userId', userData.id);
     localStorage.setItem('userEmail', userData.email);
     localStorage.setItem('userName', userData.username);
-
+    // Store Firebase user data
+    if (auth.currentUser) {
+      localStorage.setItem('firebaseUser', JSON.stringify({
+        uid: auth.currentUser.uid,
+        email: auth.currentUser.email
+      }));
+    }
+    
     setIsLoggedIn(true);
-    setMessage(<span style={{ color: 'green' }}>Login successful! Redirecting...</span>);
-    setTimeout(() => navigate('/profile'), 1000);
+    setMessage(<span style={{ color: 'green' }}>Login successful!</span>);
+    navigate('/profile');  // Remove setTimeout and navigate immediately
   };
 
   

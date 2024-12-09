@@ -21,16 +21,47 @@ const ProfilePage = ({pricingRef}) => {
 
     useEffect(() => {
         const checkAuthAndFetchTokens = async () => {
+            const authToken = localStorage.getItem('token');
+            const userId = localStorage.getItem('userId');
+            const authMethod = localStorage.getItem('authMethod');
+            console.log("auth method:"+authMethod);
             if (!authToken || !userId) {
                 setError('Authentication required');
-                navigate('/profile');
+                navigate('/login');
                 return;
             }
-            await fetchTokenDetails();
-            await fetchUserProfile(); // Fetch the user's name here
+
+            try {
+                // For Google auth, verify the token
+                if (authMethod === 'google') {
+                    const verifyResponse = await fetch('https://thinkvelocity.in/api/api/users/verify-token', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!verifyResponse.ok) {
+                        throw new Error('Token verification failed');
+                    }
+                }
+
+                // If verification passed or using email auth, fetch data
+                await fetchTokenDetails();
+                await fetchUserProfile();
+            } catch (error) {
+                console.error('Auth check error:', error);
+                if (authMethod === 'google') {
+                    // Only redirect for Google auth failures
+                    navigate('/login');
+                }
+            }
         };
+
         checkAuthAndFetchTokens();
     }, [navigate, isUpdating]);
+
     const fetchUserProfile = async () => {
         console.log("fetching user profile: https://thinkvelocity.in/api/api/users/profile/"+userId)
         try {
@@ -63,14 +94,21 @@ const ProfilePage = ({pricingRef}) => {
                     'Accept': 'application/json'
                 },
             });
+
             if (response.status === 401) {
-                localStorage.clear();
-                navigate('/login');
+                const authMethod = localStorage.getItem('authMethod');
+                if (authMethod === 'google') {
+                    // Only clear storage and redirect for Google auth
+                    localStorage.clear();
+                    navigate('/login');
+                }
                 throw new Error('Session expired. Please login again.');
             }
+
             if (!response.ok) {
                 throw new Error(`Error: ${response.status}`);
             }
+
             const responseData = await response.json();
             if (responseData.data) {
                 setTokenInfo(responseData.data);
@@ -80,7 +118,12 @@ const ProfilePage = ({pricingRef}) => {
         } catch (err) {
             console.error('Token fetch error:', err);
             setError(err.message);
-            if (err.message.includes('Session expired') || err.message.includes('Invalid data format')) {
+            
+            // Only redirect for specific errors or Google auth
+            const authMethod = localStorage.getItem('authMethod');
+            if (authMethod === 'google' || 
+                err.message.includes('Session expired') || 
+                err.message.includes('Invalid data format')) {
                 navigate('/login');
             }
         } finally {
@@ -143,7 +186,9 @@ const ProfilePage = ({pricingRef}) => {
     const handleLogout = () => {
         console.log('Logout button clicked');
         try {
-            // Clear local storage
+            const authMethod = localStorage.getItem('authMethod');
+            
+            // Clear all storage
             localStorage.clear();
             sessionStorage.clear();
     
@@ -154,12 +199,19 @@ const ProfilePage = ({pricingRef}) => {
             });
     
             console.log('All data cleared. Redirecting...');
+            
+            // For Google auth, ensure Firebase signout
+            if (authMethod === 'google' && auth) {
+                auth.signOut().catch(console.error);
+            }
+            
             window.location.href = '/login';
         } catch (error) {
             console.error('Logout failed:', error);
             alert('Logout failed. Please try again.');
         }
     };
+
     
     const handlePayment = async () => {
         try {

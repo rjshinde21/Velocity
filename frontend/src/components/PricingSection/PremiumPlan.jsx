@@ -258,7 +258,7 @@ const PremiumPlan = ({ planData, isMonthly }) => {
         err.message.includes("authentication") ||
         err.message.includes("Session expired")
       ) {
-        localStorage.clear();
+        ();
         navigate("/login");
       }
   
