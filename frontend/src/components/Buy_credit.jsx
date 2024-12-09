@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import velocitylogo from '../assets/velocitylogo.png';
+import React, { useState } from "react";
+import velocityLogo from '../assets/velocitylogo.png';
 
 const BuyCredits = ({ isOpen, onClose, setTopUpAmount, handlePayment }) => {
   const [selectedAmount, setSelectedAmount] = useState(null);
@@ -42,15 +42,16 @@ const BuyCredits = ({ isOpen, onClose, setTopUpAmount, handlePayment }) => {
         {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-16">
           <span className="text-2xl">
-            <img src={velocitylogo} className="h-6 sm:h-8" alt="Velocity Logo" />
+          <img src={velocityLogo} className="h-6 sm:h-8" alt="Velocity Logo" />
           </span>
           <span className="text-2xl text-white font-normal font-[Inter]">Velocity</span>
         </div>
 
-
         {/* Main Content */}
         <div className="w-full max-w-lg">
-          <h1 className="text-2xl mb-8 text-center text-white font-normal font-[Inter]">Buy Credits</h1>
+          <h1 className="text-2xl mb-8 text-center text-white font-normal font-[Inter]">
+            Buy Credits
+          </h1>
 
           {/* Credit Options Grid */}
           <div className="grid grid-cols-3 gap-2 mb-12">
@@ -59,12 +60,15 @@ const BuyCredits = ({ isOpen, onClose, setTopUpAmount, handlePayment }) => {
                 key={amount}
                 onClick={() => handleAmountSelect(amount, credits)}
                 className={`
-                  py-4 px-6 rounded-xl text-xl text-white 
-                  ${selectedAmount === amount
-                    ? 'bg-gray-700 border-2 border-blue-500'
-                    : 'bg-gray-800 hover:bg-gray-700'}
+                  py-4 px-6 rounded-xl text-xl text-white
+                  ${
+                    selectedAmount === amount
+                      ? 'bg-gray-700 border-2 border-blue-500'
+                      : 'bg-gray-800 hover:bg-gray-700'
+                  }
                   transition-all duration-200
-                `} style={{ backgroundColor: '#2B2b2b' }}
+                `}
+                style={{ backgroundColor: '#2B2b2b' }}
               >
                 ${amount}
               </button>
@@ -73,21 +77,31 @@ const BuyCredits = ({ isOpen, onClose, setTopUpAmount, handlePayment }) => {
 
           {/* Credits Display */}
           <div className="text-center mb-8">
-            <h2 className="text-gray-400 mb-4 text-white font-normal font-[Inter]">Credits you will get</h2>
-            <div className="inline-block bg-gray-800 rounded-xl px-6 py-5 text-white font-normal font-[Inter]" style={{ backgroundColor: '#2B2b2b' }}> 
+            <h2 className="text-gray-400 mb-4 text-white font-normal font-[Inter]">
+              Credits you will get
+            </h2>
+            <div 
+              className="inline-block rounded-xl px-6 py-5 text-white font-normal font-[Inter]"
+              style={{ backgroundColor: '#2B2b2b' }}
+            >
               {credits} Credits
             </div>
           </div>
 
           {/* Next Button */}
           <button
-            onClick={handleNextClick}  // Changed to handleNextClick
+            onClick={handleNextClick}
             className="w-auto mx-auto block py-5 px-12 rounded-full bg-black border border-blue-500 hover:bg-gray-900 transition-colors duration-200 relative group"
             style={{
               boxShadow: '0 0 20px rgba(59, 130, 246, 0.5)'
             }}
           >
-            <span className="relative z-10 text-xl font-semibold font-[Inter]" style="color: #008ACB;">Next</span>
+            <span 
+              className="relative z-10 text-xl font-semibold font-[Inter]"
+              style={{ color: '#008ACB' }}
+            >
+              Next
+            </span>
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-600 to-blue-400 opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
           </button>
         </div>

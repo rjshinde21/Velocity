@@ -193,7 +193,8 @@ const Register = () => {
     }
   };
     return (
-    <div className="min-h-screen bg-[#0C0C0C] sm:bg-black fixed h-full w-full flex justify-center items-center sm:flex-row flex-col z-30 sm:gap-0 gap-12">
+      <div className="min-h-screen bg-[#0C0C0C] sm:bg-black fixed h-full w-full flex justify-center items-center sm:flex-row flex-col z-30 sm:gap-0 gap-12">
+      {/* Form Section */}
       <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm px-6 sm:px-36 sm:w-1/2 w-full" style={{zIndex: 2}}>
         <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-8">Create an account</h2>
         <form onSubmit={handleSubmit}>
@@ -215,7 +216,7 @@ const Register = () => {
                 <p className="text-red-500 text-xs mt-1">{fieldErrors.name}</p>
               )}
             </div>
-
+    
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-600 mb-2">Email</label>
@@ -233,7 +234,7 @@ const Register = () => {
                 <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
               )}
             </div>
-
+    
             {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-semibold text-gray-600 mb-2">Password</label>
@@ -251,7 +252,7 @@ const Register = () => {
                 <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>
               )}
             </div>
-
+    
             {/* Confirm Password */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-600 mb-2">Confirm Password</label>
@@ -269,27 +270,23 @@ const Register = () => {
                 <p className="text-red-500 text-xs mt-1">{fieldErrors.confirmPassword}</p>
               )}
             </div>
-
+    
             {/* Register Button */}
             <div className='w-full flex justify-center'>
               <button 
-                className={`bg-[#008ACB] text-primary rounded-md w-full py-3 mt-2 ${
-                  isLoading ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+                className={`bg-[#008ACB] text-primary rounded-md w-full py-3 mt-2 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 type="submit"
                 disabled={isLoading}
               >
                 {isLoading ? 'Processing...' : 'Register'}
               </button>
             </div>
-
+    
             {/* Google Sign Up Button */}
             <div className='w-full flex justify-center'>
               <button 
                 onClick={handleGoogleSignUp}
-                className={`bg-[#000000] border-[#989898] border text-primary rounded-md w-full py-3 flex gap-2 justify-center items-center ${
-                  isLoading ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+                className={`bg-[#000000] border-[#989898] border text-primary rounded-md w-full py-3 flex gap-2 justify-center items-center ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 disabled={isLoading}
               >
                 <img src={googleLogo} alt="Google" />
@@ -297,7 +294,7 @@ const Register = () => {
               </button>
             </div>
           </div>
-
+    
           {/* Message Area */}
           {message && (
             <div className="mt-4 text-center text-sm text-gray-600">
@@ -305,7 +302,7 @@ const Register = () => {
             </div>
           )}
         </form>
-
+    
         {/* Link to Login */}
         <div className="mt-4 text-center">
           <p className="text-sm bg-gradient-text">
@@ -316,9 +313,9 @@ const Register = () => {
           </p>
         </div>
       </div>
-
+    
       {/* Logo and 3D Animation Section */}
-      <div className="flex justify-center order-1 sm:order-2 items-center w-1/2 h-[20vh] sm:h-screen bg-[#0C0C0C]">
+      <div className="flex justify-center order-1 sm:order-2 items-center w-full sm:w-1/2 h-[20vh] sm:h-screen bg-[#0C0C0C]">
         <Link
           to="/"
           className={'flex items-center space-x-3 sm:w-auto w-auto absolute top-16 right-16'}
@@ -329,12 +326,12 @@ const Register = () => {
             alt="Velocity Logo"
           />
         </Link>
-
+    
         <div className="relative">
           <ThreeDLogo />
         </div>
       </div>
-    </div>
+    </div>    
   );
 };
 
