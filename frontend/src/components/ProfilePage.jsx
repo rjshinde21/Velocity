@@ -18,19 +18,122 @@ const ProfilePage = ({pricingRef}) => {
     const authToken = localStorage.getItem('token');
     const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
     const [topUpAmount, setTopUpAmount] = useState(100); // Default amount
+    const [isInitialized, setIsInitialized] = useState(false);  // New state
+
+    const authMethod = localStorage.getItem('authMethod');
 
     useEffect(() => {
-        const checkAuthAndFetchTokens = async () => {
+        let mounted = true;
+        const authMethod = localStorage.getItem('authMethod');
+        const initializeProfile = async () => {
             if (!authToken || !userId) {
-                setError('Authentication required');
-                navigate('/profile');
+                if (mounted) {
+                    setError('Authentication required');
+                    navigate('/login');
+                }
                 return;
             }
-            await fetchTokenDetails();
-            await fetchUserProfile(); // Fetch the user's name here
+
+            try {
+                
+                // Only verify token for Google auth
+                if (authMethod === 'google') {
+                    const verifyResponse = await fetch('https://thinkvelocity.in/api/api/users/verify-token', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!verifyResponse.ok && mounted) {
+                        throw new Error('Token verification failed');
+                    }
+                }
+
+                if (mounted) {
+                    setIsInitialized(true);
+                }
+            } catch (error) {
+                console.error('Initialization error:', error);
+                if (mounted && authMethod === 'google') {
+                    navigate('/login');
+                }
+            }
         };
-        checkAuthAndFetchTokens();
-    }, [navigate, isUpdating]);
+
+        initializeProfile();
+
+        return () => {
+            mounted = false;
+        };
+    }, [authToken, userId, authMethod, navigate]);
+    useEffect(() => {
+        let mounted = true;
+        const authMethod = localStorage.getItem('authMethod');
+        const fetchData = async () => {
+            if (!isInitialized) return;
+
+            setIsLoading(true);
+            try {
+                // Fetch token details and user profile in parallel
+                const [tokenResponse, profileResponse] = await Promise.all([
+                    fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    }),
+                    fetch(`https://thinkvelocity.in/api/api/users/profile/${userId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                ]);
+
+                if (!mounted) return;
+
+                if (tokenResponse.status === 401 || profileResponse.status === 401) {
+                    if (authMethod === 'google') {
+                        localStorage.clear();
+                        navigate('/login');
+                    }
+                    throw new Error('Session expired. Please login again.');
+                }
+
+                const tokenData = await tokenResponse.json();
+                const profileData = await profileResponse.json();
+
+                if (mounted) {
+                    if (tokenData.data) {
+                        setTokenInfo(tokenData.data);
+                    }
+                    if (profileData.data?.user?.name) {
+                        setName(profileData.data.user.name);
+                    }
+                }
+            } catch (error) {
+                console.error('Data fetch error:', error);
+                if (mounted) {
+                    setError(error.message);
+                }
+            } finally {
+                if (mounted) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        fetchData();
+
+        return () => {
+            mounted = false;
+        };
+    }, [isInitialized, userId, authToken, authMethod, navigate, isUpdating]);
+
+
     const fetchUserProfile = async () => {
         console.log("fetching user profile: https://thinkvelocity.in/api/api/users/profile/"+userId)
         try {
@@ -63,14 +166,21 @@ const ProfilePage = ({pricingRef}) => {
                     'Accept': 'application/json'
                 },
             });
+
             if (response.status === 401) {
-                localStorage.clear();
-                navigate('/login');
+                const authMethod = localStorage.getItem('authMethod');
+                if (authMethod === 'google') {
+                    // Only clear storage and redirect for Google auth
+                    localStorage.clear();
+                    navigate('/login');
+                }
                 throw new Error('Session expired. Please login again.');
             }
+
             if (!response.ok) {
                 throw new Error(`Error: ${response.status}`);
             }
+
             const responseData = await response.json();
             if (responseData.data) {
                 setTokenInfo(responseData.data);
@@ -80,7 +190,12 @@ const ProfilePage = ({pricingRef}) => {
         } catch (err) {
             console.error('Token fetch error:', err);
             setError(err.message);
-            if (err.message.includes('Session expired') || err.message.includes('Invalid data format')) {
+            
+            // Only redirect for specific errors or Google auth
+            const authMethod = localStorage.getItem('authMethod');
+            if (authMethod === 'google' || 
+                err.message.includes('Session expired') || 
+                err.message.includes('Invalid data format')) {
                 navigate('/login');
             }
         } finally {
@@ -143,7 +258,9 @@ const ProfilePage = ({pricingRef}) => {
     const handleLogout = () => {
         console.log('Logout button clicked');
         try {
-            // Clear local storage
+            const authMethod = localStorage.getItem('authMethod');
+            
+            // Clear all storage
             localStorage.clear();
             sessionStorage.clear();
     
@@ -154,12 +271,19 @@ const ProfilePage = ({pricingRef}) => {
             });
     
             console.log('All data cleared. Redirecting...');
+            
+            // For Google auth, ensure Firebase signout
+            if (authMethod === 'google' && auth) {
+                auth.signOut().catch(console.error);
+            }
+            
             window.location.href = '/login';
         } catch (error) {
             console.error('Logout failed:', error);
             alert('Logout failed. Please try again.');
         }
     };
+
     
     // USD to INR conversion rate (you might want to fetch this from an API)
     const USD_TO_INR = 83.27;

@@ -60,7 +60,7 @@ async function checkUserTokens(token, userId) {
   
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && 
-        tab.url?.startsWith('http://localhost:5173')) {
+        tab.url?.startsWith('https://thinkvelocity.in/')) {
       chrome.scripting.executeScript({
         target: { tabId },
         files: ['content-script.js']

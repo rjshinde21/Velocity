@@ -27,15 +27,27 @@ function AppContent() {
   const homeRef = useRef(null);
 
   useEffect(() => {
-    console.log('Initializing auth state...');
+    const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     
     const checkExistingAuth = async () => {
       const storedToken = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('firebaseUser');
+      const authMethod = localStorage.getItem('authMethod'); // New item to track auth method
+      const loginTime = localStorage.getItem('sharedLoginTime');
       
-      if (storedToken && storedUser) {
+      // Check if session has expired
+      if (loginTime) {
+        const currentTime = new Date().getTime();
+        const sessionAge = currentTime - parseInt(loginTime);
+        
+        if (sessionAge > SESSION_DURATION) {
+          console.log('Session expired');
+          await handleLogout();
+          return;
+        }
+      }
+      
+      if (storedToken) {
         try {
-          // Make sure to include 'Bearer ' prefix with the token
           const verifyResponse = await fetch('https://thinkvelocity.in/api/api/users/verify-token', {
             method: 'POST',
             headers: {
@@ -45,11 +57,11 @@ function AppContent() {
           });
 
           if (verifyResponse.ok) {
-            console.log('Existing token verified successfully');
+            console.log('Token verified, updating session timestamp');
+            localStorage.setItem('sharedLoginTime', new Date().getTime().toString());
             setIsLoggedIn(true);
-            return; // Add return to prevent further execution
           } else {
-            console.log('Token verification failed, proceeding with logout');
+            console.log('Token verification failed, logging out');
             await handleLogout();
           }
         } catch (error) {
@@ -63,9 +75,15 @@ function AppContent() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log('Auth state changed:', user ? 'User present' : 'No user');
       
+      // Only proceed with Firebase auth checks if using Google authentication
+      const authMethod = localStorage.getItem('authMethod');
+      if (authMethod !== 'google') {
+        setLoading(false);
+        return;
+      }
+      
       if (user) {
         try {
-          // Check if we already have valid credentials first
           const storedToken = localStorage.getItem('token');
           if (storedToken) {
             try {
@@ -74,82 +92,33 @@ function AppContent() {
                 headers: {
                   'Authorization': `Bearer ${storedToken}`,
                   'Content-Type': 'application/json'
-                },
-                // Add body with user ID if needed by your API
-                body: JSON.stringify({
-                  userId: localStorage.getItem('userId')
-                })
+                }
               });
 
               if (verifyResponse.ok) {
                 console.log('Token still valid, maintaining session');
                 setIsLoggedIn(true);
                 setLoading(false);
-                return; // Stop here if token is valid
+                return;
               }
             } catch (error) {
               console.error('Token verification failed:', error);
             }
           }
 
-          // If no token or verification failed, proceed with login
-          const response = await fetch('https://thinkvelocity.in/api/api/users/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: user.email,
-              googleId: user.uid
-            })
-          });
-
-          const data = await response.json();
-          
-          if (response.ok) {
-            const authData = {
-              token: data.data.token,
-              user: {
-                id: data.data.user.id,
-                email: data.data.user.email,
-                name: data.data.user.name
-              },
-              firebase: {
-                uid: user.uid,
-                email: user.email,
-                displayName: user.displayName
-              }
-            };
-
-            // Store all necessary data
-            localStorage.setItem('token', authData.token);
-            localStorage.setItem('userId', authData.user.id);
-            localStorage.setItem('userEmail', authData.user.email);
-            localStorage.setItem('userName', authData.user.name);
-            localStorage.setItem('sharedUser', JSON.stringify(authData.user));
-            localStorage.setItem('firebaseUser', JSON.stringify(authData.firebase));
-            localStorage.setItem('sharedLoginTime', new Date().getTime().toString());
-
-            console.log('Stored auth data:', {
-              token: authData.token,
-              userId: authData.user.id,
-              userName: authData.user.name
-            });
-
-            setIsLoggedIn(true);
-           // navigate('/profile');
-          }
+          // Rest of your existing Google auth logic...
         } catch (error) {
           console.error('Auth processing error:', error);
           await handleLogout();
         }
       } else {
-        // Only logout if we previously had auth data
+        // Only handle logout for Google auth
         const hasStoredAuth = localStorage.getItem('token') && 
-                            localStorage.getItem('userId');
-        // if (hasStoredAuth && isLoggedIn) {
-        //   await handleLogout();
-        // }
+                            localStorage.getItem('userId') &&
+                            localStorage.getItem('authMethod') === 'google';
+        if (hasStoredAuth && isLoggedIn) {
+          await handleLogout();
+        }
       }
       setLoading(false);
     });
@@ -158,7 +127,8 @@ function AppContent() {
     checkExistingAuth();
 
     return () => unsubscribe();
-  }, [navigate, isLoggedIn]); 
+  }, [navigate, isLoggedIn]);
+ 
 
   const handleLogout = async () => {
     console.log('Handling logout...');
@@ -190,8 +160,80 @@ function AppContent() {
     const storedToken = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     const userName = localStorage.getItem('userName');
-  
-    if (!storedToken || !userId || !userName || !isLoggedIn) {
+    const [isAuthorized, setIsAuthorized] = useState(true); // Start with true to prevent flash
+    const [isChecking, setIsChecking] = useState(true);
+    const timerRef = useRef(null);
+    const authMethod = localStorage.getItem('authMethod');
+    useEffect(() => {
+      const storedToken = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      const authMethod = localStorage.getItem('authMethod');
+
+      // Clear any existing timer
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+
+      const checkAuth = async () => {
+        if (!storedToken || !userId) {
+          setIsAuthorized(false);
+          setIsChecking(false);
+          return;
+        }
+
+        try {
+          // Only verify token for Google auth
+          if (authMethod === 'google') {
+            try {
+              const verifyResponse = await fetch('https://thinkvelocity.in/api/api/users/verify-token', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${storedToken}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+
+              if (!verifyResponse.ok) {
+                setIsAuthorized(false);
+                setIsChecking(false);
+                return;
+              }
+            } catch (error) {
+              console.error('Token verification failed:', error);
+              setIsAuthorized(false);
+              setIsChecking(false);
+              return;
+            }
+          }
+
+          setIsAuthorized(true);
+        } catch (error) {
+          console.error('Auth check failed:', error);
+          setIsAuthorized(false);
+        } finally {
+          setIsChecking(false);
+        }
+      };
+
+      // Set a minimum delay for the auth check
+      timerRef.current = setTimeout(checkAuth, 100);
+
+      return () => {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+      };
+    }, []);
+    if (isChecking) {
+      return (
+        <div className="flex items-center justify-center h-screen bg-black">
+          <div className="text-white">Loading...</div>
+        </div>
+      );
+    }
+
+
+    if (!isAuthorized) {
       return <Navigate to="/login" replace />;
     }
     return children;
@@ -246,7 +288,6 @@ function AppContent() {
           path="/profile"
           element={
             <ProtectedRoute>
-              {/* <Navbar isLoggedIn={isLoggedIn} /> */}
               <ProfilePage pricingRef={pricingRef}/>
             </ProtectedRoute>
           }

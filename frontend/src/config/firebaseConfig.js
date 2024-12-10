@@ -14,14 +14,12 @@ const app = initializeApp(firebaseConfig);
 
 // Configure auth persistence
 const auth = getAuth(app);
-(async () => {
-  try {
-    await setPersistence(auth, browserLocalPersistence);
-    console.log('Firebase persistence initialized');
-  } catch (error) {
-    console.error(error);
-  }
-})();
+setPersistence(auth, browserLocalPersistence)
+  .then(() => console.log('Firebase persistence initialized'))
+  .catch((error) => console.error('Firebase initialization error:', error));
 
-export { auth };
+  export { auth };
+
+
+
 
