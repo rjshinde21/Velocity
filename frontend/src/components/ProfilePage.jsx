@@ -4,7 +4,7 @@ import velocitylogo from '../assets/velocitylogo.png';
 import PromptGrid from './PromptGrid';
 import BuyCredit from './buy_credit';
 //import useRazorpay from "react-razorpay";
-
+import ShareReferral from './ShareReferral';
 const ProfilePage = ({pricingRef}) => {
     const [name, setName] = useState("");
     const [isEditing, setIsEditing] = useState(false);
@@ -21,7 +21,7 @@ const ProfilePage = ({pricingRef}) => {
     const [isInitialized, setIsInitialized] = useState(false);  // New state
 
     const authMethod = localStorage.getItem('authMethod');
-
+    console.log("user id retrieved:"+authToken);
     useEffect(() => {
         let mounted = true;
         const authMethod = localStorage.getItem('authMethod');
@@ -409,6 +409,7 @@ const ProfilePage = ({pricingRef}) => {
                 Top Up
             </button>
 
+            <ShareReferral userId={userId} authToken={authToken} />
 
 <button 
     onClick={handleLogout} 

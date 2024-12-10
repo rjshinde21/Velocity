@@ -51,9 +51,12 @@ class Token {
         const [rows] = await db.query('SELECT * FROM tokentable WHERE user_id = ?', [userId]);
         return rows[0];
     }
-    static async topUpTokens(userId, topUpAmount) {
+    static async topUpTokens(userId, topUpAmount, connection = null) {
         try {
-            const [result] = await db.query(
+            // Use provided connection or get a new one
+            const queryConnection = connection || db;
+            
+            const [result] = await queryConnection.query(
                 `
                 UPDATE tokentable t
                 JOIN usertable u ON t.user_id = u.user_id
@@ -75,7 +78,6 @@ class Token {
             throw error;
         }
     }
-    
     
 }
 
