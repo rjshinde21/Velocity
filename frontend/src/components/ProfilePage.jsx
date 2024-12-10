@@ -18,21 +18,25 @@ const ProfilePage = ({pricingRef}) => {
     const authToken = localStorage.getItem('token');
     const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
     const [topUpAmount, setTopUpAmount] = useState(100); // Default amount
+    const [isInitialized, setIsInitialized] = useState(false);  // New state
+
+    const authMethod = localStorage.getItem('authMethod');
 
     useEffect(() => {
-        const checkAuthAndFetchTokens = async () => {
-            const authToken = localStorage.getItem('token');
-            const userId = localStorage.getItem('userId');
-            const authMethod = localStorage.getItem('authMethod');
-            console.log("auth method:"+authMethod);
+        let mounted = true;
+        const authMethod = localStorage.getItem('authMethod');
+        const initializeProfile = async () => {
             if (!authToken || !userId) {
-                setError('Authentication required');
-                navigate('/login');
+                if (mounted) {
+                    setError('Authentication required');
+                    navigate('/login');
+                }
                 return;
             }
 
             try {
-                // For Google auth, verify the token
+                
+                // Only verify token for Google auth
                 if (authMethod === 'google') {
                     const verifyResponse = await fetch('https://thinkvelocity.in/api/api/users/verify-token', {
                         method: 'POST',
@@ -42,25 +46,93 @@ const ProfilePage = ({pricingRef}) => {
                         }
                     });
 
-                    if (!verifyResponse.ok) {
+                    if (!verifyResponse.ok && mounted) {
                         throw new Error('Token verification failed');
                     }
                 }
 
-                // If verification passed or using email auth, fetch data
-                await fetchTokenDetails();
-                await fetchUserProfile();
+                if (mounted) {
+                    setIsInitialized(true);
+                }
             } catch (error) {
-                console.error('Auth check error:', error);
-                if (authMethod === 'google') {
-                    // Only redirect for Google auth failures
+                console.error('Initialization error:', error);
+                if (mounted && authMethod === 'google') {
                     navigate('/login');
                 }
             }
         };
 
-        checkAuthAndFetchTokens();
-    }, [navigate, isUpdating]);
+        initializeProfile();
+
+        return () => {
+            mounted = false;
+        };
+    }, [authToken, userId, authMethod, navigate]);
+    useEffect(() => {
+        let mounted = true;
+        const authMethod = localStorage.getItem('authMethod');
+        const fetchData = async () => {
+            if (!isInitialized) return;
+
+            setIsLoading(true);
+            try {
+                // Fetch token details and user profile in parallel
+                const [tokenResponse, profileResponse] = await Promise.all([
+                    fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    }),
+                    fetch(`https://thinkvelocity.in/api/api/users/profile/${userId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                ]);
+
+                if (!mounted) return;
+
+                if (tokenResponse.status === 401 || profileResponse.status === 401) {
+                    if (authMethod === 'google') {
+                        localStorage.clear();
+                        navigate('/login');
+                    }
+                    throw new Error('Session expired. Please login again.');
+                }
+
+                const tokenData = await tokenResponse.json();
+                const profileData = await profileResponse.json();
+
+                if (mounted) {
+                    if (tokenData.data) {
+                        setTokenInfo(tokenData.data);
+                    }
+                    if (profileData.data?.user?.name) {
+                        setName(profileData.data.user.name);
+                    }
+                }
+            } catch (error) {
+                console.error('Data fetch error:', error);
+                if (mounted) {
+                    setError(error.message);
+                }
+            } finally {
+                if (mounted) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        fetchData();
+
+        return () => {
+            mounted = false;
+        };
+    }, [isInitialized, userId, authToken, authMethod, navigate, isUpdating]);
+
 
     const fetchUserProfile = async () => {
         console.log("fetching user profile: https://thinkvelocity.in/api/api/users/profile/"+userId)

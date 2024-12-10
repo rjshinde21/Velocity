@@ -160,8 +160,80 @@ function AppContent() {
     const storedToken = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     const userName = localStorage.getItem('userName');
-  
-    if (!storedToken || !userId || !userName || !isLoggedIn) {
+    const [isAuthorized, setIsAuthorized] = useState(true); // Start with true to prevent flash
+    const [isChecking, setIsChecking] = useState(true);
+    const timerRef = useRef(null);
+    const authMethod = localStorage.getItem('authMethod');
+    useEffect(() => {
+      const storedToken = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      const authMethod = localStorage.getItem('authMethod');
+
+      // Clear any existing timer
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+
+      const checkAuth = async () => {
+        if (!storedToken || !userId) {
+          setIsAuthorized(false);
+          setIsChecking(false);
+          return;
+        }
+
+        try {
+          // Only verify token for Google auth
+          if (authMethod === 'google') {
+            try {
+              const verifyResponse = await fetch('https://thinkvelocity.in/api/api/users/verify-token', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${storedToken}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+
+              if (!verifyResponse.ok) {
+                setIsAuthorized(false);
+                setIsChecking(false);
+                return;
+              }
+            } catch (error) {
+              console.error('Token verification failed:', error);
+              setIsAuthorized(false);
+              setIsChecking(false);
+              return;
+            }
+          }
+
+          setIsAuthorized(true);
+        } catch (error) {
+          console.error('Auth check failed:', error);
+          setIsAuthorized(false);
+        } finally {
+          setIsChecking(false);
+        }
+      };
+
+      // Set a minimum delay for the auth check
+      timerRef.current = setTimeout(checkAuth, 100);
+
+      return () => {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+      };
+    }, []);
+    if (isChecking) {
+      return (
+        <div className="flex items-center justify-center h-screen bg-black">
+          <div className="text-white">Loading...</div>
+        </div>
+      );
+    }
+
+
+    if (!isAuthorized) {
       return <Navigate to="/login" replace />;
     }
     return children;
@@ -216,7 +288,6 @@ function AppContent() {
           path="/profile"
           element={
             <ProtectedRoute>
-              {/* <Navbar isLoggedIn={isLoggedIn} /> */}
               <ProfilePage pricingRef={pricingRef}/>
             </ProtectedRoute>
           }
