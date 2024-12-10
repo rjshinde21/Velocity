@@ -6,23 +6,23 @@ const BuyCredits = ({ isOpen, onClose, setTopUpAmount, handlePayment }) => {
   const [credits, setCredits] = useState(0);
 
   const creditOptions = [
-    { amount: 5, credits: 100 },
-    { amount: 10, credits: 200 },
-    { amount: 15, credits: 300 },
-    { amount: 20, credits: 400 },
-    { amount: 25, credits: 500 },
-    { amount: 30, credits: 600 }
+    { amount: 7.48, credits: 100 },
+    { amount: 37.4, credits: 500 },
+    { amount: 74.8, credits:1000 },
+    { amount: 374, credits: 5000 },
+    { amount: 748, credits: 10000 },
   ];
 
   const handleAmountSelect = (amount, credits) => {
     setSelectedAmount(amount);
+    console.log("selected amount:"+selectedAmount + "and " + amount);
     setCredits(credits);
-    setTopUpAmount(amount);
+    setTopUpAmount({ amount, credits }); // Pass both amount and credits
   };
 
   const handleNextClick = () => {
     if (selectedAmount) {
-      handlePayment(selectedAmount);
+      handlePayment({amount:selectedAmount, credits:credits});
     }
   };
 
@@ -70,7 +70,7 @@ const BuyCredits = ({ isOpen, onClose, setTopUpAmount, handlePayment }) => {
                 `}
                 style={{ backgroundColor: '#2B2b2b' }}
               >
-                ${amount}
+                ₹{amount}
               </button>
             ))}
           </div>

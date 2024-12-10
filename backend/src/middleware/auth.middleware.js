@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 const authMiddleware = (req, res, next) => {
-  console.log("checking"+req.headers.authorization);
+  //console.log("checking"+req.headers.authorization);
   try {
     // Changed this line to avoid using optional chaining
     const token = req.headers.authorization && req.headers.authorization.split(' ')[1];

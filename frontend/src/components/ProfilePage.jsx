@@ -145,7 +145,7 @@ const ProfilePage = ({pricingRef}) => {
             });
             const data = await response.json();
             if (data && data.data && data.data.user) {
-                setName(data.data.user.name); // Set name from API data
+                setName(data.data.user.name);
             } else {
                 throw new Error('Unable to fetch user profile.');
             }
@@ -202,7 +202,8 @@ const ProfilePage = ({pricingRef}) => {
             setIsLoading(false);
         }
     };
-    const handleTopUp = async (amount) => {
+    const handleTopUp = async ({amount, credits}) => {
+        console.log("top up:"+credits);
         if (!authToken || !userId) {
             setError('Authentication required.');
             return;
@@ -217,7 +218,7 @@ const ProfilePage = ({pricingRef}) => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    amount: amount
+                    amount: credits // Use credits instead of amount
                 })
             });
     
@@ -227,20 +228,20 @@ const ProfilePage = ({pricingRef}) => {
             
             const updatedData = await response.json();
             if (updatedData.success) {
-                // Fetch updated token info to refresh the UI
                 await fetchTokenDetails();
-                return true; // Return true to indicate success
+                return true;
             } else {
                 throw new Error(updatedData.message || 'Failed to top up tokens');
             }
         } catch (error) {
             console.error('Top-up error:', error);
             setError(error.message);
-            throw error; // Re-throw the error to be handled by the payment flow
+            throw error;
         } finally {
             setIsUpdating(false);
         }
     };
+    
     
     const handleUpgrade = () => {
         if (pricingRef && pricingRef.current) {
@@ -287,13 +288,10 @@ const ProfilePage = ({pricingRef}) => {
     
     // USD to INR conversion rate (you might want to fetch this from an API)
     const USD_TO_INR = 83.27;
-    const handlePayment = async () => {
+    const handlePayment = async ({ amount, credits }) => {
         try {
-
-            // Convert USD to INR
-            const amountInINR = Math.round(topUpAmount * USD_TO_INR);
-
-            // First create order on your backend
+            const amountInINR = amount;
+            console.log("amout in INR:"+amountInINR + "credits:"+credits);
             const orderResponse = await fetch('https://thinkvelocity.in/api/api/create-order', {
                 method: 'POST',
                 headers: {
@@ -304,19 +302,18 @@ const ProfilePage = ({pricingRef}) => {
                     amount: amountInINR * 100, // Razorpay expects amount in paise
                 })
             });
-
+    
             const orderData = await orderResponse.json();
-
+    
             const options = {
-                key: "rzp_test_99YnTAFGwSDddP", // Replace with your key
+                key: "rzp_test_99YnTAFGwSDddP",
                 amount: amountInINR * 100,
                 currency: "INR",
                 name: "Velocity AI",
-                description: `Token Top Up ($${topUpAmount} USD)`, // Show USD amount in description
+                description: `Token Top Up (${credits} Credits)`, // Updated to show credits
                 order_id: orderData.id,
                 handler: async function (response) {
                     try {
-                        // Verify payment on backend
                         const verifyResponse = await fetch('https://thinkvelocity.in/api/api/verify-payment', {
                             method: 'POST',
                             headers: {
@@ -324,12 +321,13 @@ const ProfilePage = ({pricingRef}) => {
                                 'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
-                                userId : userId,
+                                userId: userId,
                                 razorpay_payment_id: response.razorpay_payment_id,
                                 razorpay_order_id: response.razorpay_order_id,
                                 razorpay_signature: response.razorpay_signature,
-                                amount: topUpAmount,
-                                amountInINR: amountInINR // Send converted INR amount
+                                amount: amount,
+                                amountInINR: amountInINR,
+                                credits: credits // Added credits to verification payload
                             })
                         });
                 
@@ -337,7 +335,7 @@ const ProfilePage = ({pricingRef}) => {
                 
                         if (verifyData.success) {
                             try {
-                                await handleTopUp(topUpAmount);
+                                await handleTopUp({ amount, credits });
                                 setIsTopUpModalOpen(false);
                                 alert('Payment successful! Tokens have been added to your account.');
                             } catch (error) {
@@ -348,17 +346,18 @@ const ProfilePage = ({pricingRef}) => {
                         console.error('Payment verification failed:', error);
                         alert('Payment verification failed. Please contact support.');
                     }
-                }                
+                }
             };
-
+    
             const paymentObject = new window.Razorpay(options);
             paymentObject.open();
-
+    
         } catch (error) {
             console.error('Payment initiation failed:', error);
             alert('Unable to initiate payment. Please try again.');
         }
     };
+    
 
     // Credits section component to avoid duplication
     const CreditsSection = () => (

@@ -129,7 +129,7 @@ const tokenController = {
         try {
             const id = parseInt(req.params.id);
             const { amount } = req.body;
-    
+            console.log("topping up" + amount + "credits");
             // Validate ID
             if (isNaN(id)) {
                 return res.status(400).json({
@@ -202,7 +202,7 @@ const tokenController = {
             if (expectedSignature === razorpay_signature) {
                 // Payment is verified, now update tokens
                 //const userId = req.user.id; // Assuming you have user info in req from auth middleware
-                await Token.topUpTokens(userId, amount);
+                //await Token.topUpTokens(userId, amount);
                 
                 res.json({
                     success: true,
