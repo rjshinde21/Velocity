@@ -161,8 +161,14 @@ const ProfilePage = ({pricingRef}) => {
         }
     };
     
+    // USD to INR conversion rate (you might want to fetch this from an API)
+    const USD_TO_INR = 83.27;
     const handlePayment = async () => {
         try {
+
+            // Convert USD to INR
+            const amountInINR = Math.round(topUpAmount * USD_TO_INR);
+
             // First create order on your backend
             const orderResponse = await fetch('https://thinkvelocity.in/api/api/create-order', {
                 method: 'POST',
@@ -171,7 +177,7 @@ const ProfilePage = ({pricingRef}) => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    amount: topUpAmount * 100, // Razorpay expects amount in paise
+                    amount: amountInINR * 100, // Razorpay expects amount in paise
                 })
             });
 
@@ -179,10 +185,10 @@ const ProfilePage = ({pricingRef}) => {
 
             const options = {
                 key: "rzp_test_99YnTAFGwSDddP", // Replace with your key
-                amount: topUpAmount * 100,
+                amount: amountInINR * 100,
                 currency: "INR",
                 name: "Velocity AI",
-                description: "Token Top Up",
+                description: `Token Top Up ($${topUpAmount} USD)`, // Show USD amount in description
                 order_id: orderData.id,
                 handler: async function (response) {
                     try {
@@ -198,7 +204,8 @@ const ProfilePage = ({pricingRef}) => {
                                 razorpay_payment_id: response.razorpay_payment_id,
                                 razorpay_order_id: response.razorpay_order_id,
                                 razorpay_signature: response.razorpay_signature,
-                                amount: topUpAmount
+                                amount: topUpAmount,
+                                amountInINR: amountInINR // Send converted INR amount
                             })
                         });
                 
@@ -231,7 +238,7 @@ const ProfilePage = ({pricingRef}) => {
 
     // Credits section component to avoid duplication
     const CreditsSection = () => (
-        <div className="flex flex-col justify-between h-full px-6 sm:px-4 py-6 md:py-10 ">
+        <div className="flex flex-col justify-between h-full px-6 sm:px-4 py-6 md:py-24 ">
             <div className="flex flex-col md:flex-row md:gap-16 lg:gap-32 items-center px-4 sm:mt-40">
                         <div className="text-center md:text-left mb-10 sm:mb-0">
                             {/* <button
