@@ -2,12 +2,12 @@ import { initializeApp } from 'firebase/app';
 import { getAuth,setPersistence,browserLocalPersistence } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCCymRQ4dHwaJ4yWg6Kf-_HdnVRdu6CI2Q",
-  authDomain: "velocity-totem.firebaseapp.com",
-  projectId: "velocity-totem",
-  storageBucket: "velocity-totem.firebasestorage.app",
-  messagingSenderId: "320011102570",
-  appId: "1:320011102570:web:7e3554076f2d2878ff1d13",
+  apiKey: "AIzaSyC7UKw2L3gmPrv67Q_9hdyc2ClNiWuDZsg",
+  authDomain: "think-velocity.firebaseapp.com",
+  projectId: "think-velocity",
+  storageBucket: "think-velocity.firebasestorage.app",
+  messagingSenderId: "685789956754",
+  appId: "1:685789956754:web:d951bff0821fbe2df4744b",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -19,7 +19,3 @@ setPersistence(auth, browserLocalPersistence)
   .catch((error) => console.error('Firebase initialization error:', error));
 
   export { auth };
-
-
-
-

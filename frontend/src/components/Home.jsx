@@ -109,9 +109,9 @@ const Home = () => {
         <div className="absolute inset-0 bg-black opacity-0 flex" />
 
         <div className="relative z-10 flex flex-col items-center justify-center">
-          <h1 className="font-[Amenti] bg-gradient-text pt-10 text-3xl sm:text-6xl pb-4 text-center">
-            Intelligent Prompts for <br />
-            <span className="block text-center">Smarter Results</span>
+          <h1 className="font-Amenti bg-gradient-text pt-10 text-3xl sm:text-6xl pb-4 text-center">
+            Makes everyone a <br />
+            <span className="block text-center">Prompt Expert</span>
           </h1>
           <p className="text-[#999999] font-[Inter] text-sm sm:text-lg">
             Redefine the way you generate AI-driven ideas

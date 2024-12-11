@@ -52,7 +52,7 @@ const HowItWorks = () => {
         <div className="max-w-7xl mx-auto flex flex-col items-center lg:flex-row lg:justify-between gap-10">
           {/* Left Section */}
           <div className="w-full lg:w-1/2 px-4">
-            <h1 className="font-[Amenti] text-3xl sm:text-4xl font-light  text-white text-center lg:text-left lg:ml-20">
+            <h1 className="font-Amenti text-3xl sm:text-4xl font-light  text-white text-center lg:text-left lg:ml-20">
               How It Works
             </h1>
             <div className="flex flex-col items-center space-y-4 w-full lg:w-3/4 pt-10">
@@ -77,20 +77,22 @@ const HowItWorks = () => {
 
           {/* Right side - Video Placeholder */}
           <div className="w-full lg:w-1/2 flex items-center justify-center px-4">
-          <div className="w-full max-w-md">
-            <div
-              className="relative rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 aspect-[4/5]"
-            >
-              <video
-              src="https://toteminteractive.in/velosty/Extensionnew.mp4"
-              className="absolute inset-0 w-full h-full object-cover"
-              autoPlay
-              loop
-              muted
-              controls={false} // Hides the video loader and controls
-            />
-            </div>
-          </div>
+          <div className="w-full max-w-2xl pt-16">
+  <div className="relative rounded-lg overflow-hidden bg-transparent from-gray-900 to-gray-800 aspect-[1578/1080]">
+    <video
+      src="https://toteminteractive.in/velosty/Extensionnew.mp4"
+      className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+      autoPlay
+      loop
+      muted
+      playsInline
+      disablePictureInPicture
+      controlsList="nodownload nofullscreen noremoteplayback"
+      controls={false}
+    />
+    <div className="absolute inset-0 z-10" aria-hidden="true" />
+  </div>
+</div>
         </div>
       </div>
       </div>

@@ -4,14 +4,10 @@ const ScrollAnchor = ({ scrollRefs }) => {
   const [selected, setSelected] = useState(null);
 
   const navigationItems = [
-    {
-      id: 1,
-      label: "Try Now",
-      refKey: "home",
-    },
+    
     {
       id: 2,
-      label: "How to use",
+      label: "How it works",
       refKey: "howItWorks",
     },
     {
@@ -75,7 +71,7 @@ const ScrollAnchor = ({ scrollRefs }) => {
         <button
           key={item.id}
           className={`flex items-center transition-all duration-300 text-lg px-3 py-1 rounded-3xl ${
-            selected === item.id ? "text-white bg-gray-800" : "text-gray-400"
+            selected === item.id ? "text-white bg-[#00141D]" : "text-gray-400"
           }`}
           onClick={() => handleClick(item.id, item.refKey)}
         >

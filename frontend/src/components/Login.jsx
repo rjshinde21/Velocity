@@ -226,10 +226,10 @@ const Login = ({setIsLoggedIn}) => {
   // }
 
   return (
-    <div className="min-h-screen bg-[#0C0C0C] sm:bg-black fixed h-full w-full flex justify-center items-center z-30 flex-col sm:flex-row sm:gap-0 gap-12">
-      <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm py-6 px-6 sm:px-36 sm:w-1/2 w-full" style={{zIndex: 2}}>
-        <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-4">Welcome back!</h2>
-        <h2 className="text-left text-[16px] font-normal text-[#808080] mb-10">Please enter your details.</h2>
+    <div className="min-h-screen bg-[#0C0C0C] sm:bg-black fixed h-full w-full flex justify-center items-start sm:items-center z-30 flex-col sm:flex-row sm:gap-0 gap-12 sm:pt-0">
+      <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm py-4 sm:py-8 px-6 sm:px-36 sm:w-1/2 w-full" style={{zIndex: 2}}>
+        <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-2 sm:mb-4">Welcome back!</h2>
+        <h2 className="text-left text-[16px] font-normal text-[#808080] mb-6 sm:mb-10">Please enter your details.</h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
@@ -302,7 +302,7 @@ const Login = ({setIsLoggedIn}) => {
           </p>
         </div>
       </div>
-      <div className="flex justify-center order-1 sm:order-2 items-center w-1/2 h-[20vh] sm:h-screen bg-[#0C0C0C]">
+      <div className="flex justify-center order-1 sm:order-2 items-center w-1/2 h-[5vh] sm:h-screen bg-[#0C0C0C]">
       <Link
             to="/"
             className={'flex items-center space-x-3 sm:w-auto w-auto absolute top-16 right-16 '}
@@ -313,19 +313,9 @@ const Login = ({setIsLoggedIn}) => {
               alt="Velocity Logo"
             />
           </Link>
-          <div className="relative">
-      {/* <div
-        className={`w-24 h-24 sm:w-64 sm:h-64 bg-[#008ACB] rounded-full transform transition-opacity duration-700 ${
-          animate ? "animate-slideUp opacity-100" : "opacity-0"
-        }`}
-        style={{
-          animation: animate ? "circleSlideUp 2s ease-out" : "none",
-        }}
-      ></div>
-
-      <div className="absolute top-1/2 sm:left-[-60px] w-40 h-32 left-[-35px] sm:w-96 sm:h-96 backdrop-blur-md bg-[#0C0C0C]/40"></div> */}
-      <ThreeDLogo />
-    </div>
+          <div className="relative hidden sm:block">
+          <ThreeDLogo />
+        </div>
     </div>
     </div>
   );

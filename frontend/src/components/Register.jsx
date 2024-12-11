@@ -315,10 +315,10 @@ const Register = () => {
       </div>
     
       {/* Logo and 3D Animation Section */}
-      <div className="flex justify-center order-1 sm:order-2 items-center w-full sm:w-1/2 h-[20vh] sm:h-screen bg-[#0C0C0C]">
+      <div className="flex justify-center order-1 sm:order-2 items-center w-full sm:w-1/2 sm:h-screen bg-[#0C0C0C]">
         <Link
           to="/"
-          className={'flex items-center space-x-3 sm:w-auto w-auto absolute top-16 right-16'}
+          className={'flex items-center space-x-3 sm:w-auto w-auto absolute top-16 right-16 hidden sm:block'}
         >
           <img
             src={velocitylogo}
@@ -327,7 +327,7 @@ const Register = () => {
           />
         </Link>
     
-        <div className="relative">
+        <div className="relative hidden sm:block">
           <ThreeDLogo />
         </div>
       </div>

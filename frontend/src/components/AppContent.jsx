@@ -12,6 +12,7 @@ import PrivacyPolicy from "./PrivacyPolicy";
 import TermsConditions from "./TermsConditions";
 import { onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { auth } from '../config/firebaseConfig';
+import Footer from "./Footer";
 // Separate the main app logic into a new component
 function AppContent() {
   const navigate = useNavigate();
@@ -263,6 +264,7 @@ function AppContent() {
               <div ref={howItWorksRef}><HowItWorks /></div>
               <div ref={builtRef}><BuiltFor /></div>
               <div ref={carouselRef}><Carousel /></div>
+              <Footer />
             </>
           }
         />
@@ -270,8 +272,9 @@ function AppContent() {
           path="/login" 
           element={
             <>
-              <Navbar isLoggedIn={isLoggedIn} />
+              {/* <Navbar isLoggedIn={isLoggedIn} /> */}
               <Login setIsLoggedIn={setIsLoggedIn} />
+        
             </>
           } 
         />
@@ -279,7 +282,7 @@ function AppContent() {
           path="/register" 
           element={
             <>
-              <Navbar isLoggedIn={isLoggedIn} />
+              {/* <Navbar isLoggedIn={isLoggedIn} /> */}
               <Register />
             </>
           } 
@@ -290,6 +293,7 @@ function AppContent() {
             <ProtectedRoute>
               <ProfilePage pricingRef={pricingRef}/>
             </ProtectedRoute>
+            
           }
         />
         <Route 

@@ -130,7 +130,7 @@ const Pricing = ({isLoggedIn}) => {
 
   return (
     <div className="flex flex-col items-center">
-      <h3 className="bg-gradient-to-r from-[#DADADA] to-[#999999] bg-clip-text text-transparent text-3xl sm:text-4xl p-4 sm:p-10 font-[Amenti]">
+      <h3 className="bg-gradient-to-r from-[#DADADA] to-[#999999] bg-clip-text text-transparent text-3xl sm:text-4xl p-4 sm:p-10 font-Amenti">
         Explore our Plans
       </h3>
 

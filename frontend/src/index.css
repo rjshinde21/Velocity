@@ -3,9 +3,11 @@
 /* Add the @font-face rule here in your global CSS file */
 @font-face {
   font-family: 'Amenti';
-  src: url('../public//fonts/Amenti\ Regular.otf') format('woff2'),
-       url('./assets/fonts/custom-font.woff') format('woff'),
-       url('./assets/fonts/custom-font.ttf') format('truetype');
+  
+  src: url('../public/fonts/Amenti\ Regular.ttf') format('truetype'),
+  
+       url('../public/fonts/Amenti\ Regular.otf') format('otf');
+   
   font-weight: normal;
   font-style: normal;
 }
@@ -195,8 +197,8 @@ body{
 }
 
 .image img {
-  max-width: 421px;
-  height: 421px;
+  /* max-width: 421px;
+  height: 421px; */
   object-fit: cover;
   border-radius: 40px;
   margin-right: 24px;
@@ -306,7 +308,7 @@ button:hover .chevron-icon {
     margin-right: 15px;
   }
   .inner1 {
-    height: 27rem;
+    height: 25rem;
   }
 
   canvas{
@@ -325,3 +327,8 @@ button:hover .chevron-icon {
   }
 }
 
+@media screen and (max-width: 640px) {
+  .inner1 {
+    height: 13rem;
+  }
+}
