@@ -12,7 +12,7 @@ const Navbar = ({
   builtRef,
   carouselRef,
   isLoggedIn,
-  
+
 }) => {
   // Organize all refs into a single object
   const scrollRefs = {
@@ -43,17 +43,17 @@ const Navbar = ({
           {/* Pass organized refs to ScrollAnchor */}
           <ScrollAnchor scrollRefs={scrollRefs} />
 
-          {/* <button 
-        className="pr-6 hover:text-blue-500 transition-colors"
-        onClick={() => setIsModalOpen(true)}
-      >
-        <a onClick={(e) => e.preventDefault()}>Join Launchlist</a>
-      </button>
+          <button
+            className="pr-2 underline hover:text-blue-500 transition-colors text-xl font-[Amenti]"
+            onClick={() => setIsModalOpen(true)}
+          >
+            Join Launchlist
+          </button>
 
-      <LaunchlistModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      /> */}
+          <LaunchlistModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+          />
           {!isLoggedIn ? (
             <Link to="/register">
               <button className="navbtn rounded-[30px] bg-[#0a0a0a] py-[10px] sm:py-[16px] flex items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)] transition-all duration-200">

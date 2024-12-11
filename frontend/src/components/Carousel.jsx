@@ -13,6 +13,8 @@ import img10 from "../assets/carousel10.png";
 import img11 from "../assets/carousel11.png";
 import img12 from "../assets/carousel12.png";
 import girl from "../assets/girl_img.png";
+import arman from "../assets/arman.jpg";
+import arjun from "../assets/s-3.jpg"
 import grid1 from "../assets/bgcreators.png";
 
 const Carousel = ({ speed = 30000 }) => {
@@ -48,16 +50,16 @@ const Carousel = ({ speed = 30000 }) => {
     },
     {
       id: 2,
-      name: "Alex Chen",
-      role: "Creative Director",
-      image: girl,
+      name: "Arman siddiqui",
+      role: "Artist Totem Interactive",
+      image: arman,
       testimonial: "The AI prompt suggestions have revolutionized our creative workflow. Absolutely incredible tool!"
     },
     {
       id: 3,
-      name: "Sarah Johnson",
-      role: "Content Strategist",
-      image: girl,
+      name: "Arjun gujar",
+      role: "Developer Totem Interactive",
+      image: arjun,
       testimonial: "The interface is intuitive and the results are consistently impressive. It's become an indispensable part."
     }
   ];
