@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from 'react';
 import velocitylogo from "../assets/velocitylogo.png";
 import { Link } from "react-router-dom";
 import ScrollAnchor from "./ScrollAnchor";
 import { UserRound } from "lucide-react";
+import LaunchlistModal from './Launchlist';
 
 const Navbar = ({
   homeRef,
@@ -11,6 +12,7 @@ const Navbar = ({
   builtRef,
   carouselRef,
   isLoggedIn,
+  
 }) => {
   // Organize all refs into a single object
   const scrollRefs = {
@@ -20,6 +22,7 @@ const Navbar = ({
     built: builtRef,
     carousel: carouselRef,
   };
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <div>
@@ -27,9 +30,8 @@ const Navbar = ({
         <div className="max-w-screen-xl flex flex-wrap items-center justify-between lg:mx-auto pt-5 sm:pt-12">
           <Link
             to="/"
-            className={`flex items-center space-x-3 sm:w-auto ${
-              !isLoggedIn ? "lg:w-[161px]" : "w-auto"
-            }`}
+            className={`flex items-center space-x-3 sm:w-auto ${!isLoggedIn ? "lg:w-[161px]" : "w-auto"
+              }`}
           >
             <img
               src={velocitylogo}
@@ -41,6 +43,17 @@ const Navbar = ({
           {/* Pass organized refs to ScrollAnchor */}
           <ScrollAnchor scrollRefs={scrollRefs} />
 
+          {/* <button 
+        className="pr-6 hover:text-blue-500 transition-colors"
+        onClick={() => setIsModalOpen(true)}
+      >
+        <a onClick={(e) => e.preventDefault()}>Join Launchlist</a>
+      </button>
+
+      <LaunchlistModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      /> */}
           {!isLoggedIn ? (
             <Link to="/register">
               <button className="navbtn rounded-[30px] bg-[#0a0a0a] py-[10px] sm:py-[16px] flex items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)] transition-all duration-200">

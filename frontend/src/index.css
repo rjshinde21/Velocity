@@ -228,22 +228,77 @@ body{
   position: relative;
   width: 100%;
   overflow: hidden;
-  height: 27rem;
+  height: auto;
+  min-height: 200px;
+}
+
+@media (min-width: 640px) {
+  .inner1 {
+    min-height: 300px;
+  }
+}
+
+@media (min-width: 768px) {
+  .inner1 {
+    min-height: 350px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .inner1 {
+    min-height: 421px;
+  }
 }
 
 .wrapper {
-  position: absolute;
+  position: relative;
   display: flex;
+  width: 100%;
 }
 
-.row1 section,
-.row2 section {
-  display: flex;
-  animation: swiperight var(--speed) linear infinite backwards;
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
-.row2 section {
-  animation: swipeleft var(--speed) linear infinite forwards;
+@keyframes scroll-reverse {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-scroll {
+  animation: scroll var(--speed) linear infinite;
+  display: flex;
+  will-change: transform;
+}
+
+.animate-scroll-reverse {
+  animation: scroll-reverse var(--speed) linear infinite;
+  display: flex;
+  will-change: transform;
+}
+
+/* Pause animation on hover */
+/* .wrapper:hover section {
+  animation-play-state: paused;
+} */
+
+/* Ensure smooth animation on mobile */
+@media (hover: none) {
+  .animate-scroll,
+  .animate-scroll-reverse {
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
 }
 
 @keyframes gradient-move {

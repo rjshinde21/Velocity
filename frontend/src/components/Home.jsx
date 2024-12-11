@@ -104,12 +104,12 @@ const Home = () => {
       <div className="absolute right-20 top-0 h-full w-[2px] bg-gradient-to-b from-[#1E1E1E] to-[#6ACFFF] opacity-20 hidden sm:block" />
 
 
-      <div className="relative flex items-center justify-center flex-col pt-72 bg-gradient-to-b from-transparent to-[#000000]">
+      <div className="relative flex items-center justify-center flex-col pt-52 bg-gradient-to-b from-transparent to-[#000000]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#008ACB_0%,_transparent_40%)] opacity-30 animate-gradient-move" />
         <div className="absolute inset-0 bg-black opacity-0 flex" />
 
-        <div className="relative z-10 flex flex-col items-center justify-center">
-          <h1 className="font-Amenti bg-gradient-text pt-10 text-3xl sm:text-6xl pb-4 text-center">
+        <div className="font-[Amenti] relative z-10 flex flex-col items-center justify-center">
+          <h1 className="bg-gradient-text pt-10 text-3xl sm:text-6xl pb-4 text-center">
             Makes everyone a <br />
             <span className="block text-center">Prompt Expert</span>
           </h1>

@@ -32,9 +32,9 @@ const BuiltFor = () => {
   return (
     <div className="w-full" style={{ backgroundColor: '#000000' }}>
       <div className="max-w-8xl mx-auto py-20">
-        <h2 className="font-Amenti text-4xl text-center mb-12 mt-8 text-white">Built For</h2>
+        <h2 className="font-[Amenti] text-4xl text-center mb-12 mt-8 text-white">Built For</h2>
         
-        <div className="flex flex-col gap-20 pb-12">
+        <div className="flex flex-col gap-20 pb-0">
           {/* First row - 3 items */}
           <div className="flex flex-wrap justify-center gap-20 md:gap-6 sm:gap-4">
             {categories.slice(0, 3).map((category, index) => (
@@ -62,7 +62,7 @@ const BuiltFor = () => {
           </div>
 
           {/* Second row - 2 items */}
-          <div className="flex flex-wrap justify-center gap-8 sm:gap-24">
+          <div className="flex flex-wrap justify-center gap-20 sm:gap-24">
             {categories.slice(3).map((category, index) => (
               <div 
                 key={index + 3}
