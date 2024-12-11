@@ -5,7 +5,6 @@ import Home from "./components/Home";
 import Carousel from "./components/Carousel";
 import Login from "./components/Login";
 import Register from "./components/Register";
-import TokenDetails from "./components/TokenDetails";
 import Footer from "./components/Footer";
 import HowItWorks from "./components/HowItWorks";
 import ProfilePage from "./components/ProfilePage";

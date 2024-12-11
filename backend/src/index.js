@@ -6,7 +6,7 @@ const tokenRoutes = require('./routes/token.routes');
 const planRoutes = require('./routes/plan.routes');
 const creditRoutes = require('./routes/credit.route');
 const historyRoutes = require('./routes/history.routes');
-
+const referralRoutes = require('./routes/referralRoutes');
 require('dotenv').config();
 
 const app = express();
@@ -61,6 +61,7 @@ app.use('/api', tokenRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/credit', creditRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/referral',referralRoutes);
 app.get('*', (req, res, next) => {
     console.log('Request path:', req.path);
     next();

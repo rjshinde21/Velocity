@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../config/firebaseConfig';
 import { setAuthData } from '../utils/authUtils';
@@ -9,18 +9,30 @@ import ThreeDLogo from './3dLogo/ThreeDLogo';
 
 const Register = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    referralCode: ''
   });
+
+  // Extract referral code from URL if present
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const refCode = params.get('ref');
+    if (refCode) {
+      setReferralCode(refCode);
+    }
+  }, [location]);
 
   const validateField = (field, value) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -31,7 +43,6 @@ const Register = () => {
         else if (value.length < 2) error = 'Name must be at least 2 characters';
         break;
       case 'email':
-        
         if (!value) error = 'Email is required';
         else if (!emailRegex.test(value)) error = 'Please enter a valid email';
         break;
@@ -42,6 +53,9 @@ const Register = () => {
       case 'confirmPassword':
         if (!value) error = 'Please confirm your password';
         else if (value !== password) error = 'Passwords do not match';
+        break;
+      case 'referralCode':
+        if (value && value.length !== 10) error = 'Invalid referral code';
         break;
       default:
         break;
@@ -69,6 +83,9 @@ const Register = () => {
       case 'confirmPassword':
         setConfirmPassword(value);
         break;
+      case 'referralCode':
+        setReferralCode(value.toUpperCase());
+        break;
       default:
         break;
     }
@@ -80,6 +97,30 @@ const Register = () => {
     }));
   };
 
+  const applyReferral = async (userId, token) => {
+    try {
+      const response = await fetch('https://thinkvelocity.in/api/api/referral/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          referral_code: referralCode,
+          new_user_id: userId
+        })
+      });
+
+      if (!response.ok) {
+        console.warn('Referral application failed:', await response.text());
+        setMessage(<span style={{ color: 'orange' }}>Account created, but referral bonus could not be applied</span>);
+
+      }
+    } catch (error) {
+      console.error('Error applying referral:', error);
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage('');
@@ -88,7 +129,8 @@ const Register = () => {
       name: validateField('name', name),
       email: validateField('email', email),
       password: validateField('password', password),
-      confirmPassword: validateField('confirmPassword', confirmPassword)
+      confirmPassword: validateField('confirmPassword', confirmPassword),
+      referralCode: validateField('referralCode', referralCode)
     };
   
     setFieldErrors(errors);
@@ -115,13 +157,19 @@ const Register = () => {
       });
   
       const data = await response.json();
-  
+
+      console.log("registered user?:"+response.ok);
       if (response.ok) {
         // Store user data in localStorage
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('userId', data.data.user.id);
         localStorage.setItem('userEmail', data.data.user.email);
-        localStorage.setItem('userName', data.data.user.username || name); // Fallback to name if username not provided
+        localStorage.setItem('userName', data.data.user.username || name);
+        
+        // Apply referral code if provided
+        if (referralCode) {
+          await applyReferral(data.data.user.id, data.data.token);
+        }
   
         setMessage(<span style={{ color: 'green' }}>Registration successful! Redirecting...</span>);
         setTimeout(() => navigate('/profile'), 2000);
@@ -176,6 +224,11 @@ const Register = () => {
         localStorage.setItem('userId', data.data.user.id);
         localStorage.setItem('userEmail', data.data.user.email);
         localStorage.setItem('userName', data.data.user.username || user.displayName || user.email);
+        
+        // Apply referral code if provided
+        if (referralCode) {
+          await applyReferral(data.data.user.id, data.data.token);
+        }
   
         setMessage(<span style={{ color: 'green' }}>Registration successful! Redirecting...</span>);
         setTimeout(() => navigate('/profile'), 1000);
@@ -270,7 +323,23 @@ const Register = () => {
                 <p className="text-red-500 text-xs mt-1">{fieldErrors.confirmPassword}</p>
               )}
             </div>
-    
+            <div>
+              <label htmlFor="referralCode" className="block text-sm font-semibold text-gray-600 mb-2">
+                Referral Code (Optional)
+              </label>
+              <input
+                type="text"
+                id="referralCode"
+                name="referralCode"
+                className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary focus:none"
+                placeholder="Enter referral code"
+                value={referralCode}
+                onChange={(e) => handleFieldChange('referralCode', e.target.value)}
+              />
+              {fieldErrors.referralCode && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.referralCode}</p>
+              )}
+            </div>
             {/* Register Button */}
             <div className='w-full flex justify-center'>
               <button 
