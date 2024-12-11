@@ -1,0 +1,79 @@
+/* Create a new file: velocity-inject.css */
+.velocity-wrapper {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    min-height: inherit !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+
+  .velocity-wrapper textarea,
+  .velocity-wrapper [contenteditable="true"],
+  .velocity-wrapper [role="textbox"] {
+    position: relative !important;
+    width: 100% !important;
+    min-height: inherit !important;
+    height: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    padding-right: calc(1rem + 40px) !important;
+    overflow: hidden !important;
+    resize: none !important; /* Remove resize handle */
+  }
+  .velocity-wrapper textarea,
+  .velocity-wrapper [contenteditable="true"],
+  .velocity-wrapper [role="textbox"] {
+    -ms-overflow-style: none !important;  /* IE and Edge */
+    scrollbar-width: none !important;  /* Firefox */
+  }
+
+  .velocity-wrapper textarea::-webkit-scrollbar,
+  .velocity-wrapper [contenteditable="true"]::-webkit-scrollbar,
+  .velocity-wrapper [role="textbox"]::-webkit-scrollbar {
+    display: none !important;
+  }
+
+
+  .velocity-enhance-button {
+    position: absolute !important;
+    top: 50% !important;
+    right: 12px !important;
+    transform: translateY(-50%) !important;
+    width: 32px !important;
+    height: 32px !important;
+    padding: 6px !important;
+    background: transparent !important;
+    border: 1px solid #444444 !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    z-index: 999999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    opacity: 0 !important;
+    transition: opacity 0.2s ease !important;
+    pointer-events: none !important;
+  }
+
+  .velocity-enhance-button.visible {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .velocity-enhance-button:hover {
+    background: black !important;
+    box-shadow: 0 2px 8px rgba(0, 138, 203, 0.3) !important;
+  }
+
+  .velocity-char-counter {
+    position: absolute !important;
+    bottom: 8px !important;
+    right: 48px !important;
+    color: #666 !important;
+    font-size: 12px !important;
+    pointer-events: none !important;
+    user-select: none !important;
+    z-index: 999999 !important;
+  }

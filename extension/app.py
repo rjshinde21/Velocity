@@ -14,7 +14,28 @@ from spellchecker import SpellChecker
 from llamaapi import LlamaAPI
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/process": {
+        "origins": [
+            "https://chat.openai.com/*",
+            "https://chatgpt.com/*",
+            "https://claude.ai/*",
+            "https://gemini.google.com/*",
+            "https://discord.com/*",
+            "https://gamma.app/*",
+            "https://app.runwayml.com/*",
+            "https://thinkvelocity.in/*",
+            "http://localhost:*"
+        ],
+        "methods": ["POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "max_age": 3600
+    },
+    r"/get_categories": {
+        "origins": "*",
+        "methods": ["GET", "OPTIONS"]
+    }
+})
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -287,6 +308,12 @@ def process_request():
                     "style": writing_style
                 }
             }
+            response = jsonify(response_data)
+            # Add CORS headers explicitly
+            response.headers.add('Access-Control-Allow-Origin', request.origin)
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+
             return jsonify(response_data)
         except Exception as e:
             logger.error(f"Llama API error: {str(e)}")
@@ -296,6 +323,13 @@ def process_request():
         logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+@app.route('/process', methods=['OPTIONS'])
+def handle_options():
+    response = app.make_default_options_response()
+    response.headers.add('Access-Control-Allow-Origin', request.origin)
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+    return response
 
 @app.route('/get_categories', methods=['GET'])
 def get_categories():

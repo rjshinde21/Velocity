@@ -4,9 +4,24 @@
 let lastAuthState = null;
 let lastSavedPromptId = null;  // Add this at the top with your other state variables
 let lastTokensUsed = 0;
+let isValidPlatform = false;
+function isDiscordPlatform() {
+  const url = window.location.href;
+  return /^https:\/\/(www\.)?discord\.com\/channels/.test(url);
+}
+
 
 // Function to check auth state
   function checkAuthState() {
+    if (isDiscordPlatform()) {
+      console.log('Skipping auth state check for Discord');
+      return;
+    }
+  
+    if (!isValidPlatform) {
+      return;
+    }
+  
     const authData = {
       isAuthenticated: !!localStorage.getItem('token'),
       token: localStorage.getItem('token'),
@@ -33,8 +48,88 @@ let lastTokensUsed = 0;
     });
   }
 }
+async function injectStyles() {
+  const platformInfo = await detectPlatform();
+  if (!platformInfo.isSupported) {
+    return; // Don't inject styles on unsupported platforms
+  }
+
+  // Only inject styles if not already present
+  if (!document.querySelector('#velocity-inject-styles')) {
+    try {
+      // First get base styles
+      const baseStyles = await fetch(chrome.runtime.getURL('src/velocity-inject.css'))
+        .then(response => response.text());
+      
+      // Create platform-specific styles
+      const platformStyles = `
+        /* Platform specific styles */
+        ${platformInfo.platform === 'claude' ? `
+          .velocity-wrapper textarea,
+          .velocity-wrapper [contenteditable="true"] {
+            overflow: hidden !important;
+            resize: none !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+            background: transparent !important;
+          }
+
+          .velocity-wrapper {
+            background: transparent !important;
+            border: none !important;
+            overflow: hidden !important;
+          }
+        ` : ''}
+
+        ${platformInfo.platform === 'chatgpt' ? `
+          .velocity-wrapper textarea {
+            overflow: hidden !important;
+            resize: none !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+            background: transparent !important;
+          }
+
+          .velocity-wrapper {
+            background: transparent !important;
+            border: none !important;
+            overflow: hidden !important;
+          }
+
+          #prompt-textarea {
+            overflow: hidden !important;
+            resize: none !important;
+          }
+        ` : ''}
+
+        /* Hide scrollbars for all platforms */
+        .velocity-wrapper textarea::-webkit-scrollbar,
+        .velocity-wrapper [contenteditable="true"]::-webkit-scrollbar,
+        .velocity-wrapper [role="textbox"]::-webkit-scrollbar {
+          display: none !important;
+          width: 0px !important;
+          height: 0px !important;
+        }
+      `;
+
+      const styleElement = document.createElement('style');
+      styleElement.id = 'velocity-inject-styles';
+      styleElement.textContent = baseStyles + platformStyles;
+      document.head.appendChild(styleElement);
+
+    } catch (error) {
+      console.error('Error injecting styles:', error);
+    }
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'AUTH_STATE_CHANGED') {
+    if (isDiscordPlatform()) {
+      console.log('Skipping auth state update for Discord');
+      return;
+    }
+
     // Update localStorage only if the values are different
     const currentToken = localStorage.getItem('token');
     const currentEmail = localStorage.getItem('userEmail');
@@ -121,6 +216,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
 
         if (window.velocityState.isEnabled && platformInfo.isSupported) {
+          await injectStyles();
           await findAndEnhanceInputs();
         } else {
           cleanupEnhanceButtons();
@@ -150,6 +246,10 @@ setInterval(checkAuthState, 1000);
 
 // Listen for storage changes
 window.addEventListener('storage', (e) => {
+  if (isDiscordPlatform()) {
+    return; // Skip storage events for Discord
+  }
+
   if (e.key?.startsWith('shared') || 
       e.key === 'userId' || 
       e.key === 'userName' || 
@@ -162,7 +262,7 @@ const PLATFORM_CONFIG = {
   chatgpt: {
     urlPattern: /^https:\/\/chatgpt\.com/,
     selectors: '#prompt-textarea',
-    name: 'ChatGPT'
+    name: 'GPT'
   },
   claude: {
     urlPattern: /^https:\/\/claude\.ai/,
@@ -171,26 +271,86 @@ const PLATFORM_CONFIG = {
   },
   gemini: {
     urlPattern: /^https:\/\/gemini\.google\.com/,
-    selectors: 'textarea[dir="auto"]',
+    selectors: '.ql-editor[contenteditable="true"][role="textbox"], .textarea[contenteditable="true"]',
     name: 'Gemini'
   },
-  midjourney: {
-    urlPattern: /^https:\/\/(www\.)?midjourney\.com|^https:\/\/(www\.)?discord\.com\/channels/,
-    selectors: 'div[class*="messageInput"]',
-    name: 'Midjourney'
+  discord: {
+    urlPattern: /^https:\/\/(www\.)?discord\.com\/channels/,
+    selectors: '.markup_f8f345.editor_a552a6.slateTextArea_e52116, [class*="slateTextArea_"][role="textbox"]',
+    name: 'Midjourney',
+    customStyles: `
+      .velocity-wrapper {
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+      }
+      
+      .velocity-wrapper [role="textbox"] {
+        padding-right: 50px !important;
+      }
+
+      .velocity-enhance-button {
+        top: 50% !important;
+        right: 12px !important;
+        z-index: 999999 !important;
+      }
+    `
   },
-  canva: {
-    urlPattern: /^https:\/\/(www\.)?canva\.com/,
-    selectors: 'div[data-testid="text-editor"]',
-    name: 'Canva'
+  gama: {
+    urlPattern: /^https:\/\/(www\.)?gamma\.app/,
+    selectors: 'textarea, div[contenteditable="true"]',
+    name: 'Gamma'
   },
-  stability: {
-    urlPattern: /^https:\/\/(www\.)?stability\.ai/,
-    selectors: 'textarea[placeholder*="prompt"], input[placeholder*="prompt"]',
-    name: 'Stability AI'
+  runway: {
+    urlPattern: /^https:\/\/app\.runwayml\.com/,
+    selectors: '.TextEditor-module__textbox__lvV8X, [data-lexical-editor="true"]',
+    name: 'Runway',
+    customStyles: `
+    .velocity-wrapper {
+      position: relative !important;
+      display: block !important;
+      width: 100% !important;
+      min-height: 81px !important;
+      height: auto !important;
+    }
+
+    .velocity-wrapper .TextEditor-module__textbox__lvV8X {
+      padding-right: 50px !important;
+      min-height: 81px !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow-y: visible !important;
+      background: transparent !important;
+      position: relative !important;
+    }
+
+    .velocity-wrapper .TextEditor-module__textbox__lvV8X p {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .velocity-enhance-button {
+      position: absolute !important;
+      top: 50% !important;
+      right: 12px !important;
+      transform: translateY(-50%) !important;
+    }
+  `
+  },
+  thinkvelocity: {
+    urlPattern: /^https:\/\/(www\.)?thinkvelocity\.in/,
+    selectors: 'textarea, div[contenteditable="true"]',
+    name: 'ThinkVelocity',
+    isDevelopment: true
+  },
+  localhost: {
+    urlPattern: /^http:\/\/localhost:\d+/,
+    selectors: 'textarea, div[contenteditable="true"]',
+    name: 'Local Development',
+    isDevelopment: true
   }
 };
-
+ 
   // Check if script has already been initialized
   if (window.hasOwnProperty('velocityState')) {
     return; // Exit if already initialized
@@ -224,35 +384,55 @@ const PLATFORM_CONFIG = {
       }
     }
   };
-  async function detectPlatform() {
-    try {
-      const url = window.location.href;
-      console.log('Checking URL:', url);
-      for (const [platform, config] of Object.entries(PLATFORM_CONFIG)) {
-        if (config.urlPattern.test(url)) {
-          console.log('Platform detected:', platform);
-          return {
-            isSupported: true,
-            platform: platform,
-            config: config
-          };
-        }
-      }
-      console.log('No supported platform detected');
-      return {
-        isSupported: false,
-        platform: null,
-        config: null
-      };
-    } catch (error) {
-      console.error('Error in platform detection:', error);
+  
+async function detectPlatform() {
+  try {
+    const url = window.location.href;
+    console.log('Checking URL:', url);
+    
+    // Early return if not a valid platform
+    const isPlatformValid = Object.values(PLATFORM_CONFIG).some(config => 
+      config.urlPattern.test(url)
+    );
+    
+    if (!isPlatformValid) {
+      isValidPlatform = false;
       return {
         isSupported: false,
         platform: null,
         config: null
       };
     }
+
+    isValidPlatform = true;
+    
+    // Rest of your existing platform detection logic
+    for (const [platform, config] of Object.entries(PLATFORM_CONFIG)) {
+      if (config.urlPattern.test(url)) {
+        console.log('Platform detected:', platform);
+        return {
+          isSupported: true,
+          platform: platform,
+          config: config
+        };
+      }
+    }
+    
+    return {
+      isSupported: false,
+      platform: null,
+      config: null
+    };
+  } catch (error) {
+    console.error('Error in platform detection:', error);
+    isValidPlatform = false;
+    return {
+      isSupported: false,
+      platform: null,
+      config: null
+    };
   }
+}
 
   function getState() {
     return window.velocityState;
@@ -646,13 +826,13 @@ const PLATFORM_CONFIG = {
       }
   
       const enhancedPrompt = parsedResponse.prompts[0].prompt;
+      
       await saveResponseToHistory(
         enhancedPrompt, 
         lastSavedPromptId,
         state.platform,
         lastTokensUsed
       );
-  
       return enhancedPrompt;
     } catch (error) {
       console.error('Enhancement failed:', error);
@@ -662,7 +842,58 @@ const PLATFORM_CONFIG = {
   function createEnhanceButton(inputElement) {
     const wrapper = document.createElement('div');
     wrapper.className = 'velocity-wrapper';
+    if (window.velocityState.platformInfo?.platform === 'discord') {
+      wrapper.style.cssText = `
+          position: relative !important;
+          display: block !important;
+          width: 100% !important;
+          min-height: ${inputElement.offsetHeight}px !important;
+          margin: 0 !important;
+      `;
+      
+      // Preserve Discord's input styles
+      const computedStyle = window.getComputedStyle(inputElement);
+      inputElement.style.cssText += `
+          width: 100% !important;
+          min-height: inherit !important;
+          padding-right: ${parseInt(computedStyle.paddingRight) + 40}px !important;
+          box-sizing: border-box !important;
+          white-space: pre-wrap !important;
+          overflow-wrap: break-word !important;
+      `;
+  }
+
+    wrapper.style.cssText = `
+        position: relative !important;
+        display: inline-block !important;
+        width: auto !important;
+        min-width: 100% !important;
+    `;
     inputElement.dataset.hasEnhanceButton = 'true';
+    const computedStyle = window.getComputedStyle(inputElement);
+    wrapper.style.cssText = `
+    min-height: ${computedStyle.height} !important;
+    height: auto !important;
+  `;
+
+    const originalStyles = {
+        width: computedStyle.width,
+        height: computedStyle.height,
+        margin: computedStyle.margin,
+        padding: computedStyle.padding,
+        border: computedStyle.border,
+        borderRadius: computedStyle.borderRadius,
+        background: computedStyle.background,
+        font: computedStyle.font
+    };
+    wrapper.style.minHeight = originalStyles.height;
+    inputElement.style.cssText += `
+    width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    padding-right: ${parseInt(computedStyle.paddingRight) + 40}px !important;
+`;
+
 
     const charCounter = addCharacterLimitation(inputElement);
 
@@ -755,12 +986,54 @@ const PLATFORM_CONFIG = {
       try {
         showLoading();
         const enhancedText = await enhancePrompt(text);
-        if (inputElement.value !== undefined) {
-          inputElement.value = enhancedText;
+        if (platformInfo.platform === 'runway') {
+          // Focus the editor
+          inputElement.focus();
+    
+          // Select all existing text
+          document.execCommand('selectAll', false, null);
+          
+          // Delete selected text
+          document.execCommand('delete', false, null);
+          
+          // Insert new text
+          document.execCommand('insertText', false, enhancedText);
+          inputElement.style.cssText = `
+          user-select: text !important;
+          white-space: pre-wrap !important;
+          word-break: break-word !important;
+          width: 100% !important;
+          margin: 0 !important;
+          box-sizing: border-box !important;
+          padding-right: 50px !important;
+          min-height: 81px !important;
+          height: auto !important;
+          overflow-y: visible !important;
+        `;
+
+          // Ensure input is registered
+          const inputEvent = new InputEvent('input', {
+            bubbles: true,
+            cancelable: true
+          });
+          inputElement.dispatchEvent(inputEvent);
+    
+          // Force focus again to ensure cursor visibility
+          setTimeout(() => {
+            inputElement.focus();
+          }, 0);
+    
         } else {
-          inputElement.textContent = enhancedText;
+          // Handle other platforms
+          if (inputElement.value !== undefined) {
+            inputElement.value = enhancedText;
+          } else {
+            inputElement.textContent = enhancedText;
+          }
+          inputElement.dispatchEvent(new Event('input', { bubbles: true }));
         }
-        inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+    
+        //inputElement.dispatchEvent(new Event('input', { bubbles: true }));
       } catch (error) {
         console.error('Enhancement failed:', error);
         button.style.background = 'linear-gradient(180deg, #FF4444 0%, #CC0000 100%)';
@@ -777,6 +1050,9 @@ const PLATFORM_CONFIG = {
     wrapper.appendChild(inputElement);
     wrapper.appendChild(charCounter); // Add the character counter
     wrapper.appendChild(button);
+    
+    inputElement.dispatchEvent(new Event('input'));
+
   }
   // Add visibility based on state
   if (window.velocityState?.isEnabled && platformInfo?.isSupported) {
@@ -785,10 +1061,23 @@ const PLATFORM_CONFIG = {
   // Handle resizing
   const resizeObserver = new ResizeObserver(() => {
     const styles = window.getComputedStyle(inputElement);
-    wrapper.style.width = styles.width;
-    wrapper.style.height = styles.height;
+    //wrapper.style.width = styles.width;
+    wrapper.style.height = 'auto';
+    wrapper.style.height = `${inputElement.scrollHeight}px`;
+
   });
   resizeObserver.observe(inputElement);
+  inputElement.addEventListener('input', () => {
+    if (inputElement.tagName.toLowerCase() === 'textarea' || 
+        inputElement.getAttribute('contenteditable') === 'true' || 
+        inputElement.getAttribute('role') === 'textbox') {
+      inputElement.style.height = 'auto';
+      inputElement.style.height = `${inputElement.scrollHeight}px`;
+      wrapper.style.height = `${inputElement.scrollHeight}px`;
+    }
+  });
+
+
  }
 
  function shouldEnhanceInput(input) {
@@ -798,11 +1087,26 @@ const PLATFORM_CONFIG = {
     return false;
   }
   const style = window.getComputedStyle(input);
-  return style.display !== 'none' &&
-         style.visibility !== 'hidden' &&
-         input.offsetParent !== null &&
-         !input.disabled;
+  const isVisible = style.display !== 'none' &&
+  style.visibility !== 'hidden' &&
+  input.offsetParent !== null;
+  const isRunwayEditor = input.getAttribute('data-lexical-editor') === 'true';
+
+  const isDiscordInput = input.classList.contains('slateTextArea_e52116') ||
+  (input.getAttribute('role') === 'textbox' && 
+   input.classList.toString().includes('slateTextArea_'));
+
+   if (window.velocityState.platformInfo?.platform === 'discord' && isDiscordInput) {
+    return isVisible;
+  }
+  return isVisible && !input.disabled && (
+    input.tagName === 'TEXTAREA' ||
+    input.tagName === 'INPUT' ||
+    input.getAttribute('contenteditable') === 'true' ||
+    isRunwayEditor
+  );
 }
+
 
 async function findAndEnhanceInputs() {
   const platformInfo = await detectPlatform();
@@ -825,8 +1129,15 @@ async function findAndEnhanceInputs() {
   });
 }
 function cleanupEnhanceButtons() {
+  // Remove injected styles
+  const styleElement = document.querySelector('#velocity-inject-styles');
+  if (styleElement) {
+    styleElement.remove();
+  }
+
+  // Remove buttons and restore inputs
   document.querySelectorAll('.velocity-wrapper').forEach(wrapper => {
-    const input = wrapper.querySelector('textarea, [contenteditable="true"]');
+    const input = wrapper.querySelector('textarea, [contenteditable="true"], [role="textbox"]');
     if (input) {
       input.dataset.hasEnhanceButton = 'false';
       wrapper.parentNode.insertBefore(input, wrapper);
@@ -834,6 +1145,7 @@ function cleanupEnhanceButtons() {
     }
   });
 }
+
 
 // Message handler to update parameters from extension
 // chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
@@ -862,6 +1174,11 @@ function cleanupEnhanceButtons() {
   // Initial setup
   (async function() {
     const platformInfo = await detectPlatform();
+    if (!platformInfo.isSupported) {
+      console.log('Unsupported platform, stopping initialization');
+      return; // Exit early if not a supported platform
+    }
+  
     const currentState = window.velocityState || {};
     window.velocityState = {
       ...currentState,
@@ -870,13 +1187,20 @@ function cleanupEnhanceButtons() {
       styleType: ''
     };
     if (platformInfo.isSupported) {
+      await injectStyles();
+
       // Set up observer for dynamic content
       const observer = new MutationObserver((mutations) => {
         const shouldScan = mutations.some(mutation =>
-          Array.from(mutation.addedNodes).some(node =>
-            node.nodeType === 1 && node.querySelector?.(platformInfo.config.selectors)
-          )
-        );
+          Array.from(mutation.addedNodes).some(node => {
+            if (node.nodeType !== 1) return false;
+            if (platformInfo.platform === 'discord') {
+                return node.querySelector?.(platformInfo.config.selectors) ||
+                       node.matches?.(platformInfo.config.selectors);
+            }
+            return node.querySelector?.(platformInfo.config.selectors);
+        })
+      );
         if (shouldScan) {
           findAndEnhanceInputs();
         }

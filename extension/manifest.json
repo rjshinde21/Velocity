@@ -21,6 +21,7 @@
   },
   "web_accessible_resources": [{
     "resources": [
+      "src/velocity-inject.css",
       "assets/logo.png",
       "assets/logo.png"
     ],
@@ -29,7 +30,16 @@
 
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://discord.com/channels/*",
+        "https://gamma.app/*",
+        "https://runway.com/*",
+        "https://thinkvelocity.in/*",
+        "http://localhost:*/*"
+      ],
       "js": ["content-script.js"],
       "css": ["src/output.css"],
        "run_at": "document_idle"
@@ -46,6 +56,11 @@
     "https://chat.openai.com/*",
     "https://chatgpt.com/*",
     "https://claude.ai/*",
-    "https://*/*"
+    "https://gemini.google.com/*",
+    "https://discord.com/channels/*",
+    "https://gamma.app/*",
+    "https://runway.com/*",
+    "https://thinkvelocity.in/*",
+    "http://localhost:*/*"
   ]
 }
