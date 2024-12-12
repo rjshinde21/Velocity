@@ -361,7 +361,7 @@ const ProfilePage = ({ pricingRef }) => {
 
     // Credits section component to avoid duplication
     const CreditsSection = () => (
-        <div className="flex flex-col justify-between min-h-screen px-4 sm:px-6 py-6 md:py-12 lg:py-24">
+        <div className="flex flex-col justify-between h-full px-6 sm:px-4 py-6 md:py-24">
             {/* Profile Section */}
             <div className="flex flex-col md:flex-row md:gap-8 lg:gap-16 xl:gap-32 items-center px-2 sm:px-4 mt-4 sm:mt-8 md:mt-20">
                 <div className="text-center md:text-left mb-8 sm:mb-10 md:mb-0 w-full md:w-auto">
