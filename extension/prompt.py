@@ -13,6 +13,7 @@ import re
 from spellchecker import SpellChecker
 from llamaapi import LlamaAPI
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 
 
@@ -29,6 +30,439 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize Llama API: {str(e)}")
     llama = None
+
+@dataclass
+class ContextualAnalysis:
+    domain: str
+    purpose: str
+    complexity: str
+    constraints: List[str]
+    key_concepts: List[str]
+    target_audience: Optional[str]
+    tone_requirements: Dict[str, float]
+    technical_level: int  # 1-5 scale
+
+@dataclass
+class EnhancedGuidelines:
+    content_structure: Dict[str, List[str]]
+    style_requirements: Dict[str, str]
+    quality_criteria: List[str]
+    context_preservation: List[str]
+    output_format: Dict[str, str]
+    
+class AdvancedPromptProcessor:
+    def __init__(self, logger: Logger):
+        self.logger = logger
+        self.domain_patterns = {
+            "technical": r"\b(code|algorithm|function|api|database|system)\b",
+            "creative": r"\b(story|article|blog|content|write|create)\b",
+            "analytical": r"\b(analyze|research|study|investigate|evaluate)\b",
+            "instructional": r"\b(explain|teach|guide|show|demonstrate)\b"
+        }
+        
+        self.complexity_indicators = {
+            "basic": ["simple", "basic", "straightforward"],
+            "intermediate": ["moderate", "standard", "regular"],
+            "advanced": ["complex", "sophisticated", "advanced", "expert"]
+        }
+
+        # Add constraint patterns for better identification
+        self.constraint_patterns = {
+            "time": r"\b(within|by|before|after|during)\b.*?\b\d+\s*(day|week|month|year|hour|minute)s?\b",
+            "length": r"\b(maximum|minimum|max|min)\b.*?\b\d+\s*(word|character|sentence|paragraph)s?\b",
+            "format": r"\b(format|style|structure)\b.*?\b(as|in|like|following)\b",
+            "requirement": r"\b(must|should|need to|has to|require)\b.*?[^,.;]+",
+            "limitation": r"\b(only|except|exclude|don't|cannot|can't)\b.*?[^,.;]+",
+            "preference": r"\b(prefer|ideally|if possible|optionally)\b.*?[^,.;]+"
+        }
+
+        # Add tone and style identifiers
+        self.tone_markers = {
+            "formal": {"professional", "formal", "academic", "business"},
+            "casual": {"casual", "informal", "friendly", "conversational"},
+            "technical": {"technical", "detailed", "precise", "scientific"},
+            "creative": {"creative", "imaginative", "artistic", "innovative"}
+        }
+
+    def _identify_constraints(self, text: str) -> List[str]:
+        """
+        Identifies constraints and requirements from the prompt text
+        """
+        constraints = []
+        text = text.lower()
+
+        # Check for explicit constraints using patterns
+        for constraint_type, pattern in self.constraint_patterns.items():
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                constraint = match.group(0).strip()
+                if constraint:
+                    constraints.append(f"{constraint_type.capitalize()}: {constraint}")
+
+        # Look for numbered or bulleted requirements
+        numbered_requirements = re.findall(r'^\d+\.\s*([^.\n]+)', text, re.MULTILINE)
+        bulleted_requirements = re.findall(r'[-•]\s*([^.\n]+)', text, re.MULTILINE)
+        
+        constraints.extend([f"Listed Requirement: {req.strip()}" 
+                          for req in numbered_requirements + bulleted_requirements])
+
+        return list(set(constraints))  # Remove duplicates
+
+    def _infer_target_audience(self, text: str, style: str) -> Optional[str]:
+        """
+        Infers the target audience from the prompt and style
+        """
+        # Common audience indicators
+        audience_patterns = {
+            "technical": r"\b(developer|engineer|technical|programmer|professional)\b",
+            "general": r"\b(general|public|everyone|anybody|anyone)\b",
+            "beginner": r"\b(beginner|novice|basic|starting|new|learner)\b",
+            "expert": r"\b(expert|advanced|experienced|professional|specialist)\b"
+        }
+
+        # Check for explicit audience mentions
+        for audience_type, pattern in audience_patterns.items():
+            if re.search(pattern, text, re.IGNORECASE):
+                return audience_type
+
+        # Infer from style if no explicit mention
+        style_audience_mapping = {
+            "technical": "technical",
+            "professional": "expert",
+            "casual": "general",
+            "instructional": "beginner"
+        }
+
+        return style_audience_mapping.get(style.lower(), "general")
+
+    def _generate_tone_mapping(self, style: str, ai_type: str) -> Dict[str, float]:
+        """
+        Generates tone requirements with priority weights based on style and AI type
+        """
+        base_tones = {
+            "professional": {
+                "formal": 0.9,
+                "precise": 0.8,
+                "authoritative": 0.7
+            },
+            "creative": {
+                "imaginative": 0.9,
+                "engaging": 0.8,
+                "expressive": 0.7
+            },
+            "technical": {
+                "precise": 0.9,
+                "analytical": 0.8,
+                "objective": 0.7
+            },
+            "casual": {
+                "conversational": 0.9,
+                "friendly": 0.8,
+                "approachable": 0.7
+            }
+        }
+
+        # Adjust based on AI type
+        ai_type_modifiers = {
+            "chatbot": {"conversational": 0.2, "engaging": 0.1},
+            "academic": {"formal": 0.2, "analytical": 0.1},
+            "business": {"professional": 0.2, "precise": 0.1}
+        }
+
+        # Get base tones for the style
+        tone_weights = base_tones.get(style.lower(), base_tones["professional"]).copy()
+
+        # Apply AI-type specific modifications
+        if ai_type.lower() in ai_type_modifiers:
+            for tone, modifier in ai_type_modifiers[ai_type.lower()].items():
+                if tone in tone_weights:
+                    tone_weights[tone] += modifier
+                else:
+                    tone_weights[tone] = modifier
+
+        return {k: min(v, 1.0) for k, v in tone_weights.items()}  # Cap at 1.0
+
+    def _assess_technical_level(self, text: str, domain: str) -> int:
+        """
+        Assesses the technical level required (1-5 scale)
+        1: Beginner, 2: Intermediate, 3: Advanced, 4: Expert, 5: Specialist
+        """
+        # Technical indicators with their weights
+        technical_indicators = {
+            r"\b(basic|simple|elementary|fundamental)\b": 1,
+            r"\b(intermediate|moderate|standard)\b": 2,
+            r"\b(advanced|complex|sophisticated)\b": 3,
+            r"\b(expert|specialized|professional)\b": 4,
+            r"\b(cutting-edge|state-of-the-art|bleeding-edge)\b": 5
+        }
+
+        # Domain-specific baseline levels
+        domain_baselines = {
+            "technical": 3,
+            "analytical": 2,
+            "creative": 1,
+            "instructional": 1
+        }
+
+        baseline = domain_baselines.get(domain, 1)
+        max_level = baseline
+
+        # Check for technical indicators
+        for pattern, level in technical_indicators.items():
+            if re.search(pattern, text, re.IGNORECASE):
+                max_level = max(max_level, level)
+
+        return max_level
+
+    def _build_context_primer(self, analysis: ContextualAnalysis) -> str:
+        """
+        Builds a context primer based on the analysis
+        """
+        return f"""Domain Context: {analysis.domain}
+Purpose: {analysis.purpose}
+Complexity Level: {analysis.complexity}
+Technical Level: {analysis.technical_level}/5
+Target Audience: {analysis.target_audience}
+
+Key Concepts:
+{', '.join(analysis.key_concepts)}
+
+Tone Requirements:
+{', '.join(f'{tone} ({priority:.1f})' for tone, priority in analysis.tone_requirements.items())}"""
+
+    def _create_content_structure(self, analysis: ContextualAnalysis) -> Dict[str, List[str]]:
+        """
+        Creates content structure requirements based on analysis
+        """
+        common_structure = {
+            "Introduction": [
+                "Define context and scope",
+                "Establish key objectives",
+                "Set expectations"
+            ],
+            "Main Content": [
+                "Address key concepts",
+                "Maintain consistent technical level",
+                "Follow logical progression"
+            ],
+            "Conclusion": [
+                "Summarize key points",
+                "Provide next steps or applications",
+                "Ensure closure"
+            ]
+        }
+
+        # Add domain-specific requirements
+        if analysis.domain == "technical":
+            common_structure["Technical Details"] = [
+                "Include implementation specifics",
+                "Address edge cases",
+                "Provide error handling"
+            ]
+        elif analysis.domain == "creative":
+            common_structure["Style Elements"] = [
+                "Maintain consistent voice",
+                "Use engaging language",
+                "Include descriptive elements"
+            ]
+
+        return common_structure
+        
+    def analyze_context(self, prompt: str, ai_type: str, style: str) -> ContextualAnalysis:
+        """Performs deep contextual analysis of the user's prompt"""
+        # Identify domain
+        domain = self._identify_domain(prompt)
+        
+        # Analyze purpose and complexity
+        purpose = self._extract_purpose(prompt)
+        complexity = self._assess_complexity(prompt)
+        
+        # Extract key concepts and constraints
+        key_concepts = self._extract_key_concepts(prompt)
+        constraints = self._identify_constraints(prompt)
+        
+        # Determine audience and tone based on style
+        audience = self._infer_target_audience(prompt, style)
+        tone_requirements = self._generate_tone_mapping(style, ai_type)
+        
+        # Assess technical level needed
+        technical_level = self._assess_technical_level(prompt, domain)
+        
+        return ContextualAnalysis(
+            domain=domain,
+            purpose=purpose,
+            complexity=complexity,
+            constraints=constraints,
+            key_concepts=key_concepts,
+            target_audience=audience,
+            tone_requirements=tone_requirements,
+            technical_level=technical_level
+        )
+    
+    def generate_enhanced_guidelines(self, analysis: ContextualAnalysis) -> EnhancedGuidelines:
+        """Generates comprehensive guidelines based on contextual analysis"""
+        # Generate content structure requirements
+        content_structure = self._create_content_structure(analysis)
+        
+        # Define style requirements
+        style_requirements = self._define_style_requirements(analysis)
+        
+        # Establish quality criteria
+        quality_criteria = self._establish_quality_criteria(analysis)
+        
+        # Define context preservation rules
+        context_preservation = self._define_context_preservation(analysis)
+        
+        # Specify output format
+        output_format = self._specify_output_format(analysis)
+        
+        return EnhancedGuidelines(
+            content_structure=content_structure,
+            style_requirements=style_requirements,
+            quality_criteria=quality_criteria,
+            context_preservation=context_preservation,
+            output_format=output_format
+        )
+    
+    def enhance_prompt(self, original_prompt: str, analysis: ContextualAnalysis, 
+                      guidelines: EnhancedGuidelines) -> str:
+        """Creates an enhanced prompt incorporating analysis and guidelines"""
+        # Build context primer
+        context_primer = self._build_context_primer(analysis)
+        
+        # Create instruction set
+        instruction_set = self._create_instruction_set(guidelines)
+        
+        # Generate format specifications
+        format_specs = self._generate_format_specs(guidelines.output_format)
+        
+        # Combine into enhanced prompt
+        enhanced_prompt = f"""
+{context_primer}
+
+Original Request: {original_prompt}
+
+Instruction Set:
+{instruction_set}
+
+Output Specifications:
+{format_specs}
+
+Quality Requirements:
+- Maintain consistent {analysis.domain} domain expertise throughout
+- Adhere to {analysis.complexity} level complexity
+- Ensure all key concepts {', '.join(analysis.key_concepts)} are addressed
+- Follow specified tone requirements: {self._format_tone_requirements(analysis.tone_requirements)}
+
+Constraints:
+{self._format_constraints(analysis.constraints)}
+"""
+        return enhanced_prompt.strip()
+    
+    def _identify_domain(self, prompt: str) -> str:
+        """Identifies the primary domain of the prompt using pattern matching"""
+        domain_scores = {}
+        for domain, pattern in self.domain_patterns.items():
+            matches = len(re.findall(pattern, prompt.lower()))
+            domain_scores[domain] = matches
+        
+        return max(domain_scores.items(), key=lambda x: x[1])[0]
+    
+    def _extract_purpose(self, prompt: str) -> str:
+        """Extracts the primary purpose of the prompt"""
+        purpose_patterns = {
+            "generation": r"\b(create|generate|make|write)\b",
+            "analysis": r"\b(analyze|examine|evaluate)\b",
+            "explanation": r"\b(explain|describe|teach)\b",
+            "transformation": r"\b(convert|transform|change)\b"
+        }
+        
+        purpose_scores = {purpose: len(re.findall(pattern, prompt.lower()))
+                         for purpose, pattern in purpose_patterns.items()}
+        return max(purpose_scores.items(), key=lambda x: x[1])[0]
+    
+    def _assess_complexity(self, prompt: str) -> str:
+        """Assesses the complexity level of the requested task"""
+        complexity_scores = {}
+        for level, indicators in self.complexity_indicators.items():
+            score = sum(1 for indicator in indicators if indicator in prompt.lower())
+            complexity_scores[level] = score
+        
+        return max(complexity_scores.items(), key=lambda x: x[1])[0]
+    
+    def _extract_key_concepts(self, prompt: str) -> List[str]:
+        """Extracts key concepts from the prompt using NLP techniques"""
+        # This is a simplified version - in practice, you might want to use
+        # more sophisticated NLP techniques like keyword extraction
+        words = prompt.lower().split()
+        # Remove common words and keep significant terms
+        common_words = {"the", "a", "an", "and", "or", "but", "in", "on", "at", "to"}
+        key_concepts = [word for word in words if word not in common_words and len(word) > 3]
+        return list(set(key_concepts))  # Remove duplicates
+    
+    def _create_instruction_set(self, guidelines: EnhancedGuidelines) -> str:
+        """Creates a detailed instruction set based on guidelines"""
+        instructions = []
+        
+        # Add content structure instructions
+        for section, requirements in guidelines.content_structure.items():
+            instructions.append(f"{section}:")
+            instructions.extend([f"- {req}" for req in requirements])
+        
+        # Add style requirements
+        instructions.append("\nStyle Requirements:")
+        for aspect, requirement in guidelines.style_requirements.items():
+            instructions.append(f"- {aspect}: {requirement}")
+        
+        return "\n".join(instructions)
+    
+    def _generate_format_specs(self, output_format: Dict[str, str]) -> str:
+        """Generates detailed format specifications"""
+        specs = ["Format Requirements:"]
+        for element, specification in output_format.items():
+            specs.append(f"- {element}: {specification}")
+        return "\n".join(specs)
+    
+    def _format_tone_requirements(self, tone_reqs: Dict[str, float]) -> str:
+        """Formats tone requirements into a readable string"""
+        return ", ".join([f"{tone} (priority: {priority})" 
+                         for tone, priority in tone_reqs.items()])
+    
+    def _format_constraints(self, constraints: List[str]) -> str:
+        """Formats constraints into a readable string"""
+        return "\n".join([f"- {constraint}" for constraint in constraints])
+
+class PromptEnhancementSystem:
+    def __init__(self, logger: Logger):
+        self.logger = logger
+        self.processor = AdvancedPromptProcessor(logger)
+    
+    def process_prompt(self, prompt: str, ai_type: str, style: str) -> Dict[str, Any]:
+        """Main processing pipeline for prompt enhancement"""
+        try:
+            # Perform contextual analysis
+            analysis = self.processor.analyze_context(prompt, ai_type, style)
+            self.logger.debug(f"Contextual analysis completed: {analysis}")
+            
+            # Generate enhanced guidelines
+            guidelines = self.processor.generate_enhanced_guidelines(analysis)
+            self.logger.debug(f"Enhanced guidelines generated: {guidelines}")
+            
+            # Create enhanced prompt
+            enhanced_prompt = self.processor.enhance_prompt(prompt, analysis, guidelines)
+            self.logger.debug(f"Enhanced prompt created: {enhanced_prompt}")
+            
+            return {
+                "enhanced_prompt": enhanced_prompt,
+                "analysis": analysis.__dict__,
+                "guidelines": guidelines.__dict__
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error in prompt enhancement: {str(e)}")
+            raise
+
+
 @dataclass
 class ProcessedPrompt:
     prompt: str
@@ -936,24 +1370,49 @@ def process_request():
         if validation_error:
             logger.error(f"Validation error: {validation_error}")
             return jsonify({"error": validation_error}), 400
-        
-        # Initialize preprocessor
-        preprocessor = CompositePreprocessor(logger)
-        
+
+        # Initialize enhancement system
+        enhancement_system = PromptEnhancementSystem(logger)
+
         # Process the prompt
-        response_data, processing_error = process_prompt_enhancement(
+        result = enhancement_system.process_prompt(
             prompt=data['prompt'],
             ai_type=data['AIType'],
+            style=data['style']
+        )
+
+        # Use the enhanced prompt in your Llama API call
+        response_text = call_llama_api(
+            prompt=result['enhanced_prompt'],
             writing_style=data['style'],
-            preprocessor=preprocessor
+            guidelines=json.dumps(result['guidelines'])
         )
         
-        if processing_error:
-            logger.error(f"Processing error: {processing_error}")
-            return jsonify({"error": processing_error}), 500
+        normalized_response = normalize_json_response(response_text)
+        
+        return jsonify({
+            "response": normalized_response,
+            "analysis": result['analysis'],
+            "guidelines": result['guidelines']
+        })
+        
+        # # Initialize preprocessor
+        # preprocessor = CompositePreprocessor(logger)
+        
+        # # Process the prompt
+        # response_data, processing_error = process_prompt_enhancement(
+        #     prompt=data['prompt'],
+        #     ai_type=data['AIType'],
+        #     writing_style=data['style'],
+        #     preprocessor=preprocessor
+        # )
+        
+        # if processing_error:
+        #     logger.error(f"Processing error: {processing_error}")
+        #     return jsonify({"error": processing_error}), 500
             
-        logger.debug("Successfully processed request")
-        return jsonify(response_data)
+        # logger.debug("Successfully processed request")
+        # return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Unexpected error in process_request: {str(e)}")
