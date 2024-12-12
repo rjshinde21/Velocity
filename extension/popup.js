@@ -2,6 +2,50 @@ let userId= "";
 let token = "";
 let selectedStyle = null; // Default value
 let selectedPlatform = null;   // Default value
+const MIXPANEL_TOKEN = '48a67766d0bb1b3399a4f956da9c52da';
+function initMixpanel() {
+  try {
+      if (typeof mixpanel !== 'undefined') {
+          mixpanel.init(MIXPANEL_TOKEN, {
+              debug: true,
+              track_pageview: true
+          });
+          
+          // Track extension open
+          trackEvent('Extension Opened', {
+              location: 'Extension'
+          });
+          
+          console.log('Mixpanel initialized successfully');
+      } else {
+          console.error('Mixpanel not loaded');
+      }
+  } catch (error) {
+      console.error('Error initializing Mixpanel:', error);
+  }
+}
+function trackEvent(eventName, properties = {}) {
+  try {
+      if (typeof mixpanel !== 'undefined') {
+          mixpanel.track(eventName, {
+              ...properties,
+              timestamp: new Date().toISOString()
+          });
+          console.log('Event tracked:', eventName, properties);
+      } else {
+          console.error('Mixpanel not available for tracking');
+      }
+  } catch (error) {
+      console.error('Error tracking event:', error);
+  }
+}
+
+//import ExtensionAnalytics from './analytics';
+
+// mixpanel.init('48a67766d0bb1b3399a4f956da9c52da', {
+//   debug: true,
+//   track_pageview: true
+// });
 
 async function checkFeatureAccess(featureId) {
   try {
@@ -284,6 +328,16 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       // Show login prompt
       document.getElementById('signupButton').textContent = 'Login';
+      document.getElementById('signupButton').addEventListener('click', function() {
+        // Open your lander URL in a new tab
+        chrome.tabs.create({ url: 'https://thinkvelocity.in/login' });
+        
+        // If you're using Mixpanel, track this event
+        trackEvent('Login Button Clicked', {
+          location: 'Extension'
+      });
+      
+    });
       // Disable extension features
       //disableFeatures();
       console.log("disable features");
@@ -311,7 +365,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function sendRequest() {
   let promptHistoryId = null;
   let creditsDeducted = false;
-
+  
   try {
     const promptInput = document.getElementById('promptInput');
     const prompt = promptInput.value.trim();
@@ -322,30 +376,29 @@ async function sendRequest() {
       return;
     }
     if (prompt.length > CHAR_LIMIT) {
+      trackEvent('Generate Error', {
+        error: 'Prompt Too Long',
+        promptLength: prompt.length,
+        platform: selectedPlatform,
+        style: selectedStyle
+      });
+
       showError(`Input too long. Please keep your text under ${CHAR_LIMIT} characters.`);
       return;
     }
-
-    // if (!selectedStyle || !selectedPlatform) {
-    //   showError('Please select both a style and a platform');
-    //   return;
-    // }
-
     showLoading('Processing request...');
-
-    // Verify features and check credits
-    // const canProceed = await verifyAndRecordFeatures();
-    // if (!canProceed) {
-    //   return;
-    // }
-
-    // Create and send request
     const formData = new FormData();
     const requestData = {
       prompt: prompt,
       style: selectedStyle,
       AIType: selectedPlatform
     };
+    trackEvent('Generate Button Clicked', {
+      platform: selectedPlatform,
+      style: selectedStyle,
+      promptLength: prompt.length,
+      timestamp: new Date().toISOString()
+    });
 
     formData.append('data', JSON.stringify(requestData));
 
@@ -360,7 +413,7 @@ async function sendRequest() {
         ? `Server error (500): ${await response.text()}`
         : `Server returned ${response.status}: ${await response.text()}`);
     }
-
+    trackEvent('Response Generated');
     const data = await response.json();
     if (data.error) {
       throw new Error(data.error);
@@ -389,6 +442,11 @@ async function sendRequest() {
     }
 
   } catch (error) {
+    trackEvent('Generate Error', {
+      error: error.message,
+      platform: selectedPlatform,
+      style: selectedStyle
+    });
     console.error('Request failed:', error);
     showError(`Error: ${error.message}`);
   } finally {
@@ -533,10 +591,13 @@ function handleParsedResponse(parsedResponse) {
 
   try {
     let prompts;
+    let rawResponse = typeof parsedResponse === 'string' ? parsedResponse : JSON.stringify(parsedResponse);
+    console.log("raw response:"+rawResponse);
     // Handle different response formats
     if (typeof parsedResponse === 'string') {
       try {
         prompts = JSON.parse(parsedResponse).prompts;
+        
       } catch (e) {
         // If it's not JSON, treat it as a single response
         prompts = [{ prompt: parsedResponse }];
@@ -548,7 +609,10 @@ function handleParsedResponse(parsedResponse) {
     } else {
       prompts = [{ prompt: String(parsedResponse) }];
     }
-
+    console.log("prompt:"+prompts.prompt)
+    trackEvent('Parsed Response', {
+      responseLength: rawResponse.length,          
+    });
     // Create container for responses
     const responsesContainer = document.createElement('div');
     responsesContainer.className = 'responses-container';
@@ -845,6 +909,10 @@ function initializeEnhanceToggle() {
   // Handle toggle changes
   toggle.addEventListener('change', async (event) => {
     const isEnabled = event.target.checked;
+    console.log("called toggele enhanced button:"+isEnabled);
+    trackEvent('EnhanceButtonToggle', {
+      enabled:isEnabled
+    });
     try {
       // Save state
       await chrome.storage.local.set({ 'enhanceButtonEnabled': isEnabled });
@@ -862,6 +930,12 @@ function initializeEnhanceToggle() {
     }
   });
 }
+document.addEventListener('DOMContentLoaded', function() {
+  // Add a small delay to ensure Mixpanel is loaded
+  setTimeout(() => {
+      initMixpanel();
+  }, 1000);
+});
 
 document.addEventListener('DOMContentLoaded', initializeEnhanceToggle);
 function cleanupEventListeners() {

@@ -3,8 +3,15 @@ import star from "../assets/Home/star.png";
 import HomeCards from "./HomeCards";
 import { Link } from "react-router-dom";
 import supabase from '../config/supabaseClient';
+import Analytics from '../config/analytics';
 
-const Home = () => {
+const Home = () => {3
+  useEffect(() => {
+    Analytics.track('Page View', {
+      page: 'Home'
+    });
+  }, []);
+
   const [user, setUser] = useState(null);
 
   // useEffect(() => {

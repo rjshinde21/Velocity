@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <script src="mixpanel-init.js"></script>
+  <script src="mixpanel.min.js"></script>
+<meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Extension Popup</title>
   <link rel="stylesheet" href="src/output.css">
@@ -827,7 +829,7 @@ color: #C9C9C9;
     background: linear-gradient(to bottom, #f7aa1c4d, #f1d49f4d);
     margin: 5px 5px;
     position: relative; /* Enable relative positioning */
-    left: 32px; /* Move 10px to the right */
+    left: 24px; /* Move 10px to the right */
 }
 
 #editButton:hover {
@@ -1015,7 +1017,7 @@ color: #C9C9C9;
         
         <button id="signupButton" class="text-white space-x-2 flex items-center">
             <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
-            <span>Sign Up</span>
+            <span>Login</span>
         </button>
     </div>
 </div>
@@ -1072,9 +1074,9 @@ color: #C9C9C9;
       </label>
     </div>
     <div class="radio-button">
-      <input type="radio" id="option6" name="option" value="LLaMa">
+      <input type="radio" id="option6" name="option" value="Gemini">
       <label class="radio-button" for="option6">
-        <img src="./assets/radiobutton6.png" alt="Ranway">
+        <img src="./assets/geminiIcon.png" alt="Gemini">
         <!-- <span>Meta AI</span> -->
       </label>
     </div>
@@ -1155,8 +1157,6 @@ color: #C9C9C9;
 
  
 </div>
-
-
   <script src="popup.js"></script>
   <script src="content-script.js"></script>
 

@@ -1,18 +1,62 @@
 // contentScript.js
 // This script runs in the context of the web page
+
 (function() {
+
 let lastAuthState = null;
 let lastSavedPromptId = null;  // Add this at the top with your other state variables
 let lastTokensUsed = 0;
 let isValidPlatform = false;
+
 function isDiscordPlatform() {
   const url = window.location.href;
   return /^https:\/\/(www\.)?discord\.com\/channels/.test(url);
 }
 
+function trackEvent(eventName, properties = {}) {
+  chrome.runtime.sendMessage({
+      type: 'TRACK_EVENT',
+      eventName: eventName,
+      properties: properties
+  }, response => {
+      if (response?.status === 'success') {
+          console.log('Event tracked:', eventName);
+      } else {
+          console.error('Failed to track event:', eventName);
+      }
+  });
+}
+
+// window.addEventListener('message', function(event) {
+//   if (event.data.type === 'TRACK_MIXPANEL') {
+//       const script = document.createElement('script');
+//       script.textContent = `
+//           if(window.trackMixpanelEvent) {
+//               trackMixpanelEvent("${event.data.eventName}", ${JSON.stringify(event.data.properties)});
+//           }
+//       `;
+//       (document.head || document.documentElement).appendChild(script);
+//       script.remove();
+//   }
+// });
+
+// function trackContentEvent(eventName, properties = {}) {
+//   console.log("track event called")
+//   chrome.runtime.sendMessage({
+//     action: "trackEvent",
+//     eventName: eventName,
+//     properties: properties
+// }, function(response) {
+//     if (response && response.status === "success") {
+//         console.log('Successfully tracked:', eventName);
+//     } else {
+//         console.error('Failed to track:', response?.message);
+//     }
+// });
+// }
 
 // Function to check auth state
-  function checkAuthState() {
+function checkAuthState() {
     if (isDiscordPlatform()) {
       console.log('Skipping auth state check for Discord');
       return;
@@ -786,6 +830,18 @@ async function detectPlatform() {
   
   // Function to handle prompt enhancement
   async function enhancePrompt(originalText) {
+    console.log("enhancing");
+    
+  //   trackContentEvent('Enhance Prompt', {
+  //     title: "Enhance Prompt"
+  // });
+      trackEvent('Enhance clicked', {
+        buttonText: "Enhance button",
+        buttonId: 'button'
+    });
+
+
+
     try {
       const state = getState();
       let styleTransform = null;
