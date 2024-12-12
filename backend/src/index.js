@@ -7,6 +7,8 @@ const planRoutes = require('./routes/plan.routes');
 const creditRoutes = require('./routes/credit.route');
 const historyRoutes = require('./routes/history.routes');
 const referralRoutes = require('./routes/referralRoutes');
+const launchListRoutes = require('./routes/launchlist.routes');
+
 require('dotenv').config();
 
 const app = express();
@@ -56,6 +58,7 @@ const connection = mysql.createConnection({
 });
 
 // Routes
+app.use('/api/launchlist', launchListRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api', tokenRoutes);
 app.use('/api/plans', planRoutes);
