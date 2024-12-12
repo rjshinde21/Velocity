@@ -1,6 +1,71 @@
 let ports = [];
 let injectedTabs = new Set();
 let authState = null; // Store auth state in memory
+const SUPPORTED_PLATFORMS = {
+  chatgpt: {
+    urlPattern: /^https:\/\/chatgpt\.com/,
+    selectors: '#prompt-textarea',
+    name: 'GPT'
+  },
+  claude: {
+    urlPattern: /^https:\/\/claude\.ai/,
+    selectors: '.claude-textarea, div[contenteditable="true"]',
+    name: 'Claude'
+  },
+  gemini: {
+    urlPattern: /^https:\/\/gemini\.google\.com/,
+    selectors: '.ql-editor[contenteditable="true"][role="textbox"], .textarea[contenteditable="true"]',
+    name: 'Gemini'
+  },
+  discord: {
+    urlPattern: /^https:\/\/(www\.)?discord\.com\/channels/,
+    selectors: '.markup_f8f345.editor_a552a6.slateTextArea_e52116, [class*="slateTextArea_"][role="textbox"]',
+    name: 'Midjourney',
+    customStyles: `
+      .velocity-wrapper {
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+      }
+      
+      .velocity-wrapper [role="textbox"] {
+        padding-right: 50px !important;
+      }
+
+      .velocity-enhance-button {
+        top: 50% !important;
+        right: 12px !important;
+        z-index: 999999 !important;
+      }
+    `
+  },
+  gama: {
+    urlPattern: /^https:\/\/(www\.)?gamma\.app/,
+    selectors: 'textarea, div[contenteditable="true"]',
+    name: 'Gamma'
+  },
+  runway: {
+    urlPattern: /^https:\/\/app\.runwayml\.com/,
+    selectors: 'textarea, [contenteditable="true"], input[type="text"], .cm-content',
+    name: 'Runway'
+  },
+  thinkvelocity: {
+    urlPattern: /^https:\/\/(www\.)?thinkvelocity\.in/,
+    selectors: 'textarea, div[contenteditable="true"]',
+    name: 'ThinkVelocity',
+    isDevelopment: true
+  },
+  localhost: {
+    urlPattern: /^http:\/\/localhost:\d+/,
+    selectors: 'textarea, div[contenteditable="true"]',
+    name: 'Local Development',
+    isDevelopment: true
+  }
+};
+function isDiscordUrl(url) {
+  return SUPPORTED_PLATFORMS.discord.urlPattern.test(url);
+}
+
 chrome.storage.local.get([
   'isAuthenticated',
   'token',
@@ -73,6 +138,11 @@ async function checkUserTokens(token, userId) {
     console.log('Received message:', message);
   
     if (message.type === 'AUTH_CHANGED') {
+      if (sender.tab && isDiscordUrl(sender.tab.url)) {
+        console.log('Ignoring auth state change from Discord');
+        return true;
+      }
+  
       // Update stored auth state
       authState = message.data;
       
@@ -88,10 +158,12 @@ async function checkUserTokens(token, userId) {
         // Notify all connected ports
         ports.forEach(port => {
           try {
+            if (port.sender && !isDiscordUrl(port.sender.tab?.url)) {
             port.postMessage({
               type: 'AUTH_STATE_CHANGED',
               data: message.data
             });
+          }
           } catch (error) {
             console.error('Error sending message to port:', error);
           }
@@ -153,13 +225,30 @@ async function checkUserTokens(token, userId) {
   });
   
   function isValidUrl(url) {
-    return url && !url.startsWith('chrome://') && 
-           !url.startsWith('brave://') && 
-           !url.startsWith('chrome-extension://');
-  }
+    // First check basic invalid URLs
+    if (!url || 
+        url.startsWith('chrome://') || 
+        url.startsWith('brave://') || 
+        url.startsWith('chrome-extension://')) {
+      return false;
+    }
+  
+    // Then check if URL matches any supported platform
+    return Object.values(SUPPORTED_PLATFORMS).some(platform => 
+      platform.urlPattern.test(url)
+    );
+    }
+  
   
   async function injectContentScript(tabId) {
     try {
+      // Get tab info to check URL
+      const tab = await chrome.tabs.get(tabId);
+      if (!isValidUrl(tab.url)) {
+        console.log('Skipping injection for unsupported URL:', tab.url);
+        return;
+      }
+  
       await chrome.scripting.executeScript({
         target: { tabId },
         files: ['content-script.js']
@@ -167,12 +256,14 @@ async function checkUserTokens(token, userId) {
       
       injectedTabs.add(tabId);
       
+      // Only send messages if it's a supported platform
       const state = await chrome.storage.local.get(['enhanceButtonEnabled']);
       await chrome.tabs.sendMessage(tabId, {
         action: 'toggleEnhanceButton',
         enabled: state.enhanceButtonEnabled === true
       });
-      if (authState) {
+      
+      if (authState && !isDiscordUrl(tab.url)) {
         await chrome.tabs.sendMessage(tabId, {
           type: 'AUTH_STATE_CHANGED',
           data: authState
@@ -182,6 +273,7 @@ async function checkUserTokens(token, userId) {
       console.log(`Script injection failed for tab ${tabId}:`, error);
     }
   }
+  
   
 
   
