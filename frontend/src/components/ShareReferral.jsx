@@ -76,7 +76,7 @@ const ShareReferral = ({ userId, authToken }) => {
     };
 
     return (
-        <div className="w-full max-w-sm mx-auto bg-[#1A1A1A] rounded-2xl p-4 sm:p-6 mt-0 mb-0 border border-[#333333]/30">
+        <div className="w-full font-[Inter] max-w-sm mx-auto bg-[#1A1A1A] rounded-2xl p-4 sm:p-6 mt-0 mb-0 border border-[#333333]/30 mt-4 mb-4">
             <h2 className="text-white/90 text-base sm:text-lg text-center mb-4 sm:mb-6">
                 For Each Referral
             </h2>

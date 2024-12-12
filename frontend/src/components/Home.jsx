@@ -108,21 +108,16 @@ const Home = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#008ACB_0%,_transparent_40%)] opacity-30 animate-gradient-move" />
         <div className="absolute inset-0 bg-black opacity-0 flex" />
 
-        <div className="font-Amenti relative z-10 flex flex-col items-center justify-center">
-          <h1 className="bg-gradient-text pt-10 text-3xl sm:text-6xl pb-4 text-center">
+        <div className="font-[Amenti] relative z-10 flex flex-col items-center justify-center">
+          <h1 className="bg-gradient-text pt-10 text-4xl sm:text-7xl pb-4 text-center">
             Makes everyone a <br />
             <span className="block text-center">Prompt Expert</span>
           </h1>
-          <p className="text-[#999999] font-[Inter] text-sm sm:text-lg">
+          <p className="text-[#999999] font-[Inter] text-base sm:text-xl">
             Redefine the way you generate AI-driven ideas
           </p>
-          {/* <a href="https://chromewebstore.google.com/category/extensions?hl=en-US&utm_source=ext_sidebar" target="_blank">
-            <button className="glowing-button flex items-center gap-2 sm:mt-12 mt-6">
-              <span>Try Now with sample prompt</span>
-              <img src={star} alt="Star" />
-            </button>
-          </a> */}
         </div>
+
         <HomeCards />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent via-[12%] bottom-0" />
       </div>

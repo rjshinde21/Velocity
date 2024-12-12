@@ -66,7 +66,7 @@ const ScrollAnchor = ({ scrollRefs }) => {
   };
 
   return (
-    <div className="justify-center items-center sm:space-x-0 lg:space-x-7 bg-black/30 backdrop-blur-sm border border-[#1E1E1E] px-4 py-3 rounded-full w-fit mx-auto hidden sm:flex">
+    <div className="justify-center items-center sm:space-x-0 lg:space-x-7 bg-black/30 backdrop-blur-sm border border-[#1E1E1E] px-4 py-3 rounded-full w-fit ml-32 hidden sm:flex">
       {navigationItems.map((item) => (
         <button
           key={item.id}

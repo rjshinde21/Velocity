@@ -27,7 +27,7 @@ const Navbar = ({
   return (
     <div>
     <nav className="bg-transparent text-primary fixed w-full top-0 start-0 px-6 z-20">
-      <div className="max-w-screen-xl flex flex-wrap items-center justify-between lg:mx-auto pt-5 sm:pt-12">
+      <div className="max-w-screen-xl flex flex-wrap items-center justify-between lg:mx-auto pt-5 sm:pt-12 mr-0">
         {/* Logo */}
         <Link
           to="/"
