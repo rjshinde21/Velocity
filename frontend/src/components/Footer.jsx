@@ -28,7 +28,7 @@ const Footer = ({ isLoggedIn }) => {
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto"
               >
-                <button className="w-full sm:w-auto bg-black text-white px-6 sm:px-8 py-3 sm:py-4 
+                <button className="w-full sm:w-auto bg-black text-white px-10 sm:px-8 py-3 sm:py-4 
                   rounded-full border border-gray-700 hover:bg-gray-900 transition-all duration-200
                   text-sm sm:text-base font-medium whitespace-nowrap
                   hover:shadow-lg hover:border-gray-600">
@@ -39,18 +39,18 @@ const Footer = ({ isLoggedIn }) => {
           </div>
 
           {/* Designer credit and logo section */}
-          <div className="mt-8 sm:mt-12 lg:mt-16">
+          <div className="mt-10 sm:mt-12 lg:mt-16">
             {/* Designer credit */}
-            <p className="text-xs sm:text-sm text-center sm:text-left mb-0 sm:mb-0">
+            <p className="text-xs sm:text-sm sm:text-left mb-0 sm:mb-0">
               Designed by TOTEM INTERACTIVE
             </p>
 
             {/* Logo and social icons container */}
             <div className="relative">
               {/* VELOCITY Text */}
-              <div className="font-[Amenti] text-[2.5rem] sm:text-[4rem] md:text-[6rem] lg:text-[8rem] xl:text-[10rem]
+              <div className="font-Amenti text-[2.5rem] sm:text-[4rem] md:text-[6rem] lg:text-[8rem] xl:text-[10rem]
                 font-bold tracking-wider leading-none
-                text-center sm:text-left
+                 sm:text-left
                 transform transition-transform duration-300">
                 VELOCITY
               </div>

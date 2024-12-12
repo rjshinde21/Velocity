@@ -52,7 +52,7 @@ const HowItWorks = () => {
 
           {/* Left Section */}
           <div className="w-full lg:w-1/2 px-4">
-            <h1 className="font-[Amenti] text-3xl sm:text-4xl font-light text-white text-center lg:text-left lg:ml-20">
+            <h1 className="font-Amenti text-3xl sm:text-4xl font-light text-white text-center lg:text-left lg:ml-20">
               How It Works
             </h1>
 

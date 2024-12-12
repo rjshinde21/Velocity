@@ -168,7 +168,7 @@ class EnhancedPromptPreprocessor(BasePreprocessor):
         
         # Domain identifiers to help understand context
         self.domain_markers = {
-            "email": {"write", "draft", "compose", "email", "mail", "message", "response"},
+            "email": { "draft", "compose", "email", "mail", "message", "response"},
             "code": {"function", "code", "program", "script", "algorithm", "debug"},
             "creative": {"story", "article", "blog", "creative", "write", "content"},
             "analysis": {"analyze", "research", "investigate", "study", "examine"},
@@ -515,9 +515,246 @@ def get_style_parameters(writing_style: str) -> dict:
     
     return style_params.get(writing_style, style_params["professional"])
 
+# First, let's create a new class for request analysis and guideline generation
+class RequestAnalyzer:
+    def __init__(self, logger: Logger):
+        self.logger = logger
+        # Task type identifiers
+        self.task_types = {
+            "search": {
+                "markers": {"find", "search", "look for", "what are", "who is", "where is", "when"},
+                "requirements": {
+                    "time_relevance": True,
+                    "source_quality": True,
+                    "fact_verification": True
+                }
+            },
+            "document_analysis": {
+                "markers": {"analyze", "review", "examine", "summarize", "extract"},
+                "requirements": {
+                    "depth": True,
+                    "key_metrics": True,
+                    "insights": True
+                }
+            },
+            "code_generation": {
+                "markers": {"code", "function", "program", "script", "algorithm"},
+                "requirements": {
+                    "language": True,
+                    "documentation": True,
+                    "testing": True
+                }
+            },
+            "creative_writing": {
+                "markers": {"write", "create", "story", "article", "blog"},
+                "requirements": {
+                    "style": True,
+                    "structure": True,
+                    "tone": True
+                }
+            }
+        }
+
+    def analyze_request(self, text: str) -> Dict[str, Any]:
+        """Analyze the request to determine type and requirements"""
+        words = text.lower().split()
+        word_set = set(words)
+
+        # Identify task type
+        task_scores = {}
+        for task, details in self.task_types.items():
+            score = len(word_set.intersection(details["markers"]))
+            task_scores[task] = score
+
+        primary_task = max(task_scores.items(), key=lambda x: x[1])[0] if any(task_scores.values()) else "general"
+
+        return {
+            "task_type": primary_task,
+            "requirements": self.task_types.get(primary_task, {}).get("requirements", {}),
+            "context_words": list(word_set)
+        }
+
+    def generate_guidelines(self, analysis: Dict[str, Any]) -> str:
+        """Generate specific guidelines based on request analysis"""
+        task_type = analysis["task_type"]
+        
+        guidelines = {
+            "search": """
+Guidelines for Search Query Enhancement:
+1. Temporal Context:
+   - Specify time period relevance
+   - Include recency requirements
+   - Note any historical context needs
+
+2. Source Requirements:
+   - Define source authority level
+   - Specify verification requirements
+   - Include diversity of sources
+
+3. Result Structure:
+   - Define ordering criteria
+   - Specify result format
+   - Include ranking parameters
+""",
+            "document_analysis": """
+Guidelines for Document Analysis Enhancement:
+1. Analysis Depth:
+   - Specify level of detail required
+   - Define key areas of focus
+   - Include comparative requirements
+
+2. Output Structure:
+   - Define format requirements
+   - Specify section organization
+   - Include visualization needs
+
+3. Insight Requirements:
+   - Define key metric focus
+   - Specify trend analysis needs
+   - Include correlation requirements
+""",
+            "code_generation": """
+Guidelines for Code Generation Enhancement:
+1. Technical Specifications:
+   - Define language and version
+   - Specify framework requirements
+   - Include performance criteria
+
+2. Documentation Requirements:
+   - Specify documentation style
+   - Define comment density
+   - Include example requirements
+
+3. Quality Standards:
+   - Define testing requirements
+   - Specify error handling
+   - Include edge case coverage
+""",
+            "creative_writing": """
+Guidelines for Creative Content Enhancement:
+1. Style Requirements:
+   - Define tone and voice
+   - Specify language level
+   - Include stylistic elements
+
+2. Structure Specifications:
+   - Define format requirements
+   - Specify section organization
+   - Include flow requirements
+
+3. Content Elements:
+   - Define required components
+   - Specify character/plot elements
+   - Include thematic requirements
+"""
+        }.get(task_type, """
+Guidelines for General Enhancement:
+1. Clarity and Structure:
+   - Ensure clear organization
+   - Maintain logical flow
+   - Include all necessary context
+
+2. Content Requirements:
+   - Define scope clearly
+   - Specify detail level
+   - Include all relevant elements
+
+3. Quality Standards:
+   - Ensure accuracy
+   - Maintain consistency
+   - Include verification points
+""")
+        
+        return guidelines
+
+def generate_contextual_guidelines(prompt: str) -> str:
+    """
+    First API call to generate context-specific guidelines based on deep analysis of user input
+    """
+    try:
+        system_context = """You are an advanced AI analysis system specializing in understanding user requests and generating detailed guidelines. Your task is to:
+
+1. Perform Deep Content Analysis:
+   - Understand the core domain and technical requirements
+   - Identify implicit and explicit needs
+   - Recognize context and dependencies
+   - Map potential edge cases and challenges
+
+2. Generate Domain-Specific Guidelines:
+   - Create detailed, structured guidelines
+   - Focus on best practices and standards
+   - Include technical specifications
+   - Address potential pitfalls
+   - Set clear quality benchmarks
+
+Your output should be a comprehensive markdown document that can guide an AI system in providing optimal responses."""
+
+        analysis_prompt = f"""Analyze this user request and create detailed technical guidelines:
+
+User Request: "{prompt}"
+
+Perform a comprehensive analysis considering:
+1. Domain Expertise Required
+2. Technical Requirements
+3. Best Practices
+4. Quality Standards
+5. Edge Cases
+6. Implementation Considerations
+
+Generate thorough guidelines that would help an AI system provide the most accurate and helpful response.
+Format your response as a detailed markdown document with clear sections and explanatory subsections.
+Focus on technical accuracy and completeness."""
+
+        # Make first API call for guidelines
+        guidelines_request = {
+            "model": "llama3.2-11b-vision",
+            "messages": [
+                {"role": "system", "content": system_context},
+                {"role": "user", "content": analysis_prompt}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 2000,
+            "top_p": 0.95
+        }
+
+        guidelines_response = llama.run(guidelines_request)
+        guidelines = guidelines_response.json()['choices'][0]['message']['content']
+        logger.debug(f"Generated Guidelines:\n{guidelines}")
+        
+        return guidelines
+
+    except Exception as e:
+        logger.error(f"Guidelines generation error: {str(e)}")
+        raise
 
 
-def call_llama_api(prompt: str, writing_style: str) -> str:
+# New API endpoint for guideline generation
+@app.route('/analyze', methods=['POST'])
+def analyze_request():
+    try:
+        form_data = request.form.get('data')
+        if not form_data:
+            return jsonify({"error": "No data provided"}), 400
+
+        data = json.loads(form_data)
+        if 'prompt' not in data:
+            return jsonify({"error": "No prompt provided"}), 400
+
+        analyzer = RequestAnalyzer(logger)
+        analysis = analyzer.analyze_request(data['prompt'])
+        guidelines = analyzer.generate_guidelines(analysis)
+
+        return jsonify({
+            "analysis": analysis,
+            "guidelines": guidelines
+        })
+
+    except Exception as e:
+        logger.error(f"Analysis error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+def call_llama_api(prompt: str, writing_style: str, guidelines: str) -> str:
     """
     Enhanced Llama API call with advanced prompt engineering optimized for LLM processing patterns.
     Implements context layering, clear instruction boundaries, and style-specific optimizations.
@@ -528,6 +765,9 @@ def call_llama_api(prompt: str, writing_style: str) -> str:
         
         # Create a context-rich system message that guides the LLM's processing
         system_context = f"""You are an expert prompt engineer with deep expertise in AI/ML and natural language processing. Your specialty is crafting prompts that align with LLM processing patterns and contextual understanding.
+
+Specific Guidelines for this Request:
+{guidelines}
 
 Core Capabilities:
 1. Context Analysis: You excel at identifying key semantic elements and their relationships
@@ -628,43 +868,35 @@ def validate_request_data(form_data: dict) -> Tuple[dict, Optional[str]]:
 
 def process_prompt_enhancement(prompt: str, ai_type: str, writing_style: str, preprocessor: CompositePreprocessor) -> Tuple[Dict, Optional[str]]:
     """
-    Handles the core prompt enhancement logic.
-    Returns (response_data, error_message). If error_message is None, processing succeeded.
+    Enhanced two-step prompt processing with guidelines integration
     """
     try:
-        # Process the prompt through our preprocessing pipeline
+        # Step 1: Generate contextual guidelines
+        logger.debug("Generating contextual guidelines...")
+        guidelines = generate_contextual_guidelines(prompt)
+        
+        # Step 2: Process through regular preprocessing pipeline
+        logger.debug("Processing through preprocessing pipeline...")
         processed_prompt, analysis_data = preprocessor.process(prompt, {})
         
-        # Get style-specific instructions
-        style_instructions = {
-            'descriptive': "Use rich, detailed descriptions with vivid imagery",
-            'creative': "Think outside the box with unique and imaginative elements",
-            'professional': "Maintain a formal and business-appropriate tone",
-            'concise': "Be brief and clear, focusing on essential elements"
+        # Combine the analysis with guidelines
+        combined_context = {
+            "guidelines": guidelines,
+            "analysis": analysis_data["analysis"],
+            "structured_prompt": analysis_data["structured_prompt"]
         }
-        style_instruction = style_instructions.get(writing_style, style_instructions['professional'])
         
-        # Construct the enhanced prompt with clear structure
-        prompt_string = (
-            f"Given the following prompt and analysis:\n\n"
-            f"Original Prompt: {processed_prompt.prompt}\n"
-            f"Style: {writing_style}\n"
-            f"AI Type: {ai_type}\n"
-            f"Analysis: {analysis_data['analysis']}\n\n"
-            f"Instructions:\n"
-            f"1. Generate 3 enhanced versions maintaining the core concept\n"
-            f"2. Apply the following style guideline: {style_instruction}\n"
-            f"3. Ensure each version is unique while preserving the original intent\n"
-            f"4. Make each version detailed and contextually relevant\n\n"
-            'Return the results in this exact JSON format without any additional text:\n'
-            '{"prompts":[{"prompt":"<enhanced version 1>"},{"prompt":"<enhanced version 2>"},{"prompt":"<enhanced version 3>"}]}'
+        # Step 3: Make the final API call with enhanced context
+        logger.debug("Making final API call with combined context...")
+        response_text = call_llama_api(
+            prompt=processed_prompt.prompt,
+            writing_style=writing_style,
+            guidelines=guidelines  # Pass the generated guidelines
         )
         
-        # Call the LLM API with appropriate parameters
-        response_text = call_llama_api(prompt_string, writing_style)
         normalized_response = normalize_json_response(response_text)
         
-        # Prepare the response data
+        # Prepare comprehensive response
         response_data = {
             "response": json.dumps(normalized_response, ensure_ascii=False),
             "corrections": processed_prompt.corrections_made if processed_prompt.corrections_made else None,
@@ -672,13 +904,17 @@ def process_prompt_enhancement(prompt: str, ai_type: str, writing_style: str, pr
                 "ai_type": ai_type,
                 "style": writing_style,
                 "analysis": analysis_data,
+                "guidelines_used": guidelines,  # Include guidelines in metadata
                 "token_count": processed_prompt.tokens
             }
         }
         
+        logger.debug("Successfully processed prompt with guidelines")
         return response_data, None
         
     except Exception as e:
+        logger.error(f"Error in prompt enhancement: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return None, f"Prompt processing error: {str(e)}"
 
 @app.route('/process', methods=['POST'])
