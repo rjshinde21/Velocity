@@ -21,6 +21,7 @@
   },
   "web_accessible_resources": [{
     "resources": [
+      "mixpanel.min.js",
       "src/velocity-inject.css",
       "assets/logo.png",
       "assets/logo.png"

@@ -1,6 +1,56 @@
 let ports = [];
 let injectedTabs = new Set();
 let authState = null; // Store auth state in memory
+let eventQueue = [];
+const MIXPANEL_TOKEN = "48a67766d0bb1b3399a4f956da9c52da";
+const MIXPANEL_API_URL = "https://api-js.mixpanel.com/track/?verbose=1&ip=1&data=";
+function encodeData(data) {
+  return btoa(JSON.stringify(data));
+}
+
+
+function sendToMixpanel(event) {
+  const data = {
+      event: event.name,
+      properties: {
+          ...event.properties,
+          token: MIXPANEL_TOKEN,
+          time: Date.now(),
+          distinct_id: 'anonymous', // Or use actual user ID if available
+          $insert_id: Date.now().toString(), // Ensure event uniqueness
+          $os: navigator.platform,
+          $browser: 'Chrome',
+          $browser_version: /Chrome\/([0-9.]+)/.exec(navigator.userAgent)[1],
+          mp_lib: 'chrome-extension'
+      }
+  };
+
+  const encodedData = encodeData(data);
+  const url = MIXPANEL_API_URL + encodedData;
+
+  fetch(url, {
+      method: 'GET',
+      mode: 'no-cors'
+  })
+  .then(() => {
+      // Also send to debug endpoint to verify
+      fetch(`https://api-js.mixpanel.com/track/?verbose=1&data=${encodedData}`)
+          .then(response => response.json())
+          .then(data => {
+              console.log('Mixpanel debug response:', data);
+          })
+          .catch(error => {
+              console.error('Debug endpoint error:', error);
+          });
+          
+      console.log('Event sent to Mixpanel:', event.name, 'with properties:', event.properties);
+  })
+  .catch(error => {
+      console.error('Mixpanel tracking error:', error);
+  });
+}
+
+
 const SUPPORTED_PLATFORMS = {
   chatgpt: {
     urlPattern: /^https:\/\/chatgpt\.com/,
@@ -122,8 +172,7 @@ async function checkUserTokens(token, userId) {
   }
 }
 
-  
-  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && 
         tab.url?.startsWith('https://thinkvelocity.in/')) {
       chrome.scripting.executeScript({
@@ -132,9 +181,7 @@ async function checkUserTokens(token, userId) {
       }).catch(error => console.error('Script injection error:', error));
     }
   });
-  
-  
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Received message:', message);
   
     if (message.type === 'AUTH_CHANGED') {
@@ -202,11 +249,24 @@ async function checkUserTokens(token, userId) {
       });
       return true; // Will respond asynchronously
     }
+    if (message.type === 'TRACK_EVENT') {
+        sendToMixpanel({
+          name: message.eventName,
+          properties: {
+              ...message.properties,
+              url: sender.tab?.url,
+              $browser: 'Chrome',
+              $browser_version: /Chrome\/([0-9.]+)/.exec(navigator.userAgent)[1],
+              mp_lib: 'chrome-extension'
+          }
+      });
+      sendResponse({ status: 'success' });
+  }
     // Always return true for asynchronous response
     return true;
   });
-  
-  
+
+
   // chrome.storage.onChanged.addListener(function(changes, namespace) {
   //     if (changes.token && changes.token.newValue) {
   //         chrome.action.setPopup({ popup: 'phase1.html' });

@@ -25,7 +25,8 @@ CORS(app, resources={
             "https://gamma.app/*",
             "https://app.runwayml.com/*",
             "https://thinkvelocity.in/*",
-            "http://localhost:*"
+            "http://localhost:*",
+            "chrome-extension://*"
         ],
         "methods": ["POST", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
@@ -310,9 +311,9 @@ def process_request():
             }
             response = jsonify(response_data)
             # Add CORS headers explicitly
-            response.headers.add('Access-Control-Allow-Origin', request.origin)
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-            response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+            # response.headers.add('Access-Control-Allow-Origin', request.origin)
+            # response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            # response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
 
             return jsonify(response_data)
         except Exception as e:
