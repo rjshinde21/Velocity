@@ -40,7 +40,7 @@ const HomeCards = () => {
             <img 
                   src={card.icon}
                   alt=""
-                  className="w-8 h-8 sm:w-10 sm:h-10 object-contain ml-6"
+                  className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-14 lg:h-14 object-contain ml-6"
                 />
               <div className="font-semibold flex items-center gap-3">
                 

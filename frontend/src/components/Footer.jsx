@@ -63,7 +63,7 @@ const Footer = ({ isLoggedIn }) => {
               {/* Social Icons */}
               <div className="flex gap-3 sm:gap-4
                 absolute bottom-1 right-0
-                sm:bottom-2 md:bottom-4 lg:bottom-6">
+                sm:bottom-2 md:bottom-4 lg:bottom-6 mr-10">
                 <a
                   href="https://www.instagram.com/totem.interactive?igsh=MXRscW14NDNwOGdtbA=="
                   className="hover:text-white transition-colors p-1.5 sm:p-2

@@ -237,7 +237,6 @@ const Carousel = ({ speed = 30000 }) => {
 
 
       {/* Backward scrolling section */}
-  // JSX Component
       <div className="inner1 overflow-hidden px-4">
         <div className="wrapper row1 flex">
           <section
@@ -322,11 +321,12 @@ const Carousel = ({ speed = 30000 }) => {
 
         {/* Bottom fade gradient for smoother transition */}
         <div
-          className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
+          className="absolute bottom-0 left-0 right-0 h-24 sm:h-28 md:h-32 lg:h-36 xl:h-40 pointer-events-none gradient-bottom"
           style={{
-            background: 'linear-gradient(to bottom, transparent, rgba(0, 138, 203, 0.3))'
+            background: 'linear-gradient(to bottom, transparent, rgba(0, 138, 203, 0.3))',
           }}
         />
+
       </div>
     </div>
   );

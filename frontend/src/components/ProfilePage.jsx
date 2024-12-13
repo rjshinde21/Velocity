@@ -383,89 +383,104 @@ const ProfilePage = ({ pricingRef }) => {
             </div>
 
             {/* Credits Section */}
-            <div className="w-full max-w-sm mx-auto px-4 py-4 sm:py-5">
-                <p className="text-[#ffffff]/80 font-[Inter] text-xs sm:text-sm mb-2 sm:mb-3">
-                    Credit Balance of today
-                </p>
-                <p className="pb-2 sm:pb-3 text-[#ffffff] font-[Inter] border-b border-[#ffffff]/30">
-                    <span className="text-2xl sm:text-3xl md:text-4xl">
-                        {(tokenInfo?.token_received || 0) - (tokenInfo?.tokens_used || 0)}
-                    </span>
-                    <span className="text-sm sm:text-base ml-2">Credits Left</span>
-                </p>
+            <div className="w-full max-w-sm mx-auto px-4 py-4 sm:py-5 credits-container">
+  <style jsx>{`
+    @media screen and (min-width: 712px) and (max-width: 1138px) {
+      .credits-container {
+        max-width: 450px !important;
+        padding: 1.5rem 2rem !important;
+      }
 
-                <p className="text-[#FFFFFF]/80 my-2 sm:my-3 italic font-normal font-[Inter] text-sm">
-                    Running out of daily credits?
-                </p>
+      .credits-title {
+        font-size: 0.875rem !important;
+        margin-bottom: 1rem !important;
+      }
 
-                {/* Buttons Section */}
-                <div className='flex flex-col sm:flex-row md:flex-col gap-4 sm:gap-6 md:gap-4 mt-4'>
-                    <button
-                        onClick={() => setIsTopUpModalOpen(true)}
-                        className="w-full flex justify-center items-center text-base sm:text-lg 
-          px-4 sm:px-6 md:px-8 py-3 sm:py-4 
-          text-[#BEBEBE] border border-[#F7AA1C] 
-          shadow-[0_0_9px_rgba(247,170,28,0.3)] 
-          transition-all duration-200 rounded-[35px] 
-          hover:shadow-[0_0_12px_rgba(247,170,28,0.7)]"
-                    >
-                        Top Up
-                    </button>
+      .credits-balance {
+        padding-bottom: 1rem !important;
+      }
 
-                    <ShareReferral userId={userId} authToken={authToken} />
+      .balance-amount {
+        font-size: 2.25rem !important;
+      }
 
-                    <button
-                        onClick={handleLogout}
-                        className="w-auto sm:w-fit md:w-auto flex justify-center items-center 
-    text-xs sm:text-sm 
-    px-4 sm:px-6 py-2 sm:py-2.5
-    text-[#ffffff]/30 border border-[#ffffff]/30 
-    transition-all duration-200 rounded-[35px] 
-    hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]"
-                    >
-                        Logout
-                    </button>
+      .balance-text {
+        font-size: 1rem !important;
+        margin-left: 0.75rem !important;
+      }
 
-                </div>
-            </div>
+      .credits-message {
+        margin: 1rem 0 !important;
+        font-size: 0.875rem !important;
+      }
+
+      .buttons-container {
+        margin-top: 1.5rem !important;
+        gap: 1.25rem !important;
+        flex-direction: column !important;
+      }
+
+      .top-up-button {
+        font-size: 1.125rem !important;
+        padding: 0.875rem 2rem !important;
+      }
+
+      .logout-button {
+        width: 100% !important;
+        font-size: 0.875rem !important;
+        padding: 0.75rem 1.5rem !important;
+      }
+    }
+  `}</style>
+
+  <p className="text-[#ffffff]/80 font-[Inter] text-xs sm:text-sm mb-2 sm:mb-3 credits-title">
+    Credit Balance of today
+  </p>
+  
+  <p className="pb-2 sm:pb-3 text-[#ffffff] font-[Inter] border-b border-[#ffffff]/30 credits-balance">
+    <span className="text-2xl sm:text-3xl md:text-4xl balance-amount">
+      {(tokenInfo?.token_received || 0) - (tokenInfo?.tokens_used || 0)}
+    </span>
+    <span className="text-sm sm:text-base ml-2 balance-text">Credits Left</span>
+  </p>
+
+  <p className="text-[#FFFFFF]/80 my-2 sm:my-3 italic font-normal font-[Inter] text-sm credits-message">
+    Running out of daily credits?
+  </p>
+
+  {/* Buttons Section */}
+  <div className='flex flex-col sm:flex-row md:flex-col gap-4 sm:gap-6 md:gap-4 mt-4 buttons-container'>
+    <button
+      onClick={() => setIsTopUpModalOpen(true)}
+      className="w-full flex justify-center items-center text-base sm:text-lg 
+        px-4 sm:px-6 md:px-8 py-3 sm:py-4 
+        text-[#BEBEBE] border border-[#F7AA1C] 
+        shadow-[0_0_9px_rgba(247,170,28,0.3)] 
+        transition-all duration-200 rounded-[35px] 
+        hover:shadow-[0_0_12px_rgba(247,170,28,0.7)]
+        top-up-button"
+    >
+      Top Up
+    </button>
+
+    <ShareReferral userId={userId} authToken={authToken} />
+
+    <button
+      onClick={handleLogout}
+      className="w-auto sm:w-fit md:w-auto flex justify-center items-center 
+        text-xs sm:text-sm 
+        px-4 sm:px-6 py-2 sm:py-2.5
+        text-[#ffffff]/30 border border-[#ffffff]/30 
+        transition-all duration-200 rounded-[35px] 
+        hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]
+        logout-button"
+    >
+      Logout
+    </button>
+  </div>
+</div>
         </div>
     );
-    // const TopUpModal = () => (
-    //     <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${isTopUpModalOpen ? '' : 'hidden'}`}>
-    //         <div className="bg-[#1C1C1C] rounded-lg p-6 w-96">
-    //             <h2 className="text-white text-xl mb-4">Top Up Tokens</h2>
-    //             <div className="mb-4">
-    //                 <label className="text-white text-sm mb-2 block">Select Amount (INR)</label>
-    //                 <select 
-    //                     value={topUpAmount}
-    //                     onChange={(e) => setTopUpAmount(Number(e.target.value))}
-    //                     className="w-full bg-[#2C2C2C] text-white rounded px-3 py-2"
-    //                 >
-    //                     <option value="100">100 Tokens - ₹100</option>
-    //                     <option value="500">500 Tokens - ₹500</option>
-    //                     <option value="1000">1000 Tokens - ₹1000</option>
-    //                     <option value="2000">2000 Tokens - ₹2000</option>
-    //                 </select>
-    //             </div>
-    //             <div className="flex justify-end gap-3">
-    //                 <button 
-    //                     onClick={() => setIsTopUpModalOpen(false)}
-    //                     className="px-4 py-2 text-white border border-gray-600 rounded hover:bg-gray-700"
-    //                 >
-    //                     Cancel
-    //                 </button>
-    //                 <button 
-    //                     onClick={handlePayment}
-    //                     className="px-4 py-2 bg-[#F7AA1C] text-white rounded hover:bg-[#d89116]"
-    //                 >
-    //                     Proceed to Pay
-    //                 </button>
-    //             </div>
-    //         </div>
-    //     </div>
-    // );
-
-
 
     return (
         <div className="flex flex-col md:flex h-screen w-screen overflow-x-hidden">

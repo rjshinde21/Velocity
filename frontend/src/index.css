@@ -400,3 +400,17 @@ button:hover .chevron-icon {
     height: 13rem;
   }
 }
+
+@media screen and (min-width: 712px) and (max-width: 1138px) {
+  .gradient-bottom {
+    bottom: 6rem !important; /* bottom-20 in Tailwind */
+    height: 8rem !important; /* h-32 in Tailwind */
+  }
+}
+
+@media screen and (min-width: 853px) and (max-width: 1280px) {
+  .gradient-bottom {
+    bottom: 0rem !important; /* bottom-20 in Tailwind */
+    height: 8rem !important; /* h-32 in Tailwind */
+  }
+}
