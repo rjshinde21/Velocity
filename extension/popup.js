@@ -2,7 +2,13 @@ let userId= "";
 let token = "";
 let selectedStyle = null; // Default value
 let selectedPlatform = null;   // Default value
+
 const MIXPANEL_TOKEN = '48a67766d0bb1b3399a4f956da9c52da';
+let creditRates = {
+  basic_prompt: 2,
+  style_prompt: 3,
+  platform: 2
+};
 function initMixpanel() {
   try {
       if (typeof mixpanel !== 'undefined') {
@@ -12,9 +18,7 @@ function initMixpanel() {
           });
           
           // Track extension open
-          trackEvent('Extension Opened', {
-              location: 'Extension'
-          });
+          trackEvent('Extension Opened');
           
           console.log('Mixpanel initialized successfully');
       } else {
@@ -24,6 +28,52 @@ function initMixpanel() {
       console.error('Error initializing Mixpanel:', error);
   }
 }
+async function fetchCreditRates() {
+  try {
+    const response = await fetch(`https://thinkvelocity.in/api/api/credit/credits`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+      const responseData = await response.json();
+      responseData.data.forEach(item => {
+        creditRates[item.feature] = item.credits;
+    });
+    updateCreditDisplay();
+  } catch (error) {
+      console.error('Error fetching credit rates:', error);
+  }
+}
+function updateCreditDisplay() {
+  console.log("update credit display called");
+  let totalCredits = 0;
+  const selectedPlatform = getSelectedPlatform();
+  const selectedStyle = getSelectedStyle();
+  console.log("selected platform:"+selectedPlatform + "selected style:"+selectedStyle);
+  // Add basic prompt cost always
+  totalCredits += creditRates.basic_prompt || 0;
+
+  // Add style cost if selected
+  if (selectedStyle && selectedStyle !== 'default') {
+      totalCredits += creditRates.style_prompt || 0;
+  }
+
+  // Add platform cost if selected
+  if (selectedPlatform && selectedPlatform !== 'default') {
+      totalCredits += creditRates.platform || 0;
+  }
+
+  // Update the display in the button
+  const creditDisplay = document.querySelector('#creditAmount');
+  if (creditDisplay) {
+      creditDisplay.textContent = totalCredits;
+  }
+}
+
+
+
 function trackEvent(eventName, properties = {}) {
   try {
       if (typeof mixpanel !== 'undefined') {
@@ -71,6 +121,8 @@ function addUnselectCapability() {
   document.querySelectorAll('.button-group input[type="radio"]').forEach(input => {
     const existingHandler = input.onclick;
     input.onclick = async function(e) {
+      console.log("style toggled");
+      updateCreditDisplay();
       if (this.checked && this.dataset.wasChecked === 'true') {
         this.checked = false;
         this.dataset.wasChecked = 'false';
@@ -93,6 +145,8 @@ function addUnselectCapability() {
   document.querySelectorAll('.radio-group input[type="radio"]').forEach(input => {
     const existingHandler = input.onclick;
     input.onclick = async function(e) {
+      console.log("platform toggled");
+      updateCreditDisplay();
       if (this.checked && this.dataset.wasChecked === 'true') {
         this.checked = false;
         this.dataset.wasChecked = 'false';
@@ -265,10 +319,20 @@ function showError(message) {
   
   // Create error div with styling
   const errorDiv = document.createElement('div');
-  errorDiv.className = 'error-message bg-black/40 rounded-2xl border border-red-500 p-4 mb-4';
+  errorDiv.className = 'error-message rounded-2xl border border-red-500 p-4 mb-4';
   errorDiv.style.color = 'white';
   errorDiv.style.textAlign = 'center';
-  
+  errorDiv.style.cssText = `
+    color: white;
+    text-align: center;
+    width: 100%;              /* Set width to 90% of parent */
+    max-width: 640px;        /* Maximum width */
+    margin-left: auto;       /* Center horizontally */
+    margin-right: auto;      /* Center horizontally */
+    box-sizing: border-box;  /* Include padding in width */
+    background: rgba(0, 0, 0, 0.4);
+  `;
+
   // Create error content
   const errorContent = document.createElement('div');
   errorContent.className = 'flex items-center justify-center gap-2';
@@ -291,6 +355,15 @@ function showError(message) {
   const responseDiv = document.getElementById('response');
   if (responseDiv) {
     responseDiv.innerHTML = '';
+    responseDiv.style.cssText = `
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 16px;
+    box-sizing: border-box;
+    background: transparent !important; /* Force remove any background */
+  `;
     responseDiv.appendChild(errorDiv);
   }
   
@@ -307,6 +380,7 @@ function showError(message) {
   }
 }
 document.addEventListener('DOMContentLoaded', () => {
+  
   // Check current auth state
   chrome.storage.local.get(['userId','token','isAuthenticated', 'userName', 'userEmail'], (data) => {
     if (data.userEmail) {
@@ -322,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log("user Id:" + userId);
       updateCreditDisplay();
       updateHeaderUI();
-
+      fetchCreditRates();
 
       //enableFeatures();
     } else {
@@ -333,9 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.tabs.create({ url: 'https://thinkvelocity.in/login' });
         
         // If you're using Mixpanel, track this event
-        trackEvent('Login Button Clicked', {
-          location: 'Extension'
-      });
+        trackEvent('Login Button Clicked');
       
     });
       // Disable extension features
@@ -370,7 +442,11 @@ async function sendRequest() {
     const promptInput = document.getElementById('promptInput');
     const prompt = promptInput.value.trim();
     const CHAR_LIMIT = 1100;
-
+    const valid = await verifyAndRecordFeatures();
+    if(!valid)
+    {
+      return;
+    }
     if (!prompt) {
       showError('Please enter a prompt text');
       return;
@@ -380,7 +456,8 @@ async function sendRequest() {
         error: 'Prompt Too Long',
         promptLength: prompt.length,
         platform: selectedPlatform,
-        style: selectedStyle
+        style: selectedStyle,
+        location:"Extension"
       });
 
       showError(`Input too long. Please keep your text under ${CHAR_LIMIT} characters.`);
@@ -412,8 +489,12 @@ async function sendRequest() {
       throw new Error(response.status === 500
         ? `Server error (500): ${await response.text()}`
         : `Server returned ${response.status}: ${await response.text()}`);
-    }
-    trackEvent('Response Generated');
+    } 
+    trackEvent('Response Generated',
+      {
+        location:"Extension"
+      }
+    );
     const data = await response.json();
     if (data.error) {
       throw new Error(data.error);
@@ -445,7 +526,8 @@ async function sendRequest() {
     trackEvent('Generate Error', {
       error: error.message,
       platform: selectedPlatform,
-      style: selectedStyle
+      style: selectedStyle,
+      location:"Extension"
     });
     console.error('Request failed:', error);
     showError(`Error: ${error.message}`);
@@ -642,6 +724,11 @@ function handleParsedResponse(parsedResponse) {
       // Add copy functionality
       copyButton.addEventListener('click', async () => {
         try {
+            trackEvent("Copied Prompt",
+              {
+                type: "Generated"
+              }
+            );
             const textToCopy = typeof promptObj === 'string' ? promptObj : promptObj.prompt;
             const userId = localStorage.getItem('userId');
             const selectedAIType = getSelectedRadioValue();
@@ -766,36 +853,36 @@ function handleParsedResponse(parsedResponse) {
     adjustPopupSize();
   }
 }
-function toggleEnhanceButton(enabled) {
-  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-    chrome.tabs.sendMessage(tabs[0].id, {
-      action: 'toggleEnhanceButton',
-      enabled: enabled
-    });
-  });
-}
+// function toggleEnhanceButton(enabled) {
+//   chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+//     chrome.tabs.sendMessage(tabs[0].id, {
+//       action: 'toggleEnhanceButton',
+//       enabled: enabled
+//     });
+//   });
+// }
 
 
 // In popup.js
-function updateTabsWithState(isEnabled) {
-  chrome.tabs.query({}, (tabs) => {
-    tabs.forEach(tab => {
-      // First try to inject the content script if it's not already there
-      chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['content-script.js']
-      }).then(() => {
-        // After ensuring the content script is there, send the message
-        return chrome.tabs.sendMessage(tab.id, {
-          action: 'toggleEnhanceButton',
-          enabled: isEnabled
-        });
-      }).catch(err => {
-        console.log(`Could not update tab ${tab.id}:`, err);
-      });
-    });
-  });
-}
+// function updateTabsWithState(isEnabled) {
+//   chrome.tabs.query({}, (tabs) => {
+//     tabs.forEach(tab => {
+//       // First try to inject the content script if it's not already there
+//       chrome.scripting.executeScript({
+//         target: { tabId: tab.id },
+//         files: ['content-script.js']
+//       }).then(() => {
+//         // After ensuring the content script is there, send the message
+//         return chrome.tabs.sendMessage(tab.id, {
+//           action: 'toggleEnhanceButton',
+//           enabled: isEnabled
+//         });
+//       }).catch(err => {
+//         console.log(`Could not update tab ${tab.id}:`, err);
+//       });
+//     });
+//   });
+// }
 
 
 function initializeRadioGroup() {
@@ -889,7 +976,7 @@ function updateEnhanceParameters() {
 
 
 
-function initializeEnhanceToggle() {
+async function initializeEnhanceToggle() {
   const toggle = document.getElementById('enhanceToggle');
   if (!toggle) {
     console.error('Toggle element not found');
@@ -908,15 +995,29 @@ function initializeEnhanceToggle() {
   });
   // Handle toggle changes
   toggle.addEventListener('change', async (event) => {
+        const tokenResponse = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+    const tokenData = await tokenResponse.json();
+    const availableTokens = tokenData.data.token_received - tokenData.data.tokens_used;
     const isEnabled = event.target.checked;
+    if(availableTokens>0){
     console.log("called toggele enhanced button:"+isEnabled);
     trackEvent('EnhanceButtonToggle', {
       enabled:isEnabled
     });
+  }
+  else{
+    toggle.checked = false;
+    showError('Not enough credits available. Please top up your credits.');
+  }
     try {
       // Save state
-      await chrome.storage.local.set({ 'enhanceButtonEnabled': isEnabled });
-      updateActiveTab();
+      await chrome.storage.local.set({'enhanceButtonEnabled': isEnabled });
+      updateActiveTab(isEnabled);
       // Update parameters including the new enabled state
       updateEnhanceParameters();
       // Notify background script to update tabs
@@ -947,7 +1048,7 @@ function cleanupEventListeners() {
   });
 }
 
-function updateActiveTab(isEnabled) {
+async function updateActiveTab(isEnabled) {
   console.log(":called");
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const activeTab = tabs[0];
@@ -971,28 +1072,36 @@ function updateActiveTab(isEnabled) {
       });
       console.log("reached here");
       // Then send the toggle message
-      await chrome.tabs.sendMessage(activeTab.id, {
-        action: 'toggleEnhanceButton',
+      const response = await chrome.tabs.sendMessage(activeTab.id, {
+        action: 'updateEnhanceParameters',
+        platform: getSelectedPlatform(),
+        style: selectedStyle,
         enabled: isEnabled
       });
-
+  
+      console.log("response receieved:"+response);
     } catch (error) {
-      console.log('Could not update tab:', error.message);
-    }
+      console.error('Error toggling enhance button:', error);
+      // Show error in popup UI
+      //const errorMessage = document.getElementById('error-message') || createErrorElement();
+      showError("Failed to communicate with the page. Please try again.");
+      // errorMessage.textContent = 'Failed to communicate with the page. Please try again.';
+      // errorMessage.style.display = 'block';
+      }
   });
 }
-function updateAllTabs(isEnabled) {
-  chrome.tabs.query({}, (tabs) => {
-    tabs.forEach(tab => {
-      chrome.tabs.sendMessage(tab.id, {
-        action: 'toggleEnhanceButton',
-        enabled: isEnabled
-      }).catch(err => {
-        console.log(`Could not send message to tab ${tab.id}:`, err);
-      });
-    });
-  });
-}
+// function updateAllTabs(isEnabled) {
+//   chrome.tabs.query({}, (tabs) => {
+//     tabs.forEach(tab => {
+//       chrome.tabs.sendMessage(tab.id, {
+//         action: 'toggleEnhanceButton',
+//         enabled: isEnabled
+//       }).catch(err => {
+//         console.log(`Could not send message to tab ${tab.id}:`, err);
+//       });
+//     });
+//   });
+// }
 function addButtonToTextAreas() {
   const textAreas = document.querySelectorAll('textarea');
   textAreas.forEach(textArea => {
@@ -1764,7 +1873,13 @@ async function verifyAndRecordFeatures() {
 
     // Check if enough tokens are available
     if (availableTokens < requiredTokens) {
-      showError('Not enough tokens available. Please top up your credits.');
+      trackEvent("Out of Tokens",
+        {
+          availableTokens:availableTokens,
+          requiredTokens:requiredTokens
+        }
+      )
+      showError('Not enough credits available. Please top up your credits.');
       return false;
     }
 
@@ -1892,12 +2007,15 @@ document.addEventListener('DOMContentLoaded', function () {
   
   copyButton.addEventListener('click', function () {
       const textToCopy = textarea.value;
-      
       if (!textToCopy) {
-          alert('Please enter text to copy');
+          showError('Please enter text to copy');
           return;
       }
-      
+      trackEvent("Copied Prompt",
+        {
+          type:"Original"
+        }
+      );
       // Copy the text to clipboard
       navigator.clipboard.writeText(textToCopy)
           .then(() => {

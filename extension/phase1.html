@@ -566,10 +566,11 @@ color: #C9C9C9;
         padding: 10px 20px;
         text-align: center;
         margin-bottom: 20px;
-        max-width: 150px;
+        max-width: 800px;
+        width:200px;
         /*margin-top: 3%;*/
         /* display: block; */
-        width: calc(100% - 20px);
+        /*width: calc(100% - 20px);*/
         font-size: 16px;
         cursor: pointer;
         transition: all 0.3s ease;
@@ -1028,7 +1029,7 @@ color: #C9C9C9;
     <div class="premium-enhance-content">
       <h3 class="premium-enhance-text">Toggle Enhance Button</h3>
       <label class="premium-toggle">
-        <input type="checkbox" id="enhanceToggle" class="toggle-input" checked>
+        <input type="checkbox" id="enhanceToggle" class="toggle-input">
         <div class="toggle-slider"></div>
       </label>
     </div>
@@ -1148,11 +1149,17 @@ color: #C9C9C9;
 
   </div> -->
   <div class="flex justify-center mt-6">
-    <button id="sendButton" class="generate-button flex justify-center items-center w-full"> <!-- Added width for full button -->
-      <img id="generateIcon" src="./assets/Rectangle 32.png" alt="Generate" class="ml-2" />
-      <span class="mx-auto">Generate</span> <!-- Center text -->
+    <button id="sendButton" class="generate-button flex items-center justify-between w-[400px] px-4">
+        <img id="generateIcon" src="./assets/Rectangle 32.png" alt="Generate" class="ml-2" />
+        <span>Generate</span>
+        <div class="flex items-center gap-2">
+            <img src="./assets/coin.png" alt="Coin" class="h-4 w-4" />
+            <span id="creditAmount" class="text-sm">0</span>
+        </div>
     </button>
-  </div>   
+</div>
+
+
   <!-- <div class="w-full bg-[#00141C] flex items-center justify-between text-white text-lg font-normal font-amenti h-[60px] relative px-4"> -->
 
  
