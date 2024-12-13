@@ -2,7 +2,8 @@ let userId= "";
 let token = "";
 let selectedStyle = null; // Default value
 let selectedPlatform = null;   // Default value
-
+let hasText = false;  // Track if text exists
+let currentLength;
 const MIXPANEL_TOKEN = '48a67766d0bb1b3399a4f956da9c52da';
 let creditRates = {
   basic_prompt: 2,
@@ -41,20 +42,21 @@ async function fetchCreditRates() {
       responseData.data.forEach(item => {
         creditRates[item.feature] = item.credits;
     });
-    updateCreditDisplay();
+    updateCalculatedCredits();
   } catch (error) {
       console.error('Error fetching credit rates:', error);
   }
 }
-function updateCreditDisplay() {
+function updateCalculatedCredits() {
   console.log("update credit display called");
   let totalCredits = 0;
   const selectedPlatform = getSelectedPlatform();
   const selectedStyle = getSelectedStyle();
   console.log("selected platform:"+selectedPlatform + "selected style:"+selectedStyle);
   // Add basic prompt cost always
+  if(currentLength>0){
   totalCredits += creditRates.basic_prompt || 0;
-
+  }
   // Add style cost if selected
   if (selectedStyle && selectedStyle !== 'default') {
       totalCredits += creditRates.style_prompt || 0;
@@ -122,7 +124,7 @@ function addUnselectCapability() {
     const existingHandler = input.onclick;
     input.onclick = async function(e) {
       console.log("style toggled");
-      updateCreditDisplay();
+      
       if (this.checked && this.dataset.wasChecked === 'true') {
         this.checked = false;
         this.dataset.wasChecked = 'false';
@@ -136,6 +138,16 @@ function addUnselectCapability() {
         selectedStyle = this.id;
         await chrome.storage.local.set({ selectedStyle });
       }
+      //updateCalculatedCredits();
+      // Call updateCreditDisplay after state has been updated
+      setTimeout(() => {
+        if (typeof updateCalculatedCredits === 'function') {
+          updateCalculatedCredits();
+          console.log('Credits updated after style change:', selectedStyle);
+        } else {
+          console.error('updateCreditDisplay is not defined');
+        }
+      }, 0);
       
       if (existingHandler) existingHandler.call(this, e);
     };
@@ -146,7 +158,7 @@ function addUnselectCapability() {
     const existingHandler = input.onclick;
     input.onclick = async function(e) {
       console.log("platform toggled");
-      updateCreditDisplay();
+      
       if (this.checked && this.dataset.wasChecked === 'true') {
         this.checked = false;
         this.dataset.wasChecked = 'false';
@@ -161,11 +173,22 @@ function addUnselectCapability() {
         await chrome.storage.local.set({ selectedPlatform });
       }
       
+      // Call updateCreditDisplay after state has been updated
+      setTimeout(() => {
+        if (typeof updateCalculatedCredits === 'function') {
+          updateCalculatedCredits();
+          console.log('Credits updated after platform change:', selectedPlatform);
+        } else {
+          console.error('updateCreditDisplay is not defined');
+        }
+      }, 0);
+      
       if (existingHandler) existingHandler.call(this, e);
       if (typeof updateEnhanceParameters === 'function') updateEnhanceParameters();
     };
   });
 }
+
 
 
 async function recordFeatureUsage(featureId) {
@@ -1180,7 +1203,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Update character count and check limit
   function updateCharCount(input) {
-    const currentLength = input.value.length;
+    currentLength = input.value.length;
     charCounter.textContent = `${currentLength}/${CHAR_LIMIT}`;
     
     if (currentLength > CHAR_LIMIT) {
@@ -1199,7 +1222,15 @@ document.addEventListener('DOMContentLoaded', function () {
   // Add input and paste event listeners
   promptInput.addEventListener('input', function() {
     updateCharCount(this);
-  });
+    updateCalculatedCredits();
+    // console.log("heyyy");
+    // const wasEmpty = !hasText;
+    // hasText = this.value.length > 0;
+    
+    // if (wasEmpty !== hasText) {
+    //     updateCalculatedCredits();
+    // }
+   });
 
   promptInput.addEventListener('paste', function(e) {
     const pastedText = e.clipboardData.getData('text');
@@ -1970,6 +2001,7 @@ function resetInterface() {
   }
   
   // Update credits display
+  updateCalculatedCredits();
   updateCreditDisplay();
 }
 

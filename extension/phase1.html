@@ -17,6 +17,7 @@
     cursor: pointer;
 }
 
+
  #logoutButton {
     background: transparent;
     border: none;
@@ -133,19 +134,26 @@
         background-color: #008acb;
         border-radius: 4px;
       }
-      .title1{
-height: 50px;
-display: flex;
-justify-content: center;
-background-color: #005F7F;
+      .title1 {
+    height: 50px;
+    display: flex;
+    justify-content: space-between; /* This spreads items to edges */
+    align-items: center;
+    background-color: #005F7F;
+    font-weight: lighter;
+    font-size: large;
+    color: #C9C9C9;
+    padding: 0 24px; /* Add padding on both sides */
+    width: 100%; /* Ensure full width */
+}
+.title1 > div:last-child {
+    display: flex;
+    align-items: center;
+    gap: 16px; /* Space between buttons */
+    margin-right: 8px; /* Add some right margin */
+}
 
-font-weight: lighter;
-align-items: center;
-font-size: large;
-color: #C9C9C9;
-/* font-family: 'Inter'; */
 
-      }
       .title{
 height: 50px;
 display: flex;
@@ -780,14 +788,16 @@ color: #C9C9C9;
     font-style: italic;
     background: linear-gradient(to bottom, #008ACB4D, #6ACFFF4D);
     border: 1px solid #008ACB;
-    margin: 10px 15px 5px 0;
-    position: absolute; /* Position relative to the nearest positioned ancestor */
-    top: 0; /* Aligns to the top */
-    right: 0; /* Aligns to the left */
+    margin: 0px;
+    /* Remove position absolute */
 }
-.mleft{
-  margin-left: 45px;
+
+.mleft {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between icon and text */
 }
+
 
 .mleft img {
     margin-right: 6px; /* Adds space between the image and text */
@@ -828,9 +838,8 @@ color: #C9C9C9;
     font-style: italic;
     border: 1px solid #F7AA1C;
     background: linear-gradient(to bottom, #f7aa1c4d, #f1d49f4d);
-    margin: 5px 5px;
-    position: relative; /* Enable relative positioning */
-    left: 24px; /* Move 10px to the right */
+    margin: 0px;
+    /* Remove position relative and left */
 }
 
 #editButton:hover {
@@ -1004,14 +1013,14 @@ color: #C9C9C9;
   </style>
 </head>
 <body>
-  <div class="flex title1 justify-between items-center" style="background-color: #00141D;">
-    <div class="mleft flex items-center">
+  <div class="title1 flex justify-between items-center" style="background-color: #00141D;">
+    <div class="mleft flex items-center pl-0">
         <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto">
-        <span class="text-white ml-4">Velocity</span>
+        <span class="text-white ml-0">Velocity</span>
     </div>
     
-    <div class="flex items-center gap-4">
-        <button id="editButton" class="flex items-center gap-2 text-white" style="display: none;">
+    <div class="flex items-center gap-4 pr-4">
+        <button id="editButton" class="flex items-center gap-2 text-white">
             <span><img class="coinicon" src="./assets/coin.png" alt="coin"></span>
             <span class="credit-amount">0</span>
         </button>
@@ -1022,6 +1031,8 @@ color: #C9C9C9;
         </button>
     </div>
 </div>
+
+
 
 
 <div class="premium-enhance-wrapper">
