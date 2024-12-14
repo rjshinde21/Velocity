@@ -7,7 +7,7 @@ import logging
 from typing import Dict, Any
 from logging import Logger
 from llamaapi import LlamaAPI
-
+import re
 app = Flask(__name__)
 CORS(app, resources={
     r"/process": {
@@ -42,6 +42,170 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize Llama API: {str(e)}")
     llama = None
+class ResponseHandler:
+    def __init__(self, logger):
+        self.logger = logger
+    def get_parameter_values(self, parameters: Dict) -> Dict:
+        """Extract just the parameter values for easy access."""
+        try:
+            if not parameters or 'value' not in parameters:
+                return self.get_default_parameter_values()
+                
+            param_dict = parameters['value']
+            return {
+                'temperature': param_dict['temperature']['value'],
+                'top_p': param_dict['top_p']['value'],
+                'presence_penalty': param_dict['presence_penalty']['value'],
+                'frequency_penalty': param_dict['frequency_penalty']['value']
+            }
+        except Exception as e:
+            self.logger.error(f"Error extracting parameter values: {str(e)}")
+            return self.get_default_parameter_values()
+    
+    def get_default_parameter_values(self) -> Dict:
+        """Get default parameter values."""
+        return {
+            'temperature': 0.5,
+            'top_p': 0.8,
+            'presence_penalty': 0.0,
+            'frequency_penalty': 0.0
+        }
+    def clean_json_string(self, content: str) -> str:
+        """Clean and fix JSON string from Llama API."""
+        try:
+            if not isinstance(content, str):
+                content = json.dumps(content)
+            
+            # Remove any trailing commas before closing braces
+            content = re.sub(r',(\s*})', r'\1', content)
+            # Add missing commas between objects
+            content = re.sub(r'}(\s*){', r'},\1{', content)
+            # Remove multiple closing braces
+            content = re.sub(r'}}+', r'}', content)
+            # Ensure proper object closure
+            open_braces = content.count('{')
+            close_braces = content.count('}')
+            if open_braces > close_braces:
+                content += '}' * (open_braces - close_braces)
+                
+            # Validate the cleaned JSON
+            json.loads(content)
+            return content
+        except Exception as e:
+            self.logger.error(f"Error cleaning JSON string: {str(e)}")
+            return json.dumps(self.get_default_response())
+
+    def fix_parameter_structure(self, params: Dict) -> Dict:
+        """Fix the nested parameter structure from Llama API response."""
+        try:
+            # Define default parameters
+            fixed_params = {
+                "temperature": {"value": 0.5, "reasoning": "Default value for balanced output"},
+                "top_p": {"value": 0.8, "reasoning": "Default value for diverse sampling"},
+                "presence_penalty": {"value": 0.0, "reasoning": "Default value for neutral presence"},
+                "frequency_penalty": {"value": 0.0, "reasoning": "Default value for neutral frequency"}
+            }
+
+            if not params:
+                return {"value": fixed_params}
+
+            # Get the value, handling different structures
+            param_values = params.get('value', params)
+            
+            if isinstance(param_values, dict):
+                # Handle different parameter formats
+                for key, value in param_values.items():
+                    if isinstance(value, dict) and key in fixed_params:
+                        # Direct parameter object
+                        fixed_params[key] = value
+                    elif isinstance(value, dict) and any(k in value for k in fixed_params):
+                        # Nested parameter object
+                        for param_name, param_data in value.items():
+                            if param_name in fixed_params:
+                                fixed_params[param_name] = param_data
+            elif isinstance(param_values, list):
+                # Handle list format
+                for item in param_values:
+                    if isinstance(item, dict):
+                        for key, value in item.items():
+                            if key in fixed_params:
+                                fixed_params[key] = value
+
+            # Ensure all parameters have the correct structure
+            for key in fixed_params:
+                if not isinstance(fixed_params[key], dict) or 'value' not in fixed_params[key]:
+                    fixed_params[key] = {
+                        "value": fixed_params[key] if isinstance(fixed_params[key], (int, float)) else 0.0,
+                        "reasoning": "Converted to standard format"
+                    }
+
+            self.logger.info(f"Fixed parameters structure: {fixed_params}")
+            return {"value": fixed_params}
+
+        except Exception as e:
+            self.logger.error(f"Error fixing parameter structure: {str(e)}")
+            return {"value": {
+                "temperature": {"value": 0.5, "reasoning": "Default due to error"},
+                "top_p": {"value": 0.8, "reasoning": "Default due to error"},
+                "presence_penalty": {"value": 0.0, "reasoning": "Default due to error"},
+                "frequency_penalty": {"value": 0.0, "reasoning": "Default due to error"}
+            }}
+
+    def validate_and_fix_llama_response(self, content: str):
+        """Validate and fix JSON response from Llama API."""
+        try:
+            # Clean and fix JSON structure
+            cleaned_content = self.clean_json_string(content)
+            parsed_content = json.loads(cleaned_content)
+
+            # Handle if content is a list
+            if isinstance(parsed_content, list):
+                if len(parsed_content) > 0:
+                    parsed_content = parsed_content[0]
+                else:
+                    raise ValueError("Empty response list from Llama API")
+
+            # Ensure required top-level keys exist
+            required_keys = ["request_analysis", "technical_assessment", "guidelines", "parameters"]
+            for key in required_keys:
+                if key not in parsed_content:
+                    parsed_content[key] = {}
+
+            # Fix parameters structure
+            parsed_content["parameters"] = self.fix_parameter_structure(parsed_content.get("parameters", {}))
+            
+            # Add easy access parameters
+            parsed_content["parameter_values"] = self.get_parameter_values(parsed_content["parameters"])
+
+
+            # Log the fixed parameters
+            self.logger.info("Using optimized parameters for prompt enhancement:")
+            self.logger.info(f"value: {parsed_content['parameters']['value']}")
+
+            return parsed_content
+
+        except json.JSONDecodeError as e:
+            self.logger.error(f"JSON validation failed in Llama response: {str(e)}")
+            return self.get_default_response()
+        except Exception as e:
+            self.logger.error(f"Error processing Llama response: {str(e)}")
+            return self.get_default_response()
+
+    def get_default_response(self) -> Dict:
+        """Return a default response structure when processing fails."""
+        return {
+            "request_analysis": {},
+            "technical_assessment": {},
+            "guidelines": "",
+            "parameters": {
+                "value": {
+                    "temperature": {"value": 0.5, "reasoning": "Default value"},
+                    "top_p": {"value": 0.8, "reasoning": "Default value"},
+                    "presence_penalty": {"value": 0.0, "reasoning": "Default value"},
+                    "frequency_penalty": {"value": 0.0, "reasoning": "Default value"}
+                }
+            }
+        }
 
 class PromptEnhancer:
     def __init__(self, logger: Logger):
@@ -342,68 +506,68 @@ Automated Analysis for: {prompt}
             "raw_analysis": {}
         }
 
-    def enhance_prompt(self, prompt: str, guidelines: str, parameters: Dict[str, float], 
-                      style: str, ai_type: str) -> Dict[str, Any]:
+    def enhance_prompt(self, prompt: str, guidelines: str, parameters: Dict, **kwargs) -> Dict:
         """
         Second API call: Generate enhanced versions of the prompt using the analysis and parameters.
         Uses the parameters and guidelines from the first call to create optimized prompt versions.
         """
         try:
+            # Extract parameters with proper fallback
+            param_values = self._extract_llama_parameters(parameters)
+            
+            style = kwargs.get('style', 'professional')
+            ai_type = kwargs.get('ai_type', 'general')
+
             # Create a system message that focuses on prompt enhancement
             system_message = f"""You are a prompt optimization expert specializing in {ai_type} content.
-Your task is to enhance the given prompt based on the provided guidelines and analysis.
-Generate multiple versions focusing on different aspects of the implementation."""
+                                Your task is to enhance the given prompt based on the provided guidelines and analysis.
+                                Generate multiple versions focusing on different aspects of the implementation."""
 
-            # Create a structured user message that includes all context
+                                # Create a structured user message that includes all context
             user_message = f"""Original Request: "{prompt}"
-Writing Style: {style}
+                                Writing Style: {style}
 
-Analysis and Guidelines:
-{guidelines}
+                                Analysis and Guidelines:
+                                {guidelines}
 
-Generate three distinct versions of this prompt, each focusing on a different aspect.
-Return your response in this exact JSON format:
+                                Generate three distinct versions of this prompt, each focusing on a different aspect.
+                                Return your response in this exact JSON format:
 
-{{
-    "prompts": [
-        {{
-            "prompt": "[your response]",
-            
-        }},
-        {{
-             "prompt": "[your response]",
-            
-        }},
-        {{
-             "prompt": "[your response]",
-            
-        }}
-    ]
-}}
-Important:
-- Each version should target the same goal but with different emphasis
-- Maintain consistency with {style} style throughout
-- Ensure all versions fully address the original requirements
-- Keep the context of {ai_type} type in all versions"""
+                                {{
+                                    "prompts": [
+                                        {{
+                                            "prompt": "[your response]",
+                                        }},
+                                        {{
+                                            "prompt": "[your response]",
+                                        }},
+                                        {{
+                                            "prompt": "[your response]",
+                                        }}
+                                    ]
+                                }}
+                                Important:
+                                - Each version should target the same goal but with different emphasis
+                                - Maintain consistency with {style} style throughout
+                                - Ensure all versions fully address the original requirements
+                                - Keep the context of {ai_type} type in all versions"""
 
-            # Log the parameters being used
+                                        # Log the parameters being used
             self.logger.info("Using optimized parameters for prompt enhancement:")
-            for param, value in parameters.items():
-                self.logger.info(f"{param}: {value}")
-
-            # Make the second API call using the optimized parameters
+            self.logger.info(f"Parameters: {param_values}")
+                # Make the API call using the extracted parameters
             response = llama.run({
-                "messages": [
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": user_message}
-                ],
-                "temperature": parameters["temperature"],
-                "top_p": parameters["top_p"],
-                "presence_penalty": parameters["presence_penalty"],
-                "frequency_penalty": parameters["frequency_penalty"],
-                "max_tokens": 2000,
-                "stream": False
-            })
+                                            "messages": [
+                                                {"role": "system", "content": system_message},
+                                                {"role": "user", "content": user_message}
+                                            ],
+                                            "temperature": float(param_values['temperature']),
+                                            "top_p": float(param_values['top_p']),
+                                            "presence_penalty": float(param_values['presence_penalty']),
+                                            "frequency_penalty": float(param_values['frequency_penalty']),
+                                            "max_tokens": 2000,
+                                            "stream": False
+                                        })                        
 
             # Extract and process the response
             content = response.json()['choices'][0]['message']['content']
@@ -427,6 +591,56 @@ Important:
         except Exception as e:
             self.logger.error(f"Prompt enhancement failed: {str(e)}")
             raise
+    def _extract_llama_parameters(self, parameters: Dict) -> Dict[str, float]:
+        """Safely extract parameters from any structure"""
+        try:
+            # Default values
+            default_params = {
+                'temperature': 0.7,
+                'top_p': 0.9,
+                'presence_penalty': 0.0,
+                'frequency_penalty': 0.0
+            }
+
+            if not parameters:
+                return default_params
+
+            # Try to extract from parameters['value'] structure
+            if 'value' in parameters:
+                param_dict = parameters['value']
+                extracted_params = {}
+                
+                for key in default_params:
+                    try:
+                        if key in param_dict and isinstance(param_dict[key], dict):
+                            value = param_dict[key].get('value', default_params[key])
+                            extracted_params[key] = float(value)
+                        else:
+                            extracted_params[key] = default_params[key]
+                    except (TypeError, ValueError):
+                        extracted_params[key] = default_params[key]
+                
+                return extracted_params
+
+            # Try to extract from direct parameters structure
+            extracted_params = {}
+            for key in default_params:
+                try:
+                    if key in parameters:
+                        value = parameters[key]
+                        if isinstance(value, dict):
+                            value = value.get('value', default_params[key])
+                        extracted_params[key] = float(value)
+                    else:
+                        extracted_params[key] = default_params[key]
+                except (TypeError, ValueError):
+                    extracted_params[key] = default_params[key]
+
+            return extracted_params
+
+        except Exception as e:
+            self.logger.error(f"Error extracting parameters: {e}")
+            return default_params
 
     def _generate_fallback_enhanced_prompts(self, prompt: str, style: str, ai_type: str) -> Dict[str, Any]:
         """Generate fallback enhanced prompts when the API response cannot be parsed"""
@@ -455,21 +669,23 @@ Important:
 def process_request():
     """
     Handle incoming requests for prompt enhancement.
-    Coordinates the two-step process of analysis and enhancement.
     """
     try:
         if not llama:
             return jsonify({"error": "Llama API not properly configured"}), 500
 
-        # Validate and parse the request data
+        # Initialize response handler
+        response_handler = ResponseHandler(logger)
+
+        # Validate incoming request
         data = request.form.get('data')
         if not data:
             return jsonify({"error": "No data provided"}), 400
-            
+
         try:
             data = json.loads(data)
-        except json.JSONDecodeError:
-            return jsonify({"error": "Invalid JSON in request data"}), 400
+        except json.JSONDecodeError as e:
+            return jsonify({"error": f"Invalid JSON in request: {str(e)}"}), 400
 
         if 'prompt' not in data:
             return jsonify({"error": "No prompt provided"}), 400
@@ -477,7 +693,6 @@ def process_request():
         # Initialize the enhancer
         enhancer = PromptEnhancer(logger)
         
-        # Get request parameters with defaults
         ai_type = data.get('AIType', 'descriptive')
         style = data.get('style', 'professional')
         single_prompt = data.get('singlePrompt', False)
@@ -488,43 +703,40 @@ def process_request():
         logger.debug(f"Style: {style}")
 
         try:
-            # Step 1: Generate guidelines and optimized parameters
-            logger.info(f"Generating guidelines for prompt: {data['prompt']}")
+            # Generate guidelines
             guideline_response = enhancer.generate_guidelines(
                 prompt=data['prompt'],
                 ai_type=ai_type,
                 style=style
             )
             
-            logger.info("Guidelines generated successfully")
-            logger.debug(f"Generated parameters: {guideline_response['parameters']}")
+            # Validate and fix Llama response before proceeding
+            fixed_response = response_handler.validate_and_fix_llama_response(guideline_response)
+            if not fixed_response:
+                raise ValueError("Failed to validate Llama API response")
 
-            # Step 2: Generate enhanced prompts using the guidelines and parameters
-            logger.info("Generating enhanced prompts")
+            # Continue with the enhanced response
             enhanced_response = enhancer.enhance_prompt(
                 prompt=data['prompt'],
-                guidelines=guideline_response['guidelines'],
-                parameters=guideline_response['parameters'],
+                guidelines=fixed_response['guidelines'],
+                parameters=fixed_response['parameters'],
                 style=style,
                 ai_type=ai_type
             )
 
-            # Handle single prompt flag
             if single_prompt and enhanced_response.get("prompts"):
                 enhanced_response["prompts"] = [enhanced_response["prompts"][0]]
 
-            # Prepare the final response
             response = {
                 "original_prompt": data['prompt'],
                 "response": enhanced_response,
-                "guidelines": guideline_response['guidelines'],
-                "parameters_used": guideline_response['parameters'],
-                "raw_analysis": guideline_response.get('raw_analysis', {}),
+                "guidelines": fixed_response['guidelines'],
+                "parameters_used": fixed_response['parameters'],
+                "raw_analysis": fixed_response.get('raw_analysis', {}),
                 "ai_type": ai_type,
                 "style": style
             }
 
-            logger.info("Request processed successfully")
             return jsonify(response)
 
         except Exception as e:
@@ -537,7 +749,7 @@ def process_request():
     except Exception as e:
         logger.error(f"Request error: {str(e)}")
         return jsonify({"error": str(e)}), 500
-    
+
 @app.route('/process', methods=['OPTIONS'])
 def handle_options():
     response = app.make_default_options_response()
