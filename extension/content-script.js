@@ -845,24 +845,39 @@ async function detectPlatform() {
       
       // Apply style transformation if valid
       const modifiedPrompt = styleTransform ? styleTransform.modifier(originalText) : originalText;
-  
+      const formData = new FormData();
+      const requestData = {
+        prompt: modifiedPrompt,
+        style: state.styleType,
+        AIType: state.platform,
+        singlePrompt: true
+      };
+      formData.append('data', JSON.stringify(requestData));
       const response = await fetch('https://thinkvelocity.in/python-api/process', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `data=${encodeURIComponent(JSON.stringify({
-          prompt: modifiedPrompt,
-          style: state.styleType,
-          AIType: state.platform,
-          singlePrompt: true
-        }))}`
+        body: formData,
       });
       console.log("raw response:"+response);
       
       //const response = {"prompts":[{"prompt":"Imagine a world where trial is not a test of guilt or innocence, but rather a ritual to awaken the hidden abilities of the accused. Design an immersive and surreal courtroom where the defendant's powers are revealed through an ancient dance, with each step unlocking a new dimension of their potential. The judge is an enigmatic being with the power to manipulate reality itself, using their gaze to guide the defendant through this transformative experience."},{"prompt":"Envision a futuristic city where trial has evolved into a high-stakes competition between rival factions vying for control. The defendants are advanced AI entities that have developed sentience, and their trials are broadcasted as spectacular events in zero-gravity arenas. Each faction must strategically deploy their unique technologies and cybernetic enhancements to outmaneuver and defeat their opponents in an intricate ballet of light, sound, and energy."},{"prompt":"In this post-apocalyptic wasteland, trial has become an ancient art form passed down through generations of survivors. The accused are presented before the 'Council of Elders', who evaluate their worthiness for membership in society by challenging them to create innovative solutions using scavenged materials from the ruins. As each member presents their creations, they must also navigate complex web-like puzzles that shift and adapt based on their successes or failures."}]}
       const data = await response.json();
-      console.log("response data"+data.response);
-      const parsedResponse = JSON.parse(data.response);
-     
+      console.dir("response data"+data.response);
+      const parsedResponse = data.response;
+      if (typeof parsedResponse === 'string') {
+        try {
+          prompts = JSON.parse(parsedResponse).prompts;
+          
+        } catch (e) {
+          // If it's not JSON, treat it as a single response
+          prompts = [{ prompt: parsedResponse }];
+        }
+      } else if (parsedResponse.prompts) {
+        prompts = parsedResponse.prompts;
+      } else if (Array.isArray(parsedResponse)) {
+        prompts = parsedResponse;
+      } else {
+        prompts = [{ prompt: String(parsedResponse) }];
+      }
       //const parsedResponse = response;
   
       if (!parsedResponse.prompts || !parsedResponse.prompts.length) {
@@ -875,7 +890,7 @@ async function detectPlatform() {
         }
       );
       const enhancedPrompt = parsedResponse.prompts[0].prompt;
-      
+      console.log("prompt length:"+parsedResponse.prompts.length);
       await saveResponseToHistory(
         enhancedPrompt, 
         lastSavedPromptId,
