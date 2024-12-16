@@ -490,42 +490,48 @@ For the specific case of "{prompt}", analyze the implementation requirements and
             if not isinstance(content, str):
                 content = json.dumps(content)
 
+            # Remove any leading text before JSON
+            json_start = content.find('{')
+            if json_start == -1:
+                raise ValueError("No JSON object found in content")
+            
+            content = content[json_start:]
+            
+            # Remove any trailing text after JSON
+            json_end = content.rfind('}') + 1
+            content = content[:json_end]
+
             # Remove any markdown code blocks
             content = re.sub(r'```(?:json)?\s*(.*?)\s*```', r'\1', content, flags=re.DOTALL)
             
+            # Fix trailing commas and ensure proper array closure
+            content = re.sub(r',(\s*})', r'\1', content)  # Remove comma before closing brace
+            content = re.sub(r',(\s*])', r'\1', content)  # Remove comma before closing bracket
+            
+            # Balance braces in array objects
+            # Find each array's opening and ensure proper closure
+            array_starts = [m.start() for m in re.finditer(r'\[', content)]
+            for start in array_starts:
+                # Find the corresponding end bracket
+                stack = []
+                end = start + 1
+                while end < len(content):
+                    if content[end] == '[':
+                        stack.append('[')
+                    elif content[end] == ']':
+                        if not stack:  # Found matching end bracket
+                            break
+                        stack.pop()
+                    end += 1
+                
+                # Check if the section before ] has proper object closure
+                section = content[start:end]
+                if section.count('{') > section.count('}'):
+                    # Add missing closing brace before ]
+                    content = content[:end] + '}' + content[end:]
+            
             # Normalize whitespace
             content = re.sub(r'\s+', ' ', content).strip()
-            
-            # Detailed debugging of content
-            self.logger.debug(f"Content length: {len(content)}")
-            self.logger.debug(f"First 50 characters: {repr(content[:50])}")
-            self.logger.debug(f"Last 50 characters: {repr(content[-50:])}")
-            
-            # Count and log braces
-            open_braces = content.count('{')
-            close_braces = content.count('}')
-            open_brackets = content.count('[')
-            close_brackets = content.count(']')
-            
-            self.logger.debug(f"Open braces: {open_braces}, Close braces: {close_braces}")
-            self.logger.debug(f"Open brackets: {open_brackets}, Close brackets: {close_brackets}")
-            
-            # More sophisticated brace and bracket balancing
-            if open_braces > close_braces:
-                content += '}' * (open_braces - close_braces)
-            elif close_braces > open_braces:
-                content = '{' * (close_braces - open_braces) + content
-            
-            if open_brackets > close_brackets:
-                content += ']' * (open_brackets - close_brackets)
-            elif close_brackets > open_brackets:
-                content = '[' * (close_brackets - open_brackets) + content
-            
-            # Specifically handle parameters structure
-            if '"parameters":' in content and '"value":' in content:
-                # Try to correct parameters structure
-                content = re.sub(r'"parameters":\s*\[\s*{', '"parameters":{"value":{', content)
-                content = re.sub(r'}]\s*}', '}}', content)
             
             try:
                 # Try to parse to validate JSON
@@ -550,20 +556,12 @@ For the specific case of "{prompt}", analyze the implementation requirements and
             except json.JSONDecodeError as e:
                 self.logger.error(f"JSON validation failed in cleaning: {str(e)}")
                 self.logger.debug(f"Failed content: {content}")
-                
-                # More aggressive cleaning for problematic JSON
-                content = re.sub(r',\s*(?=\]|\})', '', content)
-                
-                try:
-                    parsed = json.loads(content)
-                    return json.dumps(parsed, ensure_ascii=False)
-                except Exception as retry_error:
-                    self.logger.error(f"Final JSON parsing attempt failed: {retry_error}")
-                    raise
+                raise
         
         except Exception as e:
             self.logger.error(f"Error in content cleaning: {str(e)}")
             raise
+
 
 
     def _is_valid_json(self, content: str) -> bool:
@@ -776,10 +774,8 @@ Automated Analysis for: {prompt}
                 self.logger.error(f"Full response structure: {full_response}")
                 raise ValueError("Unable to extract response content from API")
 
-            # Clean and parse the response
-            cleaned_content = self._clean_json_content(content)
-            
             try:
+                cleaned_content = self._clean_json_content(content)
                 parsed_response = json.loads(cleaned_content)
                 
                 # Validate the response structure
@@ -796,16 +792,16 @@ Automated Analysis for: {prompt}
 
             except (json.JSONDecodeError, ValueError) as e:
                 self.logger.error(f"Failed to parse enhanced prompts: {e}")
+                self.logger.error(f"Failed content: {content}")
                 return self._generate_fallback_enhanced_prompts(prompt, style, ai_type)
 
         except Exception as e:
             self.logger.error(f"Prompt enhancement failed: {str(e)}")
-            # Log the full traceback
             import traceback
             self.logger.error(traceback.format_exc())
             
-            # Return fallback
-            return self._generate_fallback_enhanced_prompts(prompt, style, ai_type)
+        return self._generate_fallback_enhanced_prompts(prompt, style, ai_type)
+
 
     def _extract_llama_parameters(self, parameters: Dict) -> Dict[str, float]:
         """Safely extract parameters from any structure"""

@@ -9,11 +9,11 @@ const BuyCredits = ({ isOpen, onClose, setTopUpAmount, handlePayment }) => {
   const [customAmount, setCustomAmount] = useState("");
 
   const creditOptions = [
-    { amount: 7.48, credits: 100 },
-    { amount: 37.4, credits: 500 },
-    { amount: 74.8, credits: 1000 },
-    { amount: 374, credits: 5000 },
-    { amount: 748, credits: 10000 },
+    { amount: 123, credits: 100 },
+    { amount: 615, credits: 500 },
+    { amount: 1230, credits: 1000 },
+    { amount: 6150, credits: 5000 },
+    { amount: 12300, credits: 10000 },
   ];
 
   const calculateCreditsPerRupee = () => {
@@ -39,8 +39,8 @@ const BuyCredits = ({ isOpen, onClose, setTopUpAmount, handlePayment }) => {
     let value = e.target.value;
 
     // Ensure the value is not more than 10
-    if (value > 10) {
-      value = "10";
+    if (value > 10000) {
+      value = "10000";
     }
 
     setCustomAmount(value);
@@ -49,7 +49,7 @@ const BuyCredits = ({ isOpen, onClose, setTopUpAmount, handlePayment }) => {
       const amount = parseFloat(value);
       if (!isNaN(amount)) {
         const creditsPerRupee = calculateCreditsPerRupee();
-        const calculatedCredits = Math.round(amount * creditsPerRupee);
+        const calculatedCredits = Math.round(amount / 1.23);
         setCredits(calculatedCredits);
         setTopUpAmount({ amount, credits: calculatedCredits });
       }
@@ -136,22 +136,24 @@ const BuyCredits = ({ isOpen, onClose, setTopUpAmount, handlePayment }) => {
 
           {/* Custom Input Fields */}
           {isOtherSelected && (
-            <div className="flex flex-col items-center gap-4 mb-8">
-              <input
-                value={customAmount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (/^\d*\.?\d*$/.test(value)) {
-                    handleCustomInputChange(e);
-                  }
-                }}
-                placeholder="Enter amount"
-                maxLength="10" // Optional: Set a maximum length for the input
-                className="w-full px-4 py-5 rounded-lg bg-gray-800 text-white placeholder-gray-400 text-center flex items-center justify-center"
-              />
-            </div>
+  <div className="flex flex-col items-center gap-4 mb-8">
+    <div className="relative w-full">
+      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
+      <input
+        value={customAmount}
+        onChange={(e) => {
+          const value = e.target.value;
+          if (/^\d*\.?\d*$/.test(value)) {
+            handleCustomInputChange(e);
+          }
+        }}
+        placeholder="Enter amount in INR"
+        className="w-full px-12 py-5 rounded-lg bg-gray-800 text-white placeholder-gray-400 text-center flex items-center justify-center"
+      />
+    </div>
+  </div>
+)}
 
-          )}
 
           {/* Credits Display */}
           <div className="text-center mb-8">
