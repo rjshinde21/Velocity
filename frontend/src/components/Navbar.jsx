@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import ScrollAnchor from "./ScrollAnchor";
 import { UserRound } from "lucide-react";
 import LaunchlistModal from "./Launchlist";
+import Analytics from "../config/analytics";
 
 const Navbar = ({
   homeRef,
@@ -54,7 +55,11 @@ const Navbar = ({
           <div className="hidden sm:flex items-center gap-4 sm:gap-6">
             <button
               className="text-primary hover:text-blue-500 transition-colors text-base sm:text-xl hidden sm:block"
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => {
+                Analytics.track('Button Clicked',{
+                  buttonName:'Launchlist'
+                });
+                setIsModalOpen(true)}}
             >
               Join Launchlist
             </button>

@@ -3,6 +3,7 @@ import star from "../assets/Home/star.png";
 import copy from "../assets/copy.png";
 import copied from "../assets/copied.png";
 import { ChevronDown } from 'lucide-react';
+import Analytics from "../config/analytics";
 
 const PromptGrid = () => {
   const [prompts, setPrompts] = useState([]);
@@ -223,7 +224,11 @@ const PromptGrid = () => {
 
   {/* "Create More" button for larger screens */}
   <button
-    onClick={() => setCreateClicked(prev => !prev)}
+    onClick={() =>{ 
+      Analytics.track('Button Clicked',{
+        buttonName:"Create"
+      })
+      setCreateClicked(prev => !prev)}}
     className="glowing-button hidden sm:flex w-full sm:w-auto justify-center items-center gap-2 sm:mt-8 mt-6 mb-4"
   >
     <span>Create{prompts.length > 0 ? " More" : ""}</span>

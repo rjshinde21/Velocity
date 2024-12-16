@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import velocityLogo from '../assets/velocitylogo.png';
+import Analytics from "../config/analytics";
 
 const BuyCredits = ({ isOpen, onClose, setTopUpAmount, handlePayment }) => {
   const [selectedAmount, setSelectedAmount] = useState(null);

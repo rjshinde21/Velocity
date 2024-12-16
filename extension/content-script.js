@@ -558,14 +558,17 @@ async function detectPlatform() {
       }
     });
   }
-  
-  async function handleCreditDeduction(feature) {
-    const storage = await chrome.storage.local.get(['userId', 'token']);
-    const userId = storage.userId;
-    const token = storage.token;
-    console.log("token:?"+token);
+  async function validateCredits(state) {
     try {
-      // Get feature credits
+      const storage = await chrome.storage.local.get(['userId', 'token']);
+      const userId = storage.userId;
+      const token = storage.token;
+  
+      if (!userId || !token) {
+        throw new Error('User authentication required');
+      }
+  
+      // Get feature credits first
       const creditsResponse = await fetch('https://thinkvelocity.in/api/api/credit/credits', {
         method: 'GET',
         headers: {
@@ -573,10 +576,27 @@ async function detectPlatform() {
         }
       });
       const creditsData = await creditsResponse.json();
-      const featureCredit = creditsData.data.find(credit => credit.feature === feature);
-      
-      if (!featureCredit) {
-        throw new Error('Feature not found');
+  
+      // Calculate total required credits
+      let totalRequiredCredits = 0;
+  
+      // Basic prompt credits
+      const basicPromptCredit = creditsData.data.find(credit => credit.feature === 'basic_prompt');
+      if (!basicPromptCredit) throw new Error('Basic prompt feature not found');
+      totalRequiredCredits += basicPromptCredit.credits;
+  
+      // Style credits if style is selected
+      if (state.styleType && state.styleType !== '') {
+        const styleCredit = creditsData.data.find(credit => credit.feature === 'style_prompt');
+        if (!styleCredit) throw new Error('Style feature not found');
+        totalRequiredCredits += styleCredit.credits;
+      }
+  
+      // Platform credits if platform is selected
+      if (state.platform && state.platform !== '') {
+        const platformCredit = creditsData.data.find(credit => credit.feature === 'platform');
+        if (!platformCredit) throw new Error('Platform feature not found');
+        totalRequiredCredits += platformCredit.credits;
       }
   
       // Get user's token balance
@@ -589,57 +609,132 @@ async function detectPlatform() {
       const balanceData = await balanceResponse.json();
       const tokensReceived = balanceData.data.token_received;
       const tokensUsed = balanceData.data.tokens_used;
+      const availableTokens = tokensReceived - tokensUsed;
   
-      if (tokensReceived <= tokensUsed) {
-        throw new Error('Out of tokens');
+      if (availableTokens < totalRequiredCredits) {
+        throw new Error('Insufficient tokens available');
       }
   
-      if (tokensReceived - tokensUsed >= featureCredit.credits) {
-        const updatedTokensUsed = tokensUsed + featureCredit.credits;
-        
-        // Update tokens
-        await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            tokens_used: updatedTokensUsed,
-            token_received: tokensReceived
-          })
-        });
-  
-        return featureCredit.credits;
-      } else {
-        throw new Error('Not enough tokens');
-      }
+      return {
+        success: true,
+        requiredCredits: totalRequiredCredits,
+        availableTokens: availableTokens
+      };
     } catch (error) {
+      console.error('Credit validation failed:', error);
       throw error;
     }
   }
   
-  async function handleCreditDeductions(state) {
-    try {
-      // Basic prompt credit deduction
-      await handleCreditDeduction('basic_prompt');
-      console.log("style type"+state.styleType);
-      // Style credit deduction if style is selected
-      if (state.styleType != '' && state.styleType) {
-        await handleCreditDeduction('style_prompt');
-      }
-      console.log("platform type"+state.platform);
-      // Platform credit deduction if platform is selected
-      if (state.platform != '' && state.platform) {
-        await handleCreditDeduction('platform');
-      }
+  async function deductCredits(state, creditsToDeduct) {
+    const storage = await chrome.storage.local.get(['userId', 'token']);
+    const userId = storage.userId;
+    const token = storage.token;
   
-      return true;
-    } catch (error) {
-      console.error('Error handling credit deductions:', error);
-      throw new Error('Error processing credits. Please contact support.');
-    }
+    const balanceResponse = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const balanceData = await balanceResponse.json();
+    
+    const updatedTokensUsed = balanceData.data.tokens_used + creditsToDeduct;
+    
+    await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        tokens_used: updatedTokensUsed,
+        token_received: balanceData.data.token_received
+      })
+    });
   }
+  
+  // async function handleCreditDeduction(feature) {
+  //   const storage = await chrome.storage.local.get(['userId', 'token']);
+  //   const userId = storage.userId;
+  //   const token = storage.token;
+  //   console.log("token:?"+token);
+  //   try {
+  //     // Get feature credits
+  //     const creditsResponse = await fetch('https://thinkvelocity.in/api/api/credit/credits', {
+  //       method: 'GET',
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`
+  //       }
+  //     });
+  //     const creditsData = await creditsResponse.json();
+  //     const featureCredit = creditsData.data.find(credit => credit.feature === feature);
+      
+  //     if (!featureCredit) {
+  //       throw new Error('Feature not found');
+  //     }
+  
+  //     // Get user's token balance
+  //     const balanceResponse = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
+  //       method: 'GET',
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`
+  //       }
+  //     });
+  //     const balanceData = await balanceResponse.json();
+  //     const tokensReceived = balanceData.data.token_received;
+  //     const tokensUsed = balanceData.data.tokens_used;
+  
+  //     if (tokensReceived <= tokensUsed) {
+  //       throw new Error('Out of tokens');
+  //     }
+  
+  //     if (tokensReceived - tokensUsed >= featureCredit.credits) {
+  //       const updatedTokensUsed = tokensUsed + featureCredit.credits;
+        
+  //       // Update tokens
+  //       await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
+  //         method: 'PUT',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //           'Authorization': `Bearer ${token}`
+  //         },
+  //         body: JSON.stringify({
+  //           tokens_used: updatedTokensUsed,
+  //           token_received: tokensReceived
+  //         })
+  //       });
+  
+  //       return featureCredit.credits;
+  //     } else {
+  //       throw new Error('Not enough tokens');
+  //     }
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // }
+  
+  // async function handleCreditDeductions(state) {
+  //   try {
+  //     // Basic prompt credit deduction
+  //     await handleCreditDeduction('basic_prompt');
+  //     console.log("style type"+state.styleType);
+  //     // Style credit deduction if style is selected
+  //     if (state.styleType != '' && state.styleType) {
+  //       await handleCreditDeduction('style_prompt');
+  //     }
+  //     console.log("platform type"+state.platform);
+  //     // Platform credit deduction if platform is selected
+  //     if (state.platform != '' && state.platform) {
+  //       await handleCreditDeduction('platform');
+  //     }
+  
+  //     return true;
+  //   } catch (error) {
+  //     console.error('Error handling credit deductions:', error);
+  //     throw new Error('Error processing credits. Please contact support.');
+  //   }
+  // }
   async function savePromptToHistory(promptText, aiType) {
     try {
       const storage = await chrome.storage.local.get(['userId', 'token']);
@@ -808,10 +903,7 @@ async function detectPlatform() {
     
     return charCounter;
   }
-  
 
-  
-  
   // Function to handle prompt enhancement
   async function enhancePrompt(originalText) {
     console.log("enhancing");
@@ -833,6 +925,8 @@ async function detectPlatform() {
         style:state.styleType,
         promptLength: originalText.length
     });
+    const creditValidation = await validateCredits(state);
+
       // Check if style type exists and is valid
       if (state.styleType && state.styleTransformations[state.styleType.toLowerCase()]) {
         styleTransform = state.styleTransformations[state.styleType.toLowerCase()];
@@ -840,9 +934,7 @@ async function detectPlatform() {
   
       const promptData = await savePromptToHistory(originalText, state.platform);
       lastSavedPromptId = promptData.data.history_id;
-  
-      await handleCreditDeductions(state);
-      
+    
       // Apply style transformation if valid
       const modifiedPrompt = styleTransform ? styleTransform.modifier(originalText) : originalText;
       const formData = new FormData();
@@ -863,6 +955,7 @@ async function detectPlatform() {
       const data = await response.json();
       console.dir("response data"+data.response);
       const parsedResponse = data.response;
+      let prompts;
       if (typeof parsedResponse === 'string') {
         try {
           prompts = JSON.parse(parsedResponse).prompts;
@@ -883,6 +976,8 @@ async function detectPlatform() {
       if (!parsedResponse.prompts || !parsedResponse.prompts.length) {
         throw new Error('No prompts received from server');
       }
+      await deductCredits(state, creditValidation.requiredCredits);
+
       trackEvent('Response Generated',
         {
           location: "Enhance Button",

@@ -491,7 +491,8 @@ async function sendRequest() {
     const requestData = {
       prompt: prompt,
       style: selectedStyle,
-      AIType: selectedPlatform
+      AIType: selectedPlatform,
+      singlePrompt: false
     };
     trackEvent('Generate Button Clicked', {
       platform: selectedPlatform,

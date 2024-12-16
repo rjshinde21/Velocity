@@ -5,6 +5,8 @@ import { auth } from '../config/firebaseConfig';
 import velocitylogo from "../assets/velocitylogo.png";
 import googleLogo from '../assets/googleLogo.png';
 import ThreeDLogo from './3dLogo/ThreeDLogo';
+import Analytics from '../config/analytics';
+
 import {setAuthData} from '../utils/authUtils'
 const Login = ({setIsLoggedIn}) => {
   const navigate = useNavigate();
@@ -118,6 +120,16 @@ const Login = ({setIsLoggedIn}) => {
       console.log("login api data:"+data);
       if (response.ok) {
         localStorage.setItem('authMethod', 'email');
+        Analytics.track('User Login', {
+          method: 'email',
+          timestamp: new Date()
+        });
+        Analytics.identify(data.data.user.id);
+        Analytics.setUserProperties({
+          email: data.data.user.email,
+          username: data.data.user.username
+          // other user details
+        });
         handleSuccessfulLogin(data.data.user, data.data.token);
       } else {
         throw new Error(data.message || 'Login failed');
@@ -158,6 +170,16 @@ const Login = ({setIsLoggedIn}) => {
       const data = await response.json();
       if (response.ok) {
         localStorage.setItem('authMethod', 'google');
+        Analytics.track('User Login', {
+          method: 'google',
+          timestamp: new Date()
+        });
+        Analytics.identify(data.data.user.id);
+        Analytics.setUserProperties({
+          email: data.data.user.email,
+          username: data.data.user.username
+          // other user details
+        });
         //handleSuccessfulLogin(data.data.user, data.data.token);
       }
     

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Share2, Copy, Check } from 'lucide-react';
+import Analytics from '../config/analytics';
 
 const ShareReferral = ({ userId, authToken }) => {
     const [referralCode, setReferralCode] = useState('');
@@ -62,6 +63,9 @@ const ShareReferral = ({ userId, authToken }) => {
     const shareReferral = async () => {
         if (navigator.share) {
             try {
+                Analytics.track('Button Clicked',{
+                    buttonName: "Share"
+                });
                 await navigator.share({
                     title: 'Join Velocity AI',
                     text: `Join Velocity AI using my referral code: ${referralCode}`,
@@ -97,7 +101,7 @@ const ShareReferral = ({ userId, authToken }) => {
 
             <div className='flex justify-center items-center'>
                 {/* <p className="text-[#F7AA1C] text-2xl">{referralStats.totalReferrals}</p> */}
-                <p className="text-[#ffffff]/60 text-sm">You've Earned 100 tokens till now</p>
+                <p className="text-[#ffffff]/60 text-sm">You've Earned {referralStats.tokensEarned || 0} tokens till now</p>
             </div>
 
             <div className="flex items-center justify-center pt-6">

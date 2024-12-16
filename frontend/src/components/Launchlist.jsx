@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import launchlist from "../assets/launchlist.png";
 import { X, AlertCircle, CheckCircle } from 'lucide-react';
+import Analytics from '../config/analytics';
 
 const LaunchlistModal = ({ isOpen, onClose }) => {
     const [email, setEmail] = useState('');
@@ -13,7 +14,11 @@ const LaunchlistModal = ({ isOpen, onClose }) => {
         e.preventDefault();
         setIsSubmitting(true);
         setFeedback({ type: '', message: '' }); // Clear previous feedback
-
+        Analytics.track('Button Clicked',
+            {
+                buttonName:'Get Notified'
+            }
+        )
         try {
             const response = await fetch('https://thinkvelocity.in/api/api/launchlist/subscribe', {
                 method: 'POST',
@@ -27,8 +32,14 @@ const LaunchlistModal = ({ isOpen, onClose }) => {
             
             if (response.status === 201) {
                 // Success case
+                Analytics.track('Joined Launchlist',
+                    {
+                        type:"success",
+                        email:email
+                    }
+                );
                 setFeedback({
-                    type: 'success',
+                    type: 'Success',
                     message: 'Successfully joined the launch list! 🎉'
                 });
                 setTimeout(() => {
@@ -43,6 +54,11 @@ const LaunchlistModal = ({ isOpen, onClose }) => {
                 });
             } else {
                 // Other errors
+                Analytics.track('Joined Launchlist',
+                    {
+                        type:"Failed",
+                        email:email
+                    });
                 throw new Error(data.message || 'Something went wrong');
             }
         } catch (error) {

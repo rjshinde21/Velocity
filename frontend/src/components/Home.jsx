@@ -8,12 +8,12 @@ import { Link } from "react-router-dom";
 import supabase from '../config/supabaseClient';
 import Analytics from '../config/analytics';
 
-const Home = () => {3
-  useEffect(() => {
-    Analytics.track('Page View', {
-      page: 'Home'
-    });
-  }, []);
+const Home = () => {
+  // useEffect(() => {
+  //   Analytics.track('Page View', {
+  //     page: 'Home'
+  //   });
+  // }, []);
 
   const [user, setUser] = useState(null);
 
@@ -121,8 +121,8 @@ const Home = () => {3
         
         <div className="font-[Amenti] relative z-10 flex flex-col items-center justify-center">
           <h1 className="bg-gradient-text pt-10 text-4xl sm:text-6xl pb-4 text-center">
-            Makes everyone a <br />
-            <span className="block text-center">Prompt Expert</span>
+            Makes AI Work <br />
+            <span className="block text-center">Smarter for You</span>
           </h1>
           <p className="text-[#999999] font-[Inter] text-base sm:text-xl">
             Redefine the way you generate AI-driven ideas
