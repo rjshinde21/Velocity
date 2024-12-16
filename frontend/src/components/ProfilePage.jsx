@@ -5,6 +5,7 @@ import PromptGrid from './PromptGrid';
 import BuyCredit from './buy_credit';
 //import useRazorpay from "react-razorpay";
 import ShareReferral from './ShareReferral';
+import Analytics from '../config/analytics';
 const ProfilePage = ({ pricingRef }) => {
     const [name, setName] = useState("");
     const [isEditing, setIsEditing] = useState(false);
@@ -221,16 +222,26 @@ const ProfilePage = ({ pricingRef }) => {
                     amount: credits // Use credits instead of amount
                 })
             });
-
             if (!response.ok) {
                 throw new Error(`Failed to top up tokens: ${response.status}`);
             }
 
             const updatedData = await response.json();
             if (updatedData.success) {
+                Analytics.track('TopUp Successfull',
+                    {
+                        amount:amount,
+                        credits:credits
+                    });
                 await fetchTokenDetails();
                 return true;
             } else {
+                Analytics.track('TopUp Failed',
+                    {
+                        amount:amount,
+                        credits:credits,
+                        error:updatedData.message
+                    });
                 throw new Error(updatedData.message || 'Failed to top up tokens');
             }
         } catch (error) {
@@ -272,7 +283,9 @@ const ProfilePage = ({ pricingRef }) => {
             });
 
             console.log('All data cleared. Redirecting...');
-
+            Analytics.track('Button Clicked', {
+                buttonName: 'Logout'
+              });
             // For Google auth, ensure Firebase signout
             if (authMethod === 'google' && auth) {
                 auth.signOut().catch(console.error);
@@ -289,6 +302,12 @@ const ProfilePage = ({ pricingRef }) => {
     // USD to INR conversion rate (you might want to fetch this from an API)
     const USD_TO_INR = 83.27;
     const handlePayment = async ({ amount, credits }) => {
+        Analytics.track('Payment Initiated',
+            {
+                amount:amount,
+                credits:credits
+            }
+        )
         try {
             const amountInINR = amount;
             console.log("amout in INR:" + amountInINR + "credits:" + credits);
@@ -336,6 +355,11 @@ const ProfilePage = ({ pricingRef }) => {
                         if (verifyData.success) {
                             try {
                                 await handleTopUp({ amount, credits });
+                                Analytics.track('Payment Completed',
+                                    {
+                                        amount:amount,
+                                        credits:credits
+                                    });
                                 setIsTopUpModalOpen(false);
                                 alert('Payment successful! Tokens have been added to your account.');
                             } catch (error) {
@@ -343,6 +367,12 @@ const ProfilePage = ({ pricingRef }) => {
                             }
                         }
                     } catch (error) {
+                        Analytics.track('Payment Failed',
+                            {
+                                amount:amount,
+                                credits:credits,
+                                error:error
+                            });
                         console.error('Payment verification failed:', error);
                         alert('Payment verification failed. Please contact support.');
                     }
@@ -422,7 +452,12 @@ const ProfilePage = ({ pricingRef }) => {
     <div className="flex flex-col gap-4 mt-4 sm:mt-6">
       {/* Top Up Button */}
       <button
-        onClick={() => setIsTopUpModalOpen(true)}
+        onClick={() => {
+        Analytics.track('Button Clicked', {
+            buttonName: 'TopUp'
+          });
+          setIsTopUpModalOpen(true);
+      }}
         className="w-full flex justify-center items-center 
           text-base sm:text-lg 
           px-4 sm:px-8 py-3 sm:py-4 

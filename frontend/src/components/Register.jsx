@@ -6,6 +6,7 @@ import { setAuthData } from '../utils/authUtils';
 import velocitylogo from "../assets/velocitylogo.png";
 import googleLogo from '../assets/googleLogo.png';
 import ThreeDLogo from './3dLogo/ThreeDLogo';
+import Analytics from '../config/analytics';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -98,6 +99,7 @@ const Register = () => {
   };
 
   const applyReferral = async (userId, token) => {
+    console.log("referral is there");
     try {
       const response = await fetch('https://thinkvelocity.in/api/api/referral/apply', {
         method: 'POST',
@@ -110,12 +112,15 @@ const Register = () => {
           new_user_id: userId
         })
       });
-
+      console.log("response:"+response.ok);
+      if(response.ok){
+        Analytics.track("Referral Used");
+      }
       if (!response.ok) {
         console.warn('Referral application failed:', await response.text());
         setMessage(<span style={{ color: 'orange' }}>Account created, but referral bonus could not be applied</span>);
-
       }
+      
     } catch (error) {
       console.error('Error applying referral:', error);
     }
@@ -124,7 +129,8 @@ const Register = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage('');
-  
+    
+
     const errors = {
       name: validateField('name', name),
       email: validateField('email', email),
@@ -157,15 +163,28 @@ const Register = () => {
       });
   
       const data = await response.json();
-
-      console.log("registered user?:"+response.ok);
+      console.log("helloo");
+      console.log("registered userrrr?:"+response.ok);
       if (response.ok) {
+        console.log("hello world2");
         // Store user data in localStorage
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('userId', data.data.user.id);
         localStorage.setItem('userEmail', data.data.user.email);
         localStorage.setItem('userName', data.data.user.username || name);
-        
+        console.log("hello world1");
+        Analytics.track('User Register', {
+          method: 'email',
+          timestamp: new Date()
+        });
+        Analytics.identify(data.data.user.id);
+        Analytics.setUserProperties({
+          email: data.data.user.email,
+          username: data.data.user.username
+          // other user details
+        });
+        console.log("hello world");
+        console.log("referal code:"+referralCode);
         // Apply referral code if provided
         if (referralCode) {
           await applyReferral(data.data.user.id, data.data.token);
@@ -224,7 +243,17 @@ const Register = () => {
         localStorage.setItem('userId', data.data.user.id);
         localStorage.setItem('userEmail', data.data.user.email);
         localStorage.setItem('userName', data.data.user.username || user.displayName || user.email);
-        
+        Analytics.track('User Register', {
+          method: 'google',
+          timestamp: new Date()
+        });
+        Analytics.identify(data.data.user.id);
+        Analytics.setUserProperties({
+          email: data.data.user.email,
+          username: data.data.user.username || user.displayName || user.email
+          // other user details
+        });
+    
         // Apply referral code if provided
         if (referralCode) {
           await applyReferral(data.data.user.id, data.data.token);

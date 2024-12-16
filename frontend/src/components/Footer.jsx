@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Instagram, Linkedin, UserRound } from 'lucide-react';
-
+import Analytics from '../config/analytics';
 const Footer = ({ isLoggedIn }) => {
   return (
     <footer className="bg-black text-gray-400 py-20 sm:py-8 md:py-12 lg:py-16">
@@ -45,6 +45,13 @@ const Footer = ({ isLoggedIn }) => {
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs sm:text-sm sm:text-left mb-0 sm:mb-0 font-[Urbanist] hover:text-blue-500"
+              onClick={() => {
+                Analytics.track('External Link Clicked', {
+                  linkUrl: 'https://www.toteminteractive.in/',
+                  linkText: 'Designed by TOTEM INTERACTIVE'
+                });
+              }}
+            
             >
               Designed by TOTEM INTERACTIVE
             </a>
@@ -65,6 +72,12 @@ const Footer = ({ isLoggedIn }) => {
                 absolute bottom-1 right-0
                 sm:bottom-2 md:bottom-4 lg:bottom-6 mr-10">
                 <a
+                 onClick={() => {
+                  Analytics.track('External Link Clicked', {
+                    linkUrl: 'https://www.instagram.com/totem.interactive?igsh=MXRscW14NDNwOGdtbA==',
+                    linkText: 'Instagram'
+                  });
+                }}
                   href="https://www.instagram.com/totem.interactive?igsh=MXRscW14NDNwOGdtbA=="
                   className="hover:text-white transition-colors p-1.5 sm:p-2
                     hover:scale-110 transform duration-200"
@@ -74,6 +87,12 @@ const Footer = ({ isLoggedIn }) => {
                   <Instagram className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
                 </a>
                 <a
+                onClick={() => {
+                  Analytics.track('External Link Clicked', {
+                    linkUrl: 'https://www.linkedin.com/company/totem-interactive/posts/?feedView=all',
+                    linkText: 'Linkedin'
+                  });
+                }}
                   href="https://www.linkedin.com/company/totem-interactive/posts/?feedView=all"
                   className="hover:text-white transition-colors p-1.5 sm:p-2
                     hover:scale-110 transform duration-200"
