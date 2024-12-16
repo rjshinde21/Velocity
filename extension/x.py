@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 try:
     api_key = os.getenv('LLAMA_API_KEY')
-    print("API Key loaded:", api_key)  # for debugging
+    
     if not api_key:
         raise ValueError("LLAMA_API_KEY not found in environment variables")
     llama = LlamaAPI(api_key)

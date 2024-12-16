@@ -1,18 +1,33 @@
 // contentScript.js
 // This script runs in the context of the web page
+
 (function() {
+
 let lastAuthState = null;
 let lastSavedPromptId = null;  // Add this at the top with your other state variables
 let lastTokensUsed = 0;
 let isValidPlatform = false;
+
 function isDiscordPlatform() {
   const url = window.location.href;
   return /^https:\/\/(www\.)?discord\.com\/channels/.test(url);
 }
 
-
+function trackEvent(eventName, properties = {}) {
+  chrome.runtime.sendMessage({
+      type: 'TRACK_EVENT',
+      eventName: eventName,
+      properties: properties
+  }, response => {
+      if (response?.status === 'success') {
+          console.log('Event tracked:', eventName);
+      } else {
+          console.error('Failed to track event:', eventName);
+      }
+  });
+}
 // Function to check auth state
-  function checkAuthState() {
+function checkAuthState() {
     if (isDiscordPlatform()) {
       console.log('Skipping auth state check for Discord');
       return;
@@ -737,59 +752,87 @@ async function detectPlatform() {
   }
   
   function addCharacterLimitation(inputElement) {
+    const CHAR_THRESHOLD = 900;
     const CHAR_LIMIT = 1100;
     
-    // Create character counter
     const charCounter = document.createElement('div');
     charCounter.className = 'velocity-char-counter';
     charCounter.style.cssText = `
-      position: absolute;
-      bottom: 8px;
-      right: 48px;
-      color: #666;
-      font-size: 12px;
-      pointer-events: none;
-      user-select: none;
-      background: transparent;
-      z-index: 999999;
+      position: absolute !important;
+      bottom: 8px !important;
+      right: 48px !important;
+      font-size: 12px !important;
+      font-weight: 500 !important;
+      pointer-events: none !important;
+      user-select: none !important;
+      background: transparent !important;
+      z-index: 999999 !important;
+      opacity: 0 !important;
+      transition: opacity 0.2s ease, color 0.2s ease !important;
     `;
   
-    // Handle all text changes
     function updateCharCount() {
       const text = inputElement.value || inputElement.textContent || '';
       const length = text.length;
       
-      // Update counter
       charCounter.textContent = `${length}/${CHAR_LIMIT}`;
       
-      // Update counter color based on length
       if (length > CHAR_LIMIT) {
-        charCounter.style.color = '#ef4444';
+        charCounter.style.cssText += `
+          opacity: 1 !important;
+          color: #FF0000 !important;
+        `;
+        console.log('Setting red color', charCounter.style.color); // Debug log
+      } else if (length > CHAR_THRESHOLD) {
+        charCounter.style.cssText += `
+          opacity: 1 !important;
+          color: #FFA500 !important;
+        `;
+        console.log('Setting orange color', charCounter.style.color); // Debug log
       } else {
-        charCounter.style.color = '#666';
+        charCounter.style.cssText += `
+          opacity: 0 !important;
+          color: #666666 !important;
+        `;
       }
     }
   
-    // Listen for all possible text input events
-    inputElement.addEventListener('input', updateCharCount);  // Catches typing, pasting, cutting, deleting
-    inputElement.addEventListener('keydown', updateCharCount); // Catches keyboard shortcuts
-    inputElement.addEventListener('paste', updateCharCount);  // Specifically catch paste events
-    inputElement.addEventListener('cut', updateCharCount);   // Specifically catch cut events
-    inputElement.addEventListener('delete', updateCharCount); // Catch delete operations
-    inputElement.addEventListener('change', updateCharCount); // Catch any other changes
-    
-    // Initialize counter
+    // Initial style setup
     updateCharCount();
+  
+    // Event listeners
+    const events = ['input', 'keydown', 'paste', 'cut', 'delete', 'change'];
+    events.forEach(event => {
+      inputElement.addEventListener(event, updateCharCount);
+    });
+    
     return charCounter;
   }
+  
+
   
   
   // Function to handle prompt enhancement
   async function enhancePrompt(originalText) {
+    console.log("enhancing");
+    
+  //   trackContentEvent('Enhance Prompt', {
+  //     title: "Enhance Prompt"
+  // });
+      
+
+
+
     try {
       const state = getState();
       let styleTransform = null;
-      console.log("platform in state:"+state.platform)
+      console.log("style in state:"+state.styleType);
+      console.log("platform in state:"+state.platform);
+      trackEvent('Enhance Button clicked', {
+        platform:state.platform,
+        style:state.styleType,
+        promptLength: originalText.length
+    });
       // Check if style type exists and is valid
       if (state.styleType && state.styleTransformations[state.styleType.toLowerCase()]) {
         styleTransform = state.styleTransformations[state.styleType.toLowerCase()];
@@ -802,31 +845,52 @@ async function detectPlatform() {
       
       // Apply style transformation if valid
       const modifiedPrompt = styleTransform ? styleTransform.modifier(originalText) : originalText;
-  
+      const formData = new FormData();
+      const requestData = {
+        prompt: modifiedPrompt,
+        style: state.styleType,
+        AIType: state.platform,
+        singlePrompt: true
+      };
+      formData.append('data', JSON.stringify(requestData));
       const response = await fetch('https://thinkvelocity.in/python-api/process', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `data=${encodeURIComponent(JSON.stringify({
-          prompt: modifiedPrompt,
-          style: state.styleType,
-          AIType: state.platform,
-          singlePrompt: true
-        }))}`
+        body: formData,
       });
       console.log("raw response:"+response);
       
       //const response = {"prompts":[{"prompt":"Imagine a world where trial is not a test of guilt or innocence, but rather a ritual to awaken the hidden abilities of the accused. Design an immersive and surreal courtroom where the defendant's powers are revealed through an ancient dance, with each step unlocking a new dimension of their potential. The judge is an enigmatic being with the power to manipulate reality itself, using their gaze to guide the defendant through this transformative experience."},{"prompt":"Envision a futuristic city where trial has evolved into a high-stakes competition between rival factions vying for control. The defendants are advanced AI entities that have developed sentience, and their trials are broadcasted as spectacular events in zero-gravity arenas. Each faction must strategically deploy their unique technologies and cybernetic enhancements to outmaneuver and defeat their opponents in an intricate ballet of light, sound, and energy."},{"prompt":"In this post-apocalyptic wasteland, trial has become an ancient art form passed down through generations of survivors. The accused are presented before the 'Council of Elders', who evaluate their worthiness for membership in society by challenging them to create innovative solutions using scavenged materials from the ruins. As each member presents their creations, they must also navigate complex web-like puzzles that shift and adapt based on their successes or failures."}]}
       const data = await response.json();
-      console.log("response data"+data.response);
-      const parsedResponse = JSON.parse(data.response);
+      console.dir("response data"+data.response);
+      const parsedResponse = data.response;
+      if (typeof parsedResponse === 'string') {
+        try {
+          prompts = JSON.parse(parsedResponse).prompts;
+          
+        } catch (e) {
+          // If it's not JSON, treat it as a single response
+          prompts = [{ prompt: parsedResponse }];
+        }
+      } else if (parsedResponse.prompts) {
+        prompts = parsedResponse.prompts;
+      } else if (Array.isArray(parsedResponse)) {
+        prompts = parsedResponse;
+      } else {
+        prompts = [{ prompt: String(parsedResponse) }];
+      }
       //const parsedResponse = response;
   
       if (!parsedResponse.prompts || !parsedResponse.prompts.length) {
         throw new Error('No prompts received from server');
       }
-  
+      trackEvent('Response Generated',
+        {
+          location: "Enhance Button",
+          length: parsedResponse.prompts.length
+        }
+      );
       const enhancedPrompt = parsedResponse.prompts[0].prompt;
-      
+      console.log("prompt length:"+parsedResponse.prompts.length);
       await saveResponseToHistory(
         enhancedPrompt, 
         lastSavedPromptId,
@@ -835,6 +899,13 @@ async function detectPlatform() {
       );
       return enhancedPrompt;
     } catch (error) {
+      console.log("error:"+error);
+      trackEvent('Generate Error', {
+        error: error.message,
+        platform:getState().platform,
+        style:getState().styleType,
+        location:"Enhance Button"
+    });
       console.error('Enhancement failed:', error);
       throw error;
     }
@@ -937,8 +1008,6 @@ async function detectPlatform() {
     const inputStyles = window.getComputedStyle(inputElement);
     wrapper.style.width = inputStyles.width;
     wrapper.style.height = inputStyles.height;
-    // Create button with PNG image
-    // Create and set up the image element
     const img = document.createElement('img');
     img.src = chrome.runtime.getURL('assets/logo.png'); // Make sure to update this path
     img.alt = 'Enhance';
@@ -975,6 +1044,14 @@ async function detectPlatform() {
       
       // Check character limit before processing
       if (text.length > 1100) {
+
+        trackEvent('Generate Error', {
+          error: 'Prompt Too Long',
+          promptLength: text.length,
+          platform:getState().platform,
+          style:getState().styleType,
+          location:"Enhance Button"
+      });
         button.style.background = 'linear-gradient(180deg, #FF4444 0%, #CC0000 100%)';
         setTimeout(() => {
           button.style.background = '';
@@ -1017,7 +1094,7 @@ async function detectPlatform() {
             cancelable: true
           });
           inputElement.dispatchEvent(inputEvent);
-    
+          
           // Force focus again to ensure cursor visibility
           setTimeout(() => {
             inputElement.focus();
@@ -1032,7 +1109,6 @@ async function detectPlatform() {
           }
           inputElement.dispatchEvent(new Event('input', { bubbles: true }));
         }
-    
         //inputElement.dispatchEvent(new Event('input', { bubbles: true }));
       } catch (error) {
         console.error('Enhancement failed:', error);

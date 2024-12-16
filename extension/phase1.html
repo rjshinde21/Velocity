@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <script src="mixpanel-init.js"></script>
+  <script src="mixpanel.min.js"></script>
+<meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Extension Popup</title>
   <link rel="stylesheet" href="src/output.css">
@@ -14,6 +16,7 @@
     font-size: 14px;
     cursor: pointer;
 }
+
 
  #logoutButton {
     background: transparent;
@@ -131,19 +134,26 @@
         background-color: #008acb;
         border-radius: 4px;
       }
-      .title1{
-height: 50px;
-display: flex;
-justify-content: center;
-background-color: #005F7F;
+      .title1 {
+    height: 50px;
+    display: flex;
+    justify-content: space-between; /* This spreads items to edges */
+    align-items: center;
+    background-color: #005F7F;
+    font-weight: lighter;
+    font-size: large;
+    color: #C9C9C9;
+    padding: 0 24px; /* Add padding on both sides */
+    width: 100%; /* Ensure full width */
+}
+.title1 > div:last-child {
+    display: flex;
+    align-items: center;
+    gap: 16px; /* Space between buttons */
+    margin-right: 8px; /* Add some right margin */
+}
 
-font-weight: lighter;
-align-items: center;
-font-size: large;
-color: #C9C9C9;
-/* font-family: 'Inter'; */
 
-      }
       .title{
 height: 50px;
 display: flex;
@@ -564,10 +574,11 @@ color: #C9C9C9;
         padding: 10px 20px;
         text-align: center;
         margin-bottom: 20px;
-        max-width: 150px;
+        max-width: 800px;
+        width:200px;
         /*margin-top: 3%;*/
         /* display: block; */
-        width: calc(100% - 20px);
+        /*width: calc(100% - 20px);*/
         font-size: 16px;
         cursor: pointer;
         transition: all 0.3s ease;
@@ -777,14 +788,16 @@ color: #C9C9C9;
     font-style: italic;
     background: linear-gradient(to bottom, #008ACB4D, #6ACFFF4D);
     border: 1px solid #008ACB;
-    margin: 10px 15px 5px 0;
-    position: absolute; /* Position relative to the nearest positioned ancestor */
-    top: 0; /* Aligns to the top */
-    right: 0; /* Aligns to the left */
+    margin: 0px;
+    /* Remove position absolute */
 }
-.mleft{
-  margin-left: 45px;
+
+.mleft {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between icon and text */
 }
+
 
 .mleft img {
     margin-right: 6px; /* Adds space between the image and text */
@@ -825,9 +838,8 @@ color: #C9C9C9;
     font-style: italic;
     border: 1px solid #F7AA1C;
     background: linear-gradient(to bottom, #f7aa1c4d, #f1d49f4d);
-    margin: 5px 5px;
-    position: relative; /* Enable relative positioning */
-    left: 32px; /* Move 10px to the right */
+    margin: 0px;
+    /* Remove position relative and left */
 }
 
 #editButton:hover {
@@ -1001,24 +1013,26 @@ color: #C9C9C9;
   </style>
 </head>
 <body>
-  <div class="flex title1 justify-between items-center" style="background-color: #00141D;">
-    <div class="mleft flex items-center">
+  <div class="title1 flex justify-between items-center" style="background-color: #00141D;">
+    <div class="mleft flex items-center pl-0">
         <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto">
-        <span class="text-white ml-4">Velocity</span>
+        <span class="text-white ml-0">Velocity</span>
     </div>
     
-    <div class="flex items-center gap-4">
-        <button id="editButton" class="flex items-center gap-2 text-white" style="display: none;">
+    <div class="flex items-center gap-4 pr-4">
+        <button id="editButton" class="flex items-center gap-2 text-white">
             <span><img class="coinicon" src="./assets/coin.png" alt="coin"></span>
             <span class="credit-amount">0</span>
         </button>
         
         <button id="signupButton" class="text-white space-x-2 flex items-center">
             <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
-            <span>Sign Up</span>
+            <span>Login</span>
         </button>
     </div>
 </div>
+
+
 
 
 <div class="premium-enhance-wrapper">
@@ -1026,7 +1040,7 @@ color: #C9C9C9;
     <div class="premium-enhance-content">
       <h3 class="premium-enhance-text">Toggle Enhance Button</h3>
       <label class="premium-toggle">
-        <input type="checkbox" id="enhanceToggle" class="toggle-input" checked>
+        <input type="checkbox" id="enhanceToggle" class="toggle-input">
         <div class="toggle-slider"></div>
       </label>
     </div>
@@ -1072,9 +1086,9 @@ color: #C9C9C9;
       </label>
     </div>
     <div class="radio-button">
-      <input type="radio" id="option6" name="option" value="LLaMa">
+      <input type="radio" id="option6" name="option" value="Gemini">
       <label class="radio-button" for="option6">
-        <img src="./assets/radiobutton6.png" alt="Ranway">
+        <img src="./assets/geminiIcon.png" alt="Gemini">
         <!-- <span>Meta AI</span> -->
       </label>
     </div>
@@ -1146,17 +1160,21 @@ color: #C9C9C9;
 
   </div> -->
   <div class="flex justify-center mt-6">
-    <button id="sendButton" class="generate-button flex justify-center items-center w-full"> <!-- Added width for full button -->
-      <img id="generateIcon" src="./assets/Rectangle 32.png" alt="Generate" class="ml-2" />
-      <span class="mx-auto">Generate</span> <!-- Center text -->
+    <button id="sendButton" class="generate-button flex items-center justify-between w-[400px] px-4">
+        <img id="generateIcon" src="./assets/Rectangle 32.png" alt="Generate" class="ml-2" />
+        <span>Generate</span>
+        <div class="flex items-center gap-2">
+            <img src="./assets/coin.png" alt="Coin" class="h-4 w-4" />
+            <span id="creditAmount" class="text-sm">0</span>
+        </div>
     </button>
-  </div>   
+</div>
+
+
   <!-- <div class="w-full bg-[#00141C] flex items-center justify-between text-white text-lg font-normal font-amenti h-[60px] relative px-4"> -->
 
  
 </div>
-
-
   <script src="popup.js"></script>
   <script src="content-script.js"></script>
 
