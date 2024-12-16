@@ -114,23 +114,17 @@ const BuiltFor = () => {
           Built For
         </h2>
 
-        <div className="flex flex-col gap-12 sm:gap-16 lg:gap-20">
-          {/* Single container for all items */}
-          <div className="flex flex-wrap justify-center gap-12 sm:gap-16 lg:gap-20">
-            {categories.map((category, index) => (
+        <div className="flex flex-col gap-16 lg:gap-20 pb-0">
+          {/* First row - 3 items */}
+          <div className="flex flex-wrap justify-center gap-12 sm:gap-8 md:gap-6">
+            {categories.slice(0, 3).map((category, index) => (
               <div
                 key={index}
-                className="flex flex-col items-center text-center 
-          w-full sm:w-[calc(50%-32px)] lg:w-[calc(33.33%-54px)]
-          max-w-[400px]"
+                className={`flex flex-col items-center text-center w-full sm:w-[45%] md:w-[30%] max-w-sm min-w-[280px] transition-all duration-300 ${index === 2 ? 'hidden lg:flex' : ''
+                  }`}
               >
-                {/* Image Container */}
-                <div className="w-32 sm:w-36 lg:w-40 
-          h-32 sm:h-36 lg:h-40 
-          bg-gray-900 rounded-lg 
-          mb-4 sm:mb-5 lg:mb-6 
-          flex items-center justify-center 
-          overflow-hidden"
+                <div
+                  className="w-32 h-32 sm:w-36 sm:h-36 lg:w-40 lg:h-40 bg-gray-900 rounded-lg mb-4 sm:mb-6 flex items-center justify-center overflow-hidden image-container"
                 >
                   <img
                     src={category.img}
@@ -138,29 +132,43 @@ const BuiltFor = () => {
                     className="w-full h-full object-cover"
                   />
                 </div>
-
-                {/* Title */}
-                <h3 className="text-white 
-          text-lg sm:text-xl lg:text-2xl 
-          font-medium 
-          mb-2 sm:mb-3"
-                >
+                <h3 className="text-white text-lg sm:text-xl lg:text-2xl font-medium mb-2 sm:mb-3 category-title">
                   {category.title}
                 </h3>
+                <p className="text-gray-400 text-xs sm:text-sm lg:text-base w-3/4 sm:w-full category-description">
+                  {category.description}
+                </p>
+              </div>
+            ))}
+          </div>
 
-                {/* Description */}
-                <p className="text-gray-400 
-          text-xs sm:text-sm 
-          w-4/5 sm:w-full 
-          max-w-[300px]
-          px-0 sm:px-4"
+          {/* Second row - 2 items */}
+          <div className="flex flex-wrap justify-center gap-12 sm:gap-8 md:gap-6">
+            {categories.slice(3).map((category, index) => (
+              <div
+                key={index + 3}
+                className="flex flex-col items-center text-center w-full sm:w-[45%] md:w-[30%] max-w-sm min-w-[280px] transition-all duration-300"
+              >
+                <div
+                  className="w-32 h-32 sm:w-36 sm:h-36 lg:w-40 lg:h-40 bg-gray-900 rounded-lg mb-4 sm:mb-6 flex items-center justify-center overflow-hidden image-container"
                 >
+                  <img
+                    src={category.img}
+                    alt={category.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <h3 className="text-white text-lg sm:text-xl lg:text-2xl font-medium mb-2 sm:mb-3 category-title">
+                  {category.title}
+                </h3>
+                <p className="text-gray-400 text-xs sm:text-sm lg:text-base w-3/4 sm:w-full category-description">
                   {category.description}
                 </p>
               </div>
             ))}
           </div>
         </div>
+
       </div>
     </div>
   );
