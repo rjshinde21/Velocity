@@ -36,19 +36,26 @@ const Navbar = ({
           </div>
 
           {/* Mobile View: Direct Buttons */}
-          <div className="sm:hidden flex items-center gap-4">
-            {!isLoggedIn ? (
-              <Link to="/register">
-                <button className="rounded-full bg-black text-white py-2 px-4">
-                  Get Started
-                </button>
-              </Link>
-            ) : (
-              <Link to="/profile">
-                <UserRound className="border rounded-full w-8 h-8" />
-              </Link>
-            )}
-          </div>
+      <div className="sm:hidden flex items-center gap-4">
+        <button
+          className="text-primary hover:text-blue-500 transition-colors text-sm"
+          onClick={() => setIsModalOpen(true)}
+        >
+          Join Launchlist
+        </button>
+
+        {!isLoggedIn ? (
+          <Link to="/register">
+            <button className="rounded-full bg-black text-white py-2 px-4">
+              Get Started
+            </button>
+          </Link>
+        ) : (
+          <Link to="/profile">
+            <UserRound className="border rounded-full w-8 h-8" />
+          </Link>
+        )}
+      </div>
 
           {/* Desktop View Buttons */}
           <div className="hidden sm:flex items-center gap-4 sm:gap-6">
@@ -61,9 +68,13 @@ const Navbar = ({
 
             {!isLoggedIn ? (
               <Link to="/register">
-                <button className="navbtn rounded-full bg-[#0a0a0a] py-2 px-4 sm:px-6 text-white">
-                  Get Started
-                </button>
+                <button className="navbtn rounded-[30px] bg-[#0a0a0a] py-[10px] sm:py-[16px] flex items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)] transition-all duration-200">
+                <div className="inner rounded-[30px]">
+                  <span className="relative z-10 bg-black px-5 sm:px-9 py-[12px] sm:py-[18px] rounded-[30px] text-lg text-white whitespace-nowrap">
+                    Get Started
+                  </span>
+                </div>
+              </button>
               </Link>
             ) : (
               <Link to="/profile">

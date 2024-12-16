@@ -114,15 +114,24 @@ const BuiltFor = () => {
           Built For
         </h2>
 
-        <div className="flex flex-col gap-20 pb-0 category-grid">
-          {/* First row - 3 items */}
-          <div className="flex flex-wrap justify-center gap-20 md:gap-6 sm:gap-4">
-            {categories.slice(0, 3).map((category, index) => (
+        <div className="flex flex-col gap-12 sm:gap-16 lg:gap-20">
+          {/* Single container for all items */}
+          <div className="flex flex-wrap justify-center gap-12 sm:gap-16 lg:gap-20">
+            {categories.map((category, index) => (
               <div
                 key={index}
-                className="flex flex-col items-center text-center max-w-sm w-full sm:w-1/2 md:w-1/3 category-item"
+                className="flex flex-col items-center text-center 
+          w-full sm:w-[calc(50%-32px)] lg:w-[calc(33.33%-54px)]
+          max-w-[400px]"
               >
-                <div className="w-40 h-40 bg-gray-900 rounded-lg mb-6 flex items-center justify-center overflow-hidden image-container">
+                {/* Image Container */}
+                <div className="w-32 sm:w-36 lg:w-40 
+          h-32 sm:h-36 lg:h-40 
+          bg-gray-900 rounded-lg 
+          mb-4 sm:mb-5 lg:mb-6 
+          flex items-center justify-center 
+          overflow-hidden"
+                >
                   <img
                     src={category.img}
                     alt={category.title}
@@ -130,37 +139,22 @@ const BuiltFor = () => {
                   />
                 </div>
 
-                <h3 className="text-white text-xl font-medium mb-3 category-title">
+                {/* Title */}
+                <h3 className="text-white 
+          text-lg sm:text-xl lg:text-2xl 
+          font-medium 
+          mb-2 sm:mb-3"
+                >
                   {category.title}
                 </h3>
 
-                <p className="text-gray-400 text-xs w-2/3 sm:w-full sm:pl-4 sm:pr-4 category-description">
-                  {category.description}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Second row - 2 items */}
-          <div className="flex flex-wrap justify-center gap-20 sm:gap-24 second-row">
-            {categories.slice(3).map((category, index) => (
-              <div
-                key={index + 3}
-                className="flex flex-col items-center text-center max-w-sm w-full sm:w-1/2 category-item"
-              >
-                <div className="w-40 h-40 bg-gray-900 rounded-lg mb-6 flex items-center justify-center overflow-hidden image-container">
-                  <img
-                    src={category.img}
-                    alt={category.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <h3 className="text-white text-xl font-medium mb-3 category-title">
-                  {category.title}
-                </h3>
-
-                <p className="text-gray-400 text-xs w-2/3 sm:w-full category-description">
+                {/* Description */}
+                <p className="text-gray-400 
+          text-xs sm:text-sm 
+          w-4/5 sm:w-full 
+          max-w-[300px]
+          px-0 sm:px-4"
+                >
                   {category.description}
                 </p>
               </div>

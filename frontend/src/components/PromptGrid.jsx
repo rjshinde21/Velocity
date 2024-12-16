@@ -122,7 +122,7 @@ const PromptGrid = () => {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4">
   {/* "Create More" button for mobile */}
   <button
     onClick={() => setCreateClicked(prev => !prev)}
@@ -132,80 +132,118 @@ const PromptGrid = () => {
     <img src={star} alt="Star" />
   </button>
 
-  <h2 className="text-[#999999] text-xl sm:text-2xl mb-5">Your Prompts</h2>
+  <h2 className="text-[#999999] text-xl sm:text-2xl mb-3">Your Prompts</h2>
+
   {prompts.length === 0 && (
-    <p className="text-[#808080] text-sm sm:text-xl py-2 sm:py-4">
+    <p className="text-[#808080] text-sm sm:text-lg py-2 sm:py-4">
       You have no prompts as of now. Create now to get started!
     </p>
   )}
 
-  <div className="h-[calc(100vh-200px)] overflow-hidden"> {/* Adjust 200px based on your header/footer height */}
-    <div className="h-full overflow-y-auto px-1 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-5 lg:gap-3 mb-6 sm:mb-0 auto-rows-auto">
-        {prompts.slice(0, visiblePrompts).map((item, index) => (
-          <div
-            key={item.prompt.history_id}
-            className={`border border-[#999999] rounded-2xl p-4 sm:p-5 lg:p-6
-            flex flex-col gap-3
-            transition-all duration-300 hover:border-[#2796ef]
-            bg-black/5 backdrop-blur-sm
-            ${expandedPrompts.has(item.prompt.history_id) ? 'cursor-pointer' : 'min-h-[160px] cursor-pointer'}`}
-          >
-            <div className="flex flex-col h-full" onClick={() => toggleExpand(item.prompt.history_id)}>
-              {item.response ? (
-                <>
-                  <p className={`text-[#999999] text-xs sm:text-sm font-[Inter] mb-2
-                    ${expandedPrompts.has(item.prompt.history_id) ? '' : 'line-clamp-2'}`}>
-                    {item.prompt.prompt_text}
-                  </p>
-                  <div className="flex justify-between items-start gap-3 flex-grow">
-                    <p className={`text-[#999999] text-lg sm:text-xl lg:text-2xl font-[Inter]
-                      ${expandedPrompts.has(item.prompt.history_id) ? '' : 'line-clamp-4'}`}>
-                      {item.response.prompt_text}
-                    </p>
-                    <img
-                      className="w-6 h-6 cursor-pointer text-[#2796ef] flex-shrink-0
-                        hover:scale-105 transition-transform duration-200"
-                      src={copiedIndex === index ? copied : copy}
-                      alt="Copy"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        copyToClipboard(item.response.prompt_text, index, e);
-                      }}
-                      title={copiedIndex === index ? "Copied!" : "Copy to Clipboard"}
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="flex justify-between items-start gap-3 flex-grow">
-                  <p className={`text-[#999999] text-lg sm:text-xl lg:text-2xl font-[Inter]
-                    ${expandedPrompts.has(item.prompt.history_id) ? '' : 'line-clamp-6'}`}>
-                    {item.prompt.prompt_text}
-                  </p>
-                  <img
-                    className="w-6 h-6 cursor-pointer text-[#2796ef] flex-shrink-0
-                      hover:scale-105 transition-transform duration-200"
-                    src={copiedIndex === index ? copied : copy}
-                    alt="Copy"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      copyToClipboard(item.prompt.prompt_text, index, e);
-                    }}
-                    title={copiedIndex === index ? "Copied!" : "Copy to Clipboard"}
-                  />
-                </div>
-              )}
+<div className="h-[calc(100vh-200px)] overflow-hidden">
+  <div className="h-full overflow-y-auto px-1 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+  <div className="flex flex-wrap gap-3 sm:gap-4 lg:gap-5">
+  {prompts.slice(0, visiblePrompts).map((item, index) => (
+    <div
+      key={item.prompt.history_id}
+      className="w-full sm:w-[calc(50%-8px)] lg:w-[calc(33.33%-14px)] xl:w-[calc(25%-16px)]
+        border border-[#999999] rounded-2xl 
+        p-3 sm:p-4 lg:p-5
+        flex flex-col gap-3
+        transition-all duration-300 hover:border-[#2796ef]
+        bg-black/5 backdrop-blur-sm
+        min-h-[160px] sm:min-h-[180px] lg:min-h-[200px]
+        cursor-pointer"
+    >
+      <div 
+        className="flex flex-col flex-grow"
+        onClick={() => toggleExpand(item.prompt.history_id)}
+      >
+        {item.response ? (
+          <>
+            {/* Prompt Text */}
+            <p className={`text-[#999999] text-xs sm:text-sm font-[Inter] 
+              mb-2 sm:mb-3
+              ${expandedPrompts.has(item.prompt.history_id) ? '' : 'line-clamp-2'}`}
+            >
+              {item.prompt.prompt_text}
+            </p>
+            
+            {/* Response Section */}
+            <div className="flex justify-between items-start gap-2 sm:gap-3 flex-grow">
+              <p className={`text-[#999999] 
+                text-base sm:text-lg lg:text-xl
+                font-[Inter] pr-2
+                ${expandedPrompts.has(item.prompt.history_id) ? '' : 'line-clamp-4'}`}
+              >
+                {item.response.prompt_text}
+              </p>
+              
+              {/* Copy Button */}
+              <button
+                className="w-6 h-6 sm:w-7 sm:h-7
+                  cursor-pointer flex-shrink-0
+                  hover:scale-105 transition-transform duration-200"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  copyToClipboard(item.response.prompt_text, index, e);
+                }}
+                title={copiedIndex === index ? "Copied!" : "Copy to Clipboard"}
+              >
+                <img 
+                  src={copiedIndex === index ? copied : copy}
+                  alt="Copy"
+                  className="w-full h-full"
+                />
+              </button>
             </div>
-
-            <div className="flex justify-between text-[#999999] text-xs mt-auto pt-2 border-t border-[#999999]/20">
-              <span>{item.prompt.ai_type}</span>
-              <span>{new Date(item.prompt.created_at).toLocaleDateString()}</span>
-            </div>
+          </>
+        ) : (
+          /* No Response Section */
+          <div className="flex justify-between items-start gap-2 sm:gap-3 flex-grow">
+            <p className={`text-[#999999] 
+              text-base sm:text-lg lg:text-xl
+              font-[Inter] pr-2
+              ${expandedPrompts.has(item.prompt.history_id) ? '' : 'line-clamp-6'}`}
+            >
+              {item.prompt.prompt_text}
+            </p>
+            
+            {/* Copy Button */}
+            <button
+              className="w-6 h-6 sm:w-7 sm:h-7
+                cursor-pointer flex-shrink-0
+                hover:scale-105 transition-transform duration-200"
+              onClick={(e) => {
+                e.stopPropagation();
+                copyToClipboard(item.prompt.prompt_text, index, e);
+              }}
+              title={copiedIndex === index ? "Copied!" : "Copy to Clipboard"}
+            >
+              <img 
+                src={copiedIndex === index ? copied : copy}
+                alt="Copy"
+                className="w-full h-full"
+              />
+            </button>
           </div>
-        ))}
+        )}
+      </div>
+
+      {/* Footer Section */}
+      <div className="flex justify-between items-center
+        text-[#999999] text-xs
+        mt-auto pt-2 
+        border-t border-[#999999]/20"
+      >
+        <span>{item.prompt.ai_type}</span>
+        <span>{new Date(item.prompt.created_at).toLocaleDateString()}</span>
       </div>
     </div>
+  ))}
+</div>
   </div>
+</div>
 
   {visiblePrompts < prompts.length && prompts.length > 0 && (
     <div className="w-full flex justify-center">
@@ -224,7 +262,7 @@ const PromptGrid = () => {
   {/* "Create More" button for larger screens */}
   <button
     onClick={() => setCreateClicked(prev => !prev)}
-    className="glowing-button hidden sm:flex w-full sm:w-auto justify-center items-center gap-2 sm:mt-8 mt-6 mb-4"
+    className="glowing-button hidden sm:flex w-full sm:w-auto justify-center items-center gap-2 sm:mt-4 mt-6 mb-4"
   >
     <span>Create{prompts.length > 0 ? " More" : ""}</span>
     <img src={star} alt="Star" />
@@ -236,6 +274,7 @@ const PromptGrid = () => {
     </span>
   )}
 </div>
+
 
   );
 };

@@ -247,160 +247,177 @@ const Register = () => {
   };
     return (
       <div className="min-h-screen bg-[#0C0C0C] sm:bg-black fixed h-full w-full flex justify-center items-center sm:flex-row flex-col z-30 sm:gap-0 gap-12">
-      {/* Form Section */}
-      <div className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm px-6 sm:px-36 sm:w-1/2 w-full" style={{zIndex: 2}}>
-        <h2 className="text-left text-3xl sm:text-[42px] font-normal text-primary mb-8">Create an account</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            {/* Name */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-gray-600 mb-2">Name</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                required
-                className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary focus:none"
-                placeholder="Enter your name"
-                value={name}
-                onChange={(e) => handleFieldChange('name', e.target.value)}
-              />
-              {fieldErrors.name && (
-                <p className="text-red-500 text-xs mt-1">{fieldErrors.name}</p>
-              )}
-            </div>
-    
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-600 mb-2">Email</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                required
-                className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary focus:none"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => handleFieldChange('email', e.target.value)}
-              />
-              {fieldErrors.email && (
-                <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
-              )}
-            </div>
-    
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-600 mb-2">Password</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                required
-                className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary focus:none"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => handleFieldChange('password', e.target.value)}
-              />
-              {fieldErrors.password && (
-                <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>
-              )}
-            </div>
-    
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-600 mb-2">Confirm Password</label>
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                required
-                className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary focus:none"
-                placeholder="Confirm your password"
-                value={confirmPassword}
-                onChange={(e) => handleFieldChange('confirmPassword', e.target.value)}
-              />
-              {fieldErrors.confirmPassword && (
-                <p className="text-red-500 text-xs mt-1">{fieldErrors.confirmPassword}</p>
-              )}
-            </div>
-            <div>
-              <label htmlFor="referralCode" className="block text-sm font-semibold text-gray-600 mb-2">
-                Referral Code (Optional)
-              </label>
-              <input
-                type="text"
-                id="referralCode"
-                name="referralCode"
-                className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary focus:none"
-                placeholder="Enter referral code"
-                value={referralCode}
-                onChange={(e) => handleFieldChange('referralCode', e.target.value)}
-              />
-              {fieldErrors.referralCode && (
-                <p className="text-red-500 text-xs mt-1">{fieldErrors.referralCode}</p>
-              )}
-            </div>
-            {/* Register Button */}
-            <div className='w-full flex justify-center'>
-              <button 
-                className={`bg-[#008ACB] text-primary rounded-md w-full py-3 mt-2 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Processing...' : 'Register'}
-              </button>
-            </div>
-    
-            {/* Google Sign Up Button */}
-            <div className='w-full flex justify-center'>
-              <button 
-                onClick={handleGoogleSignUp}
-                className={`bg-[#000000] border-[#989898] border text-primary rounded-md w-full py-3 flex gap-2 justify-center items-center ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={isLoading}
-              >
-                <img src={googleLogo} alt="Google" />
-                {isLoading ? 'Processing...' : 'Sign up with Google'}
-              </button>
-            </div>
-          </div>
-    
-          {/* Message Area */}
-          {message && (
-            <div className="mt-4 text-center text-sm text-gray-600">
-              {message}
-            </div>
-          )}
-        </form>
-    
-        {/* Link to Login */}
-        <div className="mt-4 text-center">
-          <p className="text-sm bg-gradient-text">
-            Already have an account?{' '}
-            <Link to="/login" className="text-[#008ACB] hover:text-[#4bb8eb]">
-              Log In
-            </Link>
-          </p>
-        </div>
-      </div>
-    
-      {/* Logo and 3D Animation Section */}
-      <div className="flex justify-center order-1 sm:order-2 items-center w-full sm:w-1/2 sm:h-screen bg-[#0C0C0C]">
-        <Link
-          to="/"
-          className={'flex items-center space-x-3 sm:w-auto w-auto absolute top-16 right-16 hidden sm:block'}
-        >
-          <img
-            src={velocitylogo}
-            className="h-10 sm:h-14"
-            alt="Velocity Logo"
+  {/* Form Section */}
+  <div
+    className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm px-6 sm:px-12 md:px-16 lg:px-24 sm:w-3/4 md:w-2/3 lg:w-1/2 w-full"
+    style={{ zIndex: 2 }}
+  >
+    <h2 className="text-left text-2xl sm:text-3xl lg:text-[42px] font-normal text-primary mb-8">
+      Create an account
+    </h2>
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-4">
+        {/* Name */}
+        <div>
+          <label htmlFor="name" className="block text-sm font-semibold text-gray-600 mb-2">
+            Name
+          </label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            required
+            className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary"
+            placeholder="Enter your name"
+            value={name}
+            onChange={(e) => handleFieldChange('name', e.target.value)}
           />
-        </Link>
-    
-        <div className="relative hidden sm:block">
-          <ThreeDLogo />
+          {fieldErrors.name && (
+            <p className="text-red-500 text-xs mt-1">{fieldErrors.name}</p>
+          )}
+        </div>
+
+        {/* Email */}
+        <div>
+          <label htmlFor="email" className="block text-sm font-semibold text-gray-600 mb-2">
+            Email
+          </label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => handleFieldChange('email', e.target.value)}
+          />
+          {fieldErrors.email && (
+            <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
+          )}
+        </div>
+
+        {/* Password */}
+        <div>
+          <label htmlFor="password" className="block text-sm font-semibold text-gray-600 mb-2">
+            Password
+          </label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => handleFieldChange('password', e.target.value)}
+          />
+          {fieldErrors.password && (
+            <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>
+          )}
+        </div>
+
+        {/* Confirm Password */}
+        <div>
+          <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-600 mb-2">
+            Confirm Password
+          </label>
+          <input
+            type="password"
+            id="confirmPassword"
+            name="confirmPassword"
+            required
+            className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary"
+            placeholder="Confirm your password"
+            value={confirmPassword}
+            onChange={(e) => handleFieldChange('confirmPassword', e.target.value)}
+          />
+          {fieldErrors.confirmPassword && (
+            <p className="text-red-500 text-xs mt-1">{fieldErrors.confirmPassword}</p>
+          )}
+        </div>
+
+        {/* Referral Code */}
+        <div>
+          <label htmlFor="referralCode" className="block text-sm font-semibold text-gray-600 mb-2">
+            Referral Code (Optional)
+          </label>
+          <input
+            type="text"
+            id="referralCode"
+            name="referralCode"
+            className="w-full py-2 px-4 border bg-transparent border-[#808080] rounded-lg focus:outline-none text-primary"
+            placeholder="Enter referral code"
+            value={referralCode}
+            onChange={(e) => handleFieldChange('referralCode', e.target.value)}
+          />
+          {fieldErrors.referralCode && (
+            <p className="text-red-500 text-xs mt-1">{fieldErrors.referralCode}</p>
+          )}
+        </div>
+
+        {/* Register Button */}
+        <div className="w-full flex justify-center">
+          <button
+            className={`bg-[#008ACB] text-primary rounded-md w-full py-3 mt-2 ${
+              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            type="submit"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Processing...' : 'Register'}
+          </button>
+        </div>
+
+        {/* Google Sign Up Button */}
+        <div className="w-full flex justify-center">
+          <button
+            onClick={handleGoogleSignUp}
+            className={`bg-[#000000] border-[#989898] border text-primary rounded-md w-full py-3 flex gap-2 justify-center items-center ${
+              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            disabled={isLoading}
+          >
+            <img src={googleLogo} alt="Google" />
+            {isLoading ? 'Processing...' : 'Sign up with Google'}
+          </button>
         </div>
       </div>
-    </div>    
+
+      {/* Message Area */}
+      {message && (
+        <div className="mt-4 text-center text-sm text-gray-600">{message}</div>
+      )}
+    </form>
+
+    {/* Link to Login */}
+    <div className="mt-4 text-center">
+      <p className="text-sm bg-gradient-text">
+        Already have an account?{' '}
+        <Link to="/login" className="text-[#008ACB] hover:text-[#4bb8eb]">
+          Log In
+        </Link>
+      </p>
+    </div>
+  </div>
+
+  {/* Logo and 3D Animation Section */}
+  <div className="flex justify-center order-1 sm:order-2 items-center w-full sm:w-1/2 sm:h-screen bg-[#0C0C0C]">
+    <Link
+      to="/"
+      className={
+        'flex items-center space-x-3 sm:w-auto w-auto absolute top-16 right-16 hidden sm:block'
+      }
+    >
+      <img src={velocitylogo} className="h-10 sm:h-14" alt="Velocity Logo" />
+    </Link>
+
+    <div className="relative hidden sm:block">
+      <ThreeDLogo />
+    </div>
+  </div>
+</div>
+    
   );
 };
 

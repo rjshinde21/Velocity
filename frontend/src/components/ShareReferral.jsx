@@ -76,64 +76,71 @@ const ShareReferral = ({ userId, authToken }) => {
     };
 
     return (
-        <div className="w-full font-[Inter] max-w-sm mx-auto bg-[#1A1A1A] rounded-2xl p-4 sm:p-6 mt-0 mb-0 border border-[#333333]/30 mt-4 mb-4">
-            <h2 className="text-white/90 text-base sm:text-lg text-center mb-4 sm:mb-6">
-                For Each Referral
-            </h2>
+        <div className="w-full font-[Inter] max-w-lg mx-auto bg-[#1A1A1A] rounded-2xl p-4 sm:p-6 mt-4 mb-4 border border-[#333333]/30">
+  <h2 className="text-white/90 text-base sm:text-lg text-center mb-4 sm:mb-6">
+    For Each Referral
+  </h2>
 
-            <div className="flex flex-row justify-between gap-4 sm:gap-2 mb-6 sm:mb-6">
-    <div className="text-center bg-black/30 p-3 sm:p-4 rounded-xl backdrop-blur-sm flex flex-col justify-center items-center w-full sm:min-w-[140px] min-h-[100px] sm:min-h-[120px]">
-        <p className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Your Friend Gets</p>
-        {/* {referralStats.pendingReferrals} */}
-        <p className="text-white text-3xl sm:text-4xl font-semibold">30</p>
+  <div className="flex flex-row justify-between gap-4 sm:gap-2 mb-6 sm:mb-6">
+    <div className="text-center bg-black/30 p-3 sm:p-4 rounded-xl backdrop-blur-sm flex flex-col justify-center items-center w-full sm:w-[140px] min-h-[100px] sm:min-h-[120px]">
+      <p className="text-gray-400 text-xs sm:text-sm mb-2">Your Friend Gets</p>
+      <p className="text-white text-3xl sm:text-4xl font-semibold">30</p>
     </div>
 
-    <div className="text-center bg-black/30 p-3 sm:p-4 rounded-xl backdrop-blur-sm flex flex-col justify-center items-center w-full sm:min-w-[140px] min-h-[100px] sm:min-h-[120px]">
-        <p className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">You Get</p>
-        {/* {referralStats.tokensEarned} */}
-        <p className="text-white text-3xl sm:text-4xl font-semibold">50</p>
+    <div className="text-center bg-black/30 p-3 sm:p-4 rounded-xl backdrop-blur-sm flex flex-col justify-center items-center w-full sm:w-[140px] min-h-[100px] sm:min-h-[120px]">
+      <p className="text-gray-400 text-xs sm:text-sm mb-2">You Get</p>
+      <p className="text-white text-3xl sm:text-4xl font-semibold">50</p>
     </div>
+  </div>
+
+  <div className="flex justify-center items-center mb-4">
+    <p className="text-[#ffffff]/60 text-sm text-center">
+      You've Earned 100 tokens till now
+    </p>
+  </div>
+
+  <div className="flex items-center justify-center pt-6">
+    <button
+      onClick={shareReferral}
+      className="bg-[#0084CC] hover:bg-[#0095e8] text-white font-medium py-2.5 sm:py-3 px-4 sm:px-6 rounded-full transition-all duration-200 flex items-center justify-center gap-1 text-sm sm:text-base"
+    >
+      <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+      Share Now
+    </button>
+  </div>
+
+  {isModalOpen && (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#1A1A1A] rounded-xl p-4 sm:p-6 w-full max-w-[90%] sm:max-w-md border border-[#333333]/30">
+        <h2 className="text-white text-lg sm:text-xl mb-4 text-center">
+          Share Your Referral Code
+        </h2>
+        <div className="bg-[#2C2C2C] p-3 sm:p-4 rounded-lg flex justify-between items-center mb-4 sm:mb-6">
+          <span className="text-white font-mono text-sm sm:text-base break-all">
+            {referralCode}
+          </span>
+          <button
+            onClick={copyToClipboard}
+            className="text-[#0084CC] hover:text-[#0095e8] transition-colors"
+          >
+            {copied ? (
+              <Check className="w-4 h-4 sm:w-5 sm:h-5" />
+            ) : (
+              <Copy className="w-4 h-4 sm:w-5 sm:h-5" />
+            )}
+          </button>
+        </div>
+        <button
+          onClick={() => setIsModalOpen(false)}
+          className="w-full bg-[#2C2C2C] text-white font-medium py-2.5 sm:py-3 rounded-lg hover:bg-[#3C3C3C] transition-colors text-sm sm:text-base"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  )}
 </div>
 
-            <div className='flex justify-center items-center'>
-                {/* <p className="text-[#F7AA1C] text-2xl">{referralStats.totalReferrals}</p> */}
-                <p className="text-[#ffffff]/60 text-sm">You've Earned 100 tokens till now</p>
-            </div>
-
-            <div className="flex items-center justify-center pt-6">
-                <button
-                    onClick={shareReferral}
-                    className="bg-[#0084CC] hover:bg-[#0095e8] text-white font-medium py-2.5 sm:py-3 px-4 sm:px-6 rounded-full transition-all duration-200 flex items-center justify-center gap-1 text-sm sm:text-base"
-                >
-                    <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    Share Now
-                </button>
-            </div>
-
-            {/* Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-[#1A1A1A] rounded-xl p-4 sm:p-6 w-full max-w-[90%] sm:max-w-md border border-[#333333]/30">
-                        <h2 className="text-white text-lg sm:text-xl mb-4">Share Your Referral Code</h2>
-                        <div className="bg-[#2C2C2C] p-3 sm:p-4 rounded-lg flex justify-between items-center mb-4 sm:mb-6">
-                            <span className="text-white font-mono text-sm sm:text-base">{referralCode}</span>
-                            <button
-                                onClick={copyToClipboard}
-                                className="text-[#0084CC] hover:text-[#0095e8] transition-colors"
-                            >
-                                {copied ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : <Copy className="w-4 h-4 sm:w-5 sm:h-5" />}
-                            </button>
-                        </div>
-                        <button
-                            onClick={() => setIsModalOpen(false)}
-                            className="w-full bg-[#2C2C2C] text-white font-medium py-2.5 sm:py-3 rounded-lg hover:bg-[#3C3C3C] transition-colors text-sm sm:text-base"
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
     );
 };
 

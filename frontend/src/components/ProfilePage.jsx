@@ -361,125 +361,97 @@ const ProfilePage = ({ pricingRef }) => {
 
     // Credits section component to avoid duplication
     const CreditsSection = () => (
-        <div className="flex flex-col justify-between h-full px-6 sm:px-4 py-6 md:py-24">
-            {/* Profile Section */}
-            <div className="flex flex-col md:flex-row md:gap-8 lg:gap-16 xl:gap-32 items-center px-2 sm:px-4 mt-4 sm:mt-8 md:mt-20">
-                <div className="text-center md:text-left mb-8 sm:mb-10 md:mb-0 w-full md:w-auto">
-                    {isEditing ? (
-                        <input
-                            className="text-white w-full md:w-auto font-[Inter] text-xl sm:text-2xl md:text-3xl 
-            bg-transparent border-b border-gray-500 focus:outline-none focus:border-white 
-            text-center md:text-left px-2"
-                            onChange={handleChange}
-                            value={name}
-                            autoFocus
-                        />
-                    ) : (
-                        <h2 className="text-white font-[Inter] text-xl sm:text-2xl md:text-3xl">
-                            {name}
-                        </h2>
-                    )}
-                </div>
-            </div>
+        <div className="flex flex-col h-full px-4 sm:px-6 lg:px-8 py-6 lg:py-24">
+  {/* Profile Section */}
+  <div className="flex flex-col items-center lg:items-start 
+    px-2 sm:px-4 
+    mt-4 sm:mt-8 lg:mt-20"
+  >
+    <div className="text-center lg:text-left mb-8 w-full lg:w-auto">
+      {isEditing ? (
+        <input
+          className="text-white w-full lg:w-auto 
+            font-[Inter] text-xl sm:text-2xl lg:text-3xl 
+            bg-transparent border-b border-gray-500 
+            focus:outline-none focus:border-white 
+            text-center lg:text-left px-2"
+          onChange={handleChange}
+          value={name}
+          autoFocus
+        />
+      ) : (
+        <h2 className="text-white font-[Inter] text-xl sm:text-2xl lg:text-3xl">
+          {name}
+        </h2>
+      )}
+    </div>
+  </div>
 
-            {/* Credits Section */}
-            <div className="w-full max-w-sm mx-auto px-4 py-4 sm:py-5 credits-container">
-  <style jsx>{`
-    @media screen and (min-width: 712px) and (max-width: 1138px) {
-      .credits-container {
-        max-width: 450px !important;
-        padding: 1.5rem 2rem !important;
-      }
-
-      .credits-title {
-        font-size: 0.875rem !important;
-        margin-bottom: 1rem !important;
-      }
-
-      .credits-balance {
-        padding-bottom: 1rem !important;
-      }
-
-      .balance-amount {
-        font-size: 2.25rem !important;
-      }
-
-      .balance-text {
-        font-size: 1rem !important;
-        margin-left: 0.75rem !important;
-      }
-
-      .credits-message {
-        margin: 1rem 0 !important;
-        font-size: 0.875rem !important;
-      }
-
-      .buttons-container {
-        margin-top: 1.5rem !important;
-        gap: 1.25rem !important;
-        flex-direction: column !important;
-      }
-
-      .top-up-button {
-        font-size: 1.125rem !important;
-        padding: 0.875rem 2rem !important;
-      }
-
-      .logout-button {
-        width: 100% !important;
-        font-size: 0.875rem !important;
-        padding: 0.75rem 1.5rem !important;
-      }
-    }
-  `}</style>
-
-  <p className="text-[#ffffff]/80 font-[Inter] text-xs sm:text-sm mb-2 sm:mb-3 credits-title">
-    Credit Balance of today
-  </p>
-  
-  <p className="pb-2 sm:pb-3 text-[#ffffff] font-[Inter] border-b border-[#ffffff]/30 credits-balance">
-    <span className="text-2xl sm:text-3xl md:text-4xl balance-amount">
-      {(tokenInfo?.token_received || 0) - (tokenInfo?.tokens_used || 0)}
-    </span>
-    <span className="text-sm sm:text-base ml-2 balance-text">Credits Left</span>
-  </p>
-
-  <p className="text-[#FFFFFF]/80 my-2 sm:my-3 italic font-normal font-[Inter] text-sm credits-message">
-    Running out of daily credits?
-  </p>
-
-  {/* Buttons Section */}
-  <div className='flex flex-col sm:flex-row md:flex-col gap-4 sm:gap-6 md:gap-4 mt-4 buttons-container'>
-    <button
-      onClick={() => setIsTopUpModalOpen(true)}
-      className="w-full flex justify-center items-center text-base sm:text-lg 
-        px-4 sm:px-6 md:px-8 py-3 sm:py-4 
-        text-[#BEBEBE] border border-[#F7AA1C] 
-        shadow-[0_0_9px_rgba(247,170,28,0.3)] 
-        transition-all duration-200 rounded-[35px] 
-        hover:shadow-[0_0_12px_rgba(247,170,28,0.7)]
-        top-up-button"
+  {/* Credits Section */}
+  <div className="w-full max-w-md mx-auto px-4 mr-8">
+    {/* Credit Balance Title */}
+    <p className="text-[#ffffff]/80 font-[Inter] 
+      text-xs sm:text-sm lg:text-base 
+      mb-2 sm:mb-4"
     >
-      Top Up
-    </button>
-
-    <ShareReferral userId={userId} authToken={authToken} />
-
-    <button
-      onClick={handleLogout}
-      className="w-auto sm:w-fit md:w-auto flex justify-center items-center 
-        text-xs sm:text-sm 
-        px-4 sm:px-6 py-2 sm:py-2.5
-        text-[#ffffff]/30 border border-[#ffffff]/30 
-        transition-all duration-200 rounded-[35px] 
-        hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]
-        logout-button"
+      Credit Balance of today
+    </p>
+    
+    {/* Balance Display */}
+    <p className="pb-2 sm:pb-4 
+      text-[#ffffff] font-[Inter] 
+      border-b border-[#ffffff]/30"
     >
-      Logout
-    </button>
+      <span className="text-2xl sm:text-3xl lg:text-4xl">
+        {(tokenInfo?.token_received || 0) - (tokenInfo?.tokens_used || 0)}
+      </span>
+      <span className="text-sm sm:text-base lg:text-lg ml-2 sm:ml-3">
+        Credits Left
+      </span>
+    </p>
+
+    {/* Credits Message */}
+    <p className="text-[#FFFFFF]/80 
+      my-2 sm:my-4 
+      italic font-normal font-[Inter] text-sm"
+    >
+      Running out of daily credits?
+    </p>
+
+    {/* Buttons Section */}
+    <div className="flex flex-col gap-4 mt-4 sm:mt-6">
+      {/* Top Up Button */}
+      <button
+        onClick={() => setIsTopUpModalOpen(true)}
+        className="w-full flex justify-center items-center 
+          text-base sm:text-lg 
+          px-4 sm:px-8 py-3 sm:py-4 
+          text-[#BEBEBE] border border-[#F7AA1C] 
+          shadow-[0_0_9px_rgba(247,170,28,0.3)] 
+          transition-all duration-200 rounded-[35px] 
+          hover:shadow-[0_0_12px_rgba(247,170,28,0.7)]"
+      >
+        Top Up
+      </button>
+
+      {/* Share Referral Component */}
+      <ShareReferral userId={userId} authToken={authToken} />
+
+      {/* Logout Button */}
+      <button
+        onClick={handleLogout}
+        className="w-full flex justify-center items-center 
+          text-xs sm:text-sm 
+          px-4 sm:px-6 py-2 sm:py-3
+          text-[#ffffff]/30 border border-[#ffffff]/30 
+          transition-all duration-200 rounded-[35px] 
+          hover:shadow-[0_0_7px_rgba(255,255,255,0.7)]"
+      >
+        Logout
+      </button>
+    </div>
   </div>
 </div>
-        </div>
     );
 
     return (
