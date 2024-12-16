@@ -403,7 +403,6 @@ function showError(message) {
   }
 }
 document.addEventListener('DOMContentLoaded', () => {
-  
   // Check current auth state
   chrome.storage.local.get(['userId','token','isAuthenticated', 'userName', 'userEmail'], (data) => {
     if (data.userEmail) {
@@ -545,6 +544,7 @@ async function sendRequest() {
     } else {
       throw new Error('No response data received from server');
     }
+    chrome.storage.local.remove(['promptText']);
 
   } catch (error) {
     trackEvent('Generate Error', {
@@ -1165,6 +1165,21 @@ const API_BASE_URL = 'http://127.0.0.1:5000';
 document.addEventListener('DOMContentLoaded', function () {
   const sendButton = document.getElementById('sendButton');
   const promptInput = document.getElementById('promptInput');
+  chrome.storage.local.get(['promptText'], (result) => {
+    if (result.promptText) {
+      promptInput.value = result.promptText;
+      currentLength = promptInput.value.length;
+      updateCharCount(promptInput);
+    }
+  });
+
+  // Save text on input
+  promptInput.addEventListener('input', function() {
+    chrome.storage.local.set({ promptText: this.value });
+    updateCharCount(this);
+    updateCalculatedCredits();
+  });
+
   const CHAR_LIMIT = 1100;
   //const categoriesContainer = document.getElementById('categories-container');
   const responseDiv = document.getElementById('response');
@@ -1999,6 +2014,7 @@ function resetInterface() {
   const promptInput = document.getElementById('promptInput');
   if (promptInput) {
     promptInput.value = '';
+    chrome.storage.local.remove(['promptText']);
   }
   
   // Update credits display

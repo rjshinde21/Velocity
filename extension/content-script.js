@@ -27,29 +27,38 @@ function trackEvent(eventName, properties = {}) {
   });
 }
 // Function to check auth state
-function checkAuthState() {
-    if (isDiscordPlatform()) {
-      console.log('Skipping auth state check for Discord');
-      return;
-    }
-  
-    if (!isValidPlatform) {
-      return;
-    }
-  
-    const authData = {
-      isAuthenticated: !!localStorage.getItem('token'),
-      token: localStorage.getItem('token'),
-      userId: localStorage.getItem('userId'),
-      userName: localStorage.getItem('userName'),
-      userEmail: localStorage.getItem('userEmail')
-    };
+async function checkAuthState() {
+  if (isDiscordPlatform()) {
+    console.log('Skipping auth state check for Discord');
+    return null;
+  }
 
+  if (!isValidPlatform) {
+    return null;
+  }
+
+  // Debug log
+  // console.log('Current localStorage state:', {
+  //   token: localStorage.getItem('token'),
+  //   userId: localStorage.getItem('userId'),
+  //   userName: localStorage.getItem('userName'),
+  //   userEmail: localStorage.getItem('userEmail')
+  // });
+
+  const authData = {
+    isAuthenticated: !!localStorage.getItem('token'),
+    token: localStorage.getItem('token'),
+    userId: localStorage.getItem('userId'),
+    userName: localStorage.getItem('userName'),
+    userEmail: localStorage.getItem('userEmail')
+  };
 
   // Only send message if auth state has changed
-  if (JSON.stringify(authData) !== JSON.stringify(lastAuthState) && ((!localStorage.getItem('token') && !localStorage.getItem('userEmail')) || 
-  (localStorage.getItem('token') && localStorage.getItem('userEmail')))) {
-    chrome.storage.local.set({
+  if (JSON.stringify(authData) !== JSON.stringify(lastAuthState) && 
+      ((!localStorage.getItem('token') && !localStorage.getItem('userEmail')) || 
+       (localStorage.getItem('token') && localStorage.getItem('userEmail')))) {
+    
+    await chrome.storage.local.set({
       token: authData.token,
       userId: authData.userId,
       userName: authData.userName,
@@ -62,6 +71,8 @@ function checkAuthState() {
       data: authData
     });
   }
+
+  return authData;
 }
 async function injectStyles() {
   const platformInfo = await detectPlatform();
@@ -232,6 +243,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         if (window.velocityState.isEnabled && platformInfo.isSupported) {
           await injectStyles();
+          
           await findAndEnhanceInputs();
         } else {
           cleanupEnhanceButtons();
@@ -276,8 +288,33 @@ window.addEventListener('storage', (e) => {
 const PLATFORM_CONFIG = {
   chatgpt: {
     urlPattern: /^https:\/\/chatgpt\.com/,
-    selectors: '#prompt-textarea',
-    name: 'GPT'
+    selectors: '.ProseMirror[contenteditable="true"][id="prompt-textarea"]',
+    name: 'GPT',
+    customStyles: `
+      .velocity-wrapper {
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+        min-height: 24px !important;
+      }
+      
+      .velocity-wrapper .ProseMirror {
+        padding-right: 50px !important;
+        min-height: 24px !important;
+      }
+
+      .velocity-wrapper textarea {
+        padding-right: 50px !important;
+      }
+
+      .velocity-enhance-button {
+        position: absolute !important;
+        top: 50% !important;
+        right: 12px !important;
+        transform: translateY(-50%) !important;
+        z-index: 999999 !important;
+      }
+    `
   },
   claude: {
     urlPattern: /^https:\/\/claude\.ai/,
@@ -1005,7 +1042,7 @@ async function detectPlatform() {
       throw error;
     }
   }  // Function to create and attach enhance button
-  function createEnhanceButton(inputElement) {
+  async function createEnhanceButton(inputElement) {
     const wrapper = document.createElement('div');
     wrapper.className = 'velocity-wrapper';
     if (window.velocityState.platformInfo?.platform === 'discord') {
@@ -1126,95 +1163,109 @@ async function detectPlatform() {
       img.classList.remove('animate-spin');
     };
     
-    // Set up the click handler
     button.addEventListener('click', async () => {
-
       if (!platformInfo?.isSupported) {
         console.log('Platform not supported, enhancement disabled');
         return;
       }
-
-      const text = inputElement.value || inputElement.textContent || '';
-      if (!text) return;
-      
-      // Check character limit before processing
-      if (text.length > 1100) {
-
-        trackEvent('Generate Error', {
-          error: 'Prompt Too Long',
-          promptLength: text.length,
-          platform:getState().platform,
-          style:getState().styleType,
-          location:"Enhance Button"
-      });
-        button.style.background = 'linear-gradient(180deg, #FF4444 0%, #CC0000 100%)';
-        setTimeout(() => {
-          button.style.background = '';
-        }, 1000);
-        return;
+      // Get selected text if any
+let selectedText = '';
+let fullText = inputElement.value || inputElement.textContent || '';
+let selectionStart = 0;
+let selectionEnd = fullText.length;
+if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
+  selectionStart = inputElement.selectionStart;
+  selectionEnd = inputElement.selectionEnd;
+  selectedText = fullText.substring(selectionStart, selectionEnd);
+} else {
+  const selection = window.getSelection();
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    if (inputElement.contains(range.commonAncestorContainer)) {
+      selectedText = selection.toString();
+      // Calculate selection positions for contenteditable
+      const preSelectionRange = range.cloneRange();
+      preSelectionRange.selectNodeContents(inputElement);
+      preSelectionRange.setEnd(range.startContainer, range.startOffset);
+      selectionStart = preSelectionRange.toString().length;
+      selectionEnd = selectionStart + selectedText.length;
+    }
+  }
+}
+const textToEnhance = selectedText || fullText;
+if (!textToEnhance) return;
+if (textToEnhance.length > 1100) {
+  trackEvent('Generate Error', {
+    error: 'Prompt Too Long',
+    promptLength: textToEnhance.length,
+    platform: getState().platform,
+    style: getState().styleType,
+    location: "Enhance Button"
+  });
+  button.style.background = 'linear-gradient(180deg, #FF4444 0%, #CC0000 100%)';
+  setTimeout(() => {
+    button.style.background = '';
+  }, 1000);
+  return;
+}
+try {
+  showLoading();
+  const enhancedText = await enhancePrompt(textToEnhance);
+  // Replace only selected portion if there was a selection
+  if (selectedText) {
+    if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
+      const newText = fullText.substring(0, selectionStart) + enhancedText + fullText.substring(selectionEnd);
+      inputElement.value = newText;
+      inputElement.setSelectionRange(selectionStart, selectionStart + enhancedText.length);
+    } else if (platformInfo.platform === 'runway') {
+      inputElement.focus();
+      const selection = window.getSelection();
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(document.createTextNode(enhancedText));
+    } else {
+      const newText = fullText.substring(0, selectionStart) + enhancedText + fullText.substring(selectionEnd);
+      inputElement.textContent = newText;
+    }
+  } else {
+    // Handle full text enhancement as before
+    if (platformInfo.platform === 'runway') {
+      inputElement.focus();
+      document.execCommand('selectAll', false, null);
+      document.execCommand('delete', false, null);
+      document.execCommand('insertText', false, enhancedText);
+      inputElement.style.cssText = `
+        user-select: text !important;
+        white-space: pre-wrap !important;
+        word-break: break-word !important;
+        width: 100% !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        padding-right: 50px !important;
+        min-height: 81px !important;
+        height: auto !important;
+        overflow-y: visible !important;
+      `;
+    } else {
+      if (inputElement.value !== undefined) {
+        inputElement.value = enhancedText;
+      } else {
+        inputElement.textContent = enhancedText;
       }
-  
-      
-      try {
-        showLoading();
-        const enhancedText = await enhancePrompt(text);
-        if (platformInfo.platform === 'runway') {
-          // Focus the editor
-          inputElement.focus();
-    
-          // Select all existing text
-          document.execCommand('selectAll', false, null);
-          
-          // Delete selected text
-          document.execCommand('delete', false, null);
-          
-          // Insert new text
-          document.execCommand('insertText', false, enhancedText);
-          inputElement.style.cssText = `
-          user-select: text !important;
-          white-space: pre-wrap !important;
-          word-break: break-word !important;
-          width: 100% !important;
-          margin: 0 !important;
-          box-sizing: border-box !important;
-          padding-right: 50px !important;
-          min-height: 81px !important;
-          height: auto !important;
-          overflow-y: visible !important;
-        `;
+    }
+  }
+  inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+} catch (error) {
+  console.error('Enhancement failed:', error);
+  button.style.background = 'linear-gradient(180deg, #FF4444 0%, #CC0000 100%)';
+  setTimeout(() => {
+    button.style.background = '';
+  }, 1000);
+} finally {
+  hideLoading();
+}
+});
 
-          // Ensure input is registered
-          const inputEvent = new InputEvent('input', {
-            bubbles: true,
-            cancelable: true
-          });
-          inputElement.dispatchEvent(inputEvent);
-          
-          // Force focus again to ensure cursor visibility
-          setTimeout(() => {
-            inputElement.focus();
-          }, 0);
-    
-        } else {
-          // Handle other platforms
-          if (inputElement.value !== undefined) {
-            inputElement.value = enhancedText;
-          } else {
-            inputElement.textContent = enhancedText;
-          }
-          inputElement.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-        //inputElement.dispatchEvent(new Event('input', { bubbles: true }));
-      } catch (error) {
-        console.error('Enhancement failed:', error);
-        button.style.background = 'linear-gradient(180deg, #FF4444 0%, #CC0000 100%)';
-        setTimeout(() => {
-          button.style.background = '';
-        }, 1000);
-      } finally {
-        hideLoading();
-      }
-    });
    // Set up proper DOM structure
    if (!inputElement.closest('.velocity-wrapper')) {
     inputElement.parentNode.insertBefore(wrapper, inputElement);
@@ -1247,34 +1298,168 @@ async function detectPlatform() {
       wrapper.style.height = `${inputElement.scrollHeight}px`;
     }
   });
+  const popupStyles = document.createElement('style');
+  popupStyles.textContent = `
+    .velocity-popup {
+      position: fixed !important;
+      transform: translate(-50%, 0) !important;
+      background: linear-gradient(180deg, #1E1E1E 0%, #121212 100%) !important;
+      color: white !important;
+      padding: 12px 16px !important;
+      border-radius: 12px !important;
+      font-size: 13px !important;
+      box-shadow: 0 4px 15px rgba(0, 138, 203, 0.3) !important;
+      border: 1px solid #444444 !important;
+      z-index: 2147483647 !important;
+      width: max-content !important;
+      max-width: 200px !important;
+      display: none !important;
+      text-align: center !important;
+      transition: all 0.2s ease !important;
+    }
+    .velocity-popup::after {
+      content: '' !important;
+      position: absolute !important;
+      bottom: -8px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      border-left: 8px solid transparent !important;
+      border-right: 8px solid transparent !important;
+      border-top: 8px solid #1E1E1E !important;
+    }
+    .velocity-popup.show {
+      display: block !important;
+      opacity: 1 !important;
+      animation: popupFadeIn 0.3s ease-out !important;
+    }
+    @keyframes popupFadeIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, 10px);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+    }
+  `;
+  document.head.appendChild(popupStyles);
+  document.head.appendChild(popupStyles);
+  
+  // Get username with fallback logic
+  let userName = 'there'; // Default fallback
+  
+  try {
+    // Debug logs
+    console.log('Checking auth state...');
+    const authState = await checkAuthState();
+    console.log('Auth state:', authState);
+    
+    if (authState && authState.userName) {
+      userName = authState.userName;
+      console.log('Username from auth state:', userName);
+    } else {
+      // Try chrome.storage.local as backup
+      const storage = await chrome.storage.local.get(['userName']);
+      console.log('Chrome storage state:', storage);
+      
+      if (storage.userName && storage.userName !== 'undefined' && storage.userName !== 'null') {
+        userName = storage.userName;
+        console.log('Username from chrome storage:', userName);
+      } else {
+        // Try localStorage as final backup
+        const localStorageUserName = localStorage.getItem('userName');
+        console.log('localStorage username:', localStorageUserName);
+        
+        if (localStorageUserName && localStorageUserName !== 'undefined' && localStorageUserName !== 'null') {
+          userName = localStorageUserName;
+          console.log('Username from localStorage:', userName);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error getting username:', error);
+  }
+
+  console.log('Final username being used:', userName);
 
 
+const popup = document.createElement('div');
+popup.className = 'velocity-popup';
+wrapper.appendChild(popup);
+let popupTimeout;
+let isFirstAppearance = true;
+// Initial popup when button appears
+const buttonRect = button.getBoundingClientRect();
+popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+popup.textContent = `Hey ${userName}, I am Velocity. Your personal magician!`;
+popup.classList.add('show');
+// Hide initial popup when user starts typing
+inputElement.addEventListener('input', () => {
+  clearTimeout(popupTimeout);
+  // Hide initial 'Click me' popup
+  if (isFirstAppearance) {
+    popup.classList.remove('show');
+    isFirstAppearance = false;
+  }
+  // Set timeout for 'confused' message
+  popupTimeout = setTimeout(() => {
+    const buttonRect = button.getBoundingClientRect();
+    popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+    popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+    popup.textContent = `Confused ${userName}, let me help you!`;
+    popup.classList.add('show');
+  }, 2000);
+});
+button.addEventListener('mouseenter', () => {
+  const buttonRect = button.getBoundingClientRect();
+  popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+  popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+  popup.textContent = 'Click me and witness magic';
+  popup.classList.add('show');
+});
+button.addEventListener('mouseleave', () => {
+  popup.classList.remove('show');
+});
+// Optional: Hide popup if input becomes empty
+inputElement.addEventListener('input', () => {
+  if (inputElement.value.trim() === '') {
+    popup.classList.remove('show');
+  }
+});
  }
 
  function shouldEnhanceInput(input) {
-  if (input.closest('.velocity-wrapper') ||
+  if (!input || !input.isConnected ||
+      input.closest('.velocity-wrapper') ||
       input.dataset.hasEnhanceButton === 'true' ||
       input.parentElement?.querySelector('.velocity-enhance-button')) {
     return false;
   }
+
   const style = window.getComputedStyle(input);
   const isVisible = style.display !== 'none' &&
-  style.visibility !== 'hidden' &&
-  input.offsetParent !== null;
+    style.visibility !== 'hidden' &&
+    style.opacity !== '0' &&
+    input.offsetParent !== null;
+
   const isRunwayEditor = input.getAttribute('data-lexical-editor') === 'true';
-
   const isDiscordInput = input.classList.contains('slateTextArea_e52116') ||
-  (input.getAttribute('role') === 'textbox' && 
-   input.classList.toString().includes('slateTextArea_'));
+    (input.getAttribute('role') === 'textbox' && input.classList.toString().includes('slateTextArea_'));
+  const isChatGPTInput = input.matches('#prompt-textarea') || 
+    (input.getAttribute('contenteditable') === 'true' && input.classList.contains('ProseMirror'));
 
-   if (window.velocityState.platformInfo?.platform === 'discord' && isDiscordInput) {
+  if (window.velocityState.platformInfo?.platform === 'discord' && isDiscordInput) {
     return isVisible;
   }
+
   return isVisible && !input.disabled && (
     input.tagName === 'TEXTAREA' ||
     input.tagName === 'INPUT' ||
     input.getAttribute('contenteditable') === 'true' ||
-    isRunwayEditor
+    isRunwayEditor ||
+    isChatGPTInput
   );
 }
 
@@ -1295,10 +1480,20 @@ async function findAndEnhanceInputs() {
   console.log(`Found ${inputs.length} matching inputs for ${platformInfo.platform}`);
   inputs.forEach(input => {
     if (shouldEnhanceInput(input)) {
-      createEnhanceButton(input);
+      const existingWrapper = input.closest('.velocity-wrapper');
+      if (!existingWrapper) {
+        createEnhanceButton(input);
+      } else {
+        // Update existing button visibility
+        const button = existingWrapper.querySelector('.velocity-enhance-button');
+        if (button && window.velocityState?.isEnabled) {
+          button.classList.add('visible');
+        }
+      }
     }
   });
 }
+
 function cleanupEnhanceButtons() {
   // Remove injected styles
   const styleElement = document.querySelector('#velocity-inject-styles');
@@ -1347,7 +1542,7 @@ function cleanupEnhanceButtons() {
     const platformInfo = await detectPlatform();
     if (!platformInfo.isSupported) {
       console.log('Unsupported platform, stopping initialization');
-      return; // Exit early if not a supported platform
+      return;
     }
   
     const currentState = window.velocityState || {};
@@ -1357,29 +1552,72 @@ function cleanupEnhanceButtons() {
       platformInfo: platformInfo,
       styleType: ''
     };
+  
     if (platformInfo.isSupported) {
       await injectStyles();
+      setupObservers();
 
-      // Set up observer for dynamic content
-      const observer = new MutationObserver((mutations) => {
-        const shouldScan = mutations.some(mutation =>
-          Array.from(mutation.addedNodes).some(node => {
-            if (node.nodeType !== 1) return false;
-            if (platformInfo.platform === 'discord') {
-                return node.querySelector?.(platformInfo.config.selectors) ||
-                       node.matches?.(platformInfo.config.selectors);
-            }
-            return node.querySelector?.(platformInfo.config.selectors);
-        })
-      );
-        if (shouldScan) {
-          findAndEnhanceInputs();
+      let lastUrl = window.location.href;
+
+      async function handleChatTransition() {
+        console.log('Handling chat transition');
+        
+        // Wait for DOM to stabilize
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Find the prosemirror parent
+        const prosemirrorParent = document.querySelector('._prosemirror-parent_15ceg_1');
+        if (!prosemirrorParent) return;
+        
+        // Find input within this parent
+        const input = prosemirrorParent.querySelector('.ProseMirror#prompt-textarea');
+        if (!input) return;
+        
+        // Clean up any existing wrapper/button
+        const existingWrapper = input.closest('.velocity-wrapper');
+        if (existingWrapper) {
+          existingWrapper.remove();
         }
-      });
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
+        
+        // Reset the input's state
+        input.dataset.hasEnhanceButton = 'false';
+        
+        // Create new button
+        createEnhanceButton(input);
+      }
+      
+      function setupObservers() {
+        cleanup();
+        
+        chatObserver = new MutationObserver((mutations) => {
+          if (!window.velocityState?.isEnabled) return;
+
+          const prosemirrorChange = mutations.some(mutation => {
+            return (mutation.target.classList?.contains('_prosemirror-parent_15ceg_1') ||
+                    mutation.target.classList?.contains('default-browser')) &&
+                   mutation.type === 'childList';
+          });
+      
+          if (prosemirrorChange) {
+            console.log('Prosemirror change detected');
+            handleChatTransition();
+          }
+        });
+      
+        chatObserver.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['class']
+        });
+      }
+
+      // Set up observers
+      setupObservers();
+  
+      // Initial enhancement
+      findAndEnhanceInputs();
     }
-  })();
+})();
+
 })();

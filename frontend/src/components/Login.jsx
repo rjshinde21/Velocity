@@ -127,7 +127,7 @@ const Login = ({setIsLoggedIn}) => {
         Analytics.identify(data.data.user.id);
         Analytics.setUserProperties({
           email: data.data.user.email,
-          username: data.data.user.username
+          username: data.data.user.name
           // other user details
         });
         handleSuccessfulLogin(data.data.user, data.data.token);
@@ -177,7 +177,7 @@ const Login = ({setIsLoggedIn}) => {
         Analytics.identify(data.data.user.id);
         Analytics.setUserProperties({
           email: data.data.user.email,
-          username: data.data.user.username
+          username: data.data.user.name
           // other user details
         });
         //handleSuccessfulLogin(data.data.user, data.data.token);
@@ -201,7 +201,7 @@ const Login = ({setIsLoggedIn}) => {
       localStorage.setItem('token', authData.token);
       localStorage.setItem('userId', authData.user.id);
       localStorage.setItem('userEmail', authData.user.email);
-      localStorage.setItem('userName', authData.user.username);
+      localStorage.setItem('userName', authData.user.name);
       localStorage.setItem('firebaseUser', JSON.stringify(authData.firebase));
   
       // 4. Update app state and navigate
@@ -227,7 +227,7 @@ const Login = ({setIsLoggedIn}) => {
     localStorage.setItem('token', token);
     localStorage.setItem('userId', userData.id);
     localStorage.setItem('userEmail', userData.email);
-    localStorage.setItem('userName', userData.username);
+    localStorage.setItem('userName', userData.name);
     // Store Firebase user data
     if (auth.currentUser) {
       localStorage.setItem('firebaseUser', JSON.stringify({

@@ -54,8 +54,33 @@ function sendToMixpanel(event) {
 const SUPPORTED_PLATFORMS = {
   chatgpt: {
     urlPattern: /^https:\/\/chatgpt\.com/,
-    selectors: '#prompt-textarea',
-    name: 'GPT'
+    selectors: '.ProseMirror[contenteditable="true"][id="prompt-textarea"]',
+    name: 'GPT',
+    customStyles: `
+      .velocity-wrapper {
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+        min-height: 24px !important;
+      }
+      
+      .velocity-wrapper .ProseMirror {
+        padding-right: 50px !important;
+        min-height: 24px !important;
+      }
+
+      .velocity-wrapper textarea {
+        padding-right: 50px !important;
+      }
+
+      .velocity-enhance-button {
+        position: absolute !important;
+        top: 50% !important;
+        right: 12px !important;
+        transform: translateY(-50%) !important;
+        z-index: 999999 !important;
+      }
+    `
   },
   claude: {
     urlPattern: /^https:\/\/claude\.ai/,
