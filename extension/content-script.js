@@ -7,7 +7,13 @@ let lastAuthState = null;
 let lastSavedPromptId = null;  // Add this at the top with your other state variables
 let lastTokensUsed = 0;
 let isValidPlatform = false;
+let hideTimeout;
+let CHAR_THRESHOLD_MESSAGE = 10;
+let helpMessageVisible = false;
+let hasStyleSelected = false;
+let loadingInterval;
 
+const HIDE_DELAY = 300; // 300ms delay
 function isDiscordPlatform() {
   const url = window.location.href;
   return /^https:\/\/(www\.)?discord\.com\/channels/.test(url);
@@ -436,6 +442,21 @@ const PLATFORM_CONFIG = {
       }
     }
   };
+  const loadingMessages = [
+    `Enhancing your prompt to match your needs...`,
+    `Crafting the perfect prompt for ${window.velocityState.platformInfo?.platform || 'your platform'}...`,
+    `Working my magic on your prompt...`,
+    `Transforming your prompt with ${window.velocityState.styleType} style...`,
+    `Adding a touch of Velocity to your writing...`,
+    `Optimizing your prompt for better results...`,
+    `Crafting your enhanced prompt...`,
+    `Making your prompt more impactful...`
+  ];
+  
+  const getRandomLoadingMessage = () => {
+    return loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+  };
+  
   
 async function detectPlatform() {
   try {
@@ -1150,122 +1171,53 @@ async function detectPlatform() {
     const showLoading = () => {
       button.disabled = true;
       button.style.pointerEvents = 'none';
-      img.src = chrome.runtime.getURL('assets/logo.png');
       img.classList.add('animate-spin');
-    };
     
+      const updateLoadingMessage = () => {
+        const buttonRect = button.getBoundingClientRect();
+        popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+        popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+        messageEl.textContent = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+        popup.classList.add('show');
+        messageEl.style.display = 'block';
+      };
+    
+      updateLoadingMessage();
+      
+      // Show second message quickly
+      setTimeout(updateLoadingMessage, 100);
+      
+      // Continue updating messages
+      loadingInterval = setInterval(updateLoadingMessage, 2000);
+    };
     const hideLoading = () => {
+      console.log("hide loading called");
+      clearInterval(loadingInterval);
       button.disabled = false;
       if (window.velocityState.isEnabled) {
         button.style.pointerEvents = 'auto';
       }
       img.src = chrome.runtime.getURL('assets/logo.png');
       img.classList.remove('animate-spin');
+      popup.classList.remove('show');
+
     };
     
-    button.addEventListener('click', async () => {
-      if (!platformInfo?.isSupported) {
-        console.log('Platform not supported, enhancement disabled');
-        return;
-      }
-      // Get selected text if any
-let selectedText = '';
-let fullText = inputElement.value || inputElement.textContent || '';
-let selectionStart = 0;
-let selectionEnd = fullText.length;
-if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
-  selectionStart = inputElement.selectionStart;
-  selectionEnd = inputElement.selectionEnd;
-  selectedText = fullText.substring(selectionStart, selectionEnd);
-} else {
-  const selection = window.getSelection();
-  if (selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0);
-    if (inputElement.contains(range.commonAncestorContainer)) {
-      selectedText = selection.toString();
-      // Calculate selection positions for contenteditable
-      const preSelectionRange = range.cloneRange();
-      preSelectionRange.selectNodeContents(inputElement);
-      preSelectionRange.setEnd(range.startContainer, range.startOffset);
-      selectionStart = preSelectionRange.toString().length;
-      selectionEnd = selectionStart + selectedText.length;
-    }
-  }
-}
-const textToEnhance = selectedText || fullText;
-if (!textToEnhance) return;
-if (textToEnhance.length > 1100) {
-  trackEvent('Generate Error', {
-    error: 'Prompt Too Long',
-    promptLength: textToEnhance.length,
-    platform: getState().platform,
-    style: getState().styleType,
-    location: "Enhance Button"
-  });
-  button.style.background = 'linear-gradient(180deg, #FF4444 0%, #CC0000 100%)';
-  setTimeout(() => {
-    button.style.background = '';
-  }, 1000);
-  return;
-}
-try {
-  showLoading();
-  const enhancedText = await enhancePrompt(textToEnhance);
-  // Replace only selected portion if there was a selection
-  if (selectedText) {
-    if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
-      const newText = fullText.substring(0, selectionStart) + enhancedText + fullText.substring(selectionEnd);
-      inputElement.value = newText;
-      inputElement.setSelectionRange(selectionStart, selectionStart + enhancedText.length);
-    } else if (platformInfo.platform === 'runway') {
-      inputElement.focus();
-      const selection = window.getSelection();
-      const range = selection.getRangeAt(0);
-      range.deleteContents();
-      range.insertNode(document.createTextNode(enhancedText));
-    } else {
-      const newText = fullText.substring(0, selectionStart) + enhancedText + fullText.substring(selectionEnd);
-      inputElement.textContent = newText;
-    }
-  } else {
-    // Handle full text enhancement as before
-    if (platformInfo.platform === 'runway') {
-      inputElement.focus();
-      document.execCommand('selectAll', false, null);
-      document.execCommand('delete', false, null);
-      document.execCommand('insertText', false, enhancedText);
-      inputElement.style.cssText = `
-        user-select: text !important;
-        white-space: pre-wrap !important;
-        word-break: break-word !important;
-        width: 100% !important;
-        margin: 0 !important;
-        box-sizing: border-box !important;
-        padding-right: 50px !important;
-        min-height: 81px !important;
-        height: auto !important;
-        overflow-y: visible !important;
-      `;
-    } else {
-      if (inputElement.value !== undefined) {
-        inputElement.value = enhancedText;
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isSettingsVisible = !isSettingsVisible;
+    
+      if (isSettingsVisible) {
+        messageEl.style.display = 'none';
+        settingsSection.classList.add('show');
       } else {
-        inputElement.textContent = enhancedText;
+        // Enhance the text
+        const textToEnhance = getSelectedText(inputElement) || inputElement.value || inputElement.textContent;
+        if (textToEnhance) {
+          enhancePrompt(textToEnhance);
+        }
       }
-    }
-  }
-  inputElement.dispatchEvent(new Event('input', { bubbles: true }));
-} catch (error) {
-  console.error('Enhancement failed:', error);
-  button.style.background = 'linear-gradient(180deg, #FF4444 0%, #CC0000 100%)';
-  setTimeout(() => {
-    button.style.background = '';
-  }, 1000);
-} finally {
-  hideLoading();
-}
-});
-
+    });
    // Set up proper DOM structure
    if (!inputElement.closest('.velocity-wrapper')) {
     inputElement.parentNode.insertBefore(wrapper, inputElement);
@@ -1276,6 +1228,31 @@ try {
     inputElement.dispatchEvent(new Event('input'));
 
   }
+  inputElement.addEventListener('input', () => {
+    const text = inputElement.value || inputElement.textContent || '';
+    
+    if (text.length >= CHAR_THRESHOLD_MESSAGE && !helpMessageVisible) {
+      const buttonRect = button.getBoundingClientRect();
+      popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+      popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+      if (!settingsSection.classList.contains('show')) {
+        messageEl.textContent = `Hey ${userName}, seems like you need help crafting this. I'm here to assist!`;
+        popup.classList.add('show');
+        messageEl.style.display = 'block';
+      }
+    }
+  });
+  
+    
+  
+  // Initial popup show
+  // setTimeout(() => {
+  //   const buttonRect = button.getBoundingClientRect();
+  //   popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+  //   popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+  //   popup.classList.add('show');
+  // }, 100);
+
   // Add visibility based on state
   if (window.velocityState?.isEnabled && platformInfo?.isSupported) {
     button.classList.add('visible');
@@ -1289,145 +1266,389 @@ try {
 
   });
   resizeObserver.observe(inputElement);
-  inputElement.addEventListener('input', () => {
-    if (inputElement.tagName.toLowerCase() === 'textarea' || 
-        inputElement.getAttribute('contenteditable') === 'true' || 
-        inputElement.getAttribute('role') === 'textbox') {
-      inputElement.style.height = 'auto';
-      inputElement.style.height = `${inputElement.scrollHeight}px`;
-      wrapper.style.height = `${inputElement.scrollHeight}px`;
-    }
-  });
-  const popupStyles = document.createElement('style');
-  popupStyles.textContent = `
-    .velocity-popup {
-      position: fixed !important;
-      transform: translate(-50%, 0) !important;
-      background: linear-gradient(180deg, #1E1E1E 0%, #121212 100%) !important;
-      color: white !important;
-      padding: 12px 16px !important;
-      border-radius: 12px !important;
-      font-size: 13px !important;
-      box-shadow: 0 4px 15px rgba(0, 138, 203, 0.3) !important;
-      border: 1px solid #444444 !important;
-      z-index: 2147483647 !important;
-      width: max-content !important;
-      max-width: 200px !important;
-      display: none !important;
-      text-align: center !important;
-      transition: all 0.2s ease !important;
-    }
-    .velocity-popup::after {
-      content: '' !important;
-      position: absolute !important;
-      bottom: -8px !important;
-      left: 50% !important;
-      transform: translateX(-50%) !important;
-      border-left: 8px solid transparent !important;
-      border-right: 8px solid transparent !important;
-      border-top: 8px solid #1E1E1E !important;
-    }
-    .velocity-popup.show {
-      display: block !important;
-      opacity: 1 !important;
-      animation: popupFadeIn 0.3s ease-out !important;
-    }
-    @keyframes popupFadeIn {
-      from {
-        opacity: 0;
-        transform: translate(-50%, 10px);
-      }
-      to {
-        opacity: 1;
-        transform: translate(-50%, 0);
-      }
-    }
-  `;
-  document.head.appendChild(popupStyles);
-  document.head.appendChild(popupStyles);
-  
-  // Get username with fallback logic
-  let userName = 'there'; // Default fallback
-  
-  try {
-    // Debug logs
-    console.log('Checking auth state...');
-    const authState = await checkAuthState();
-    console.log('Auth state:', authState);
-    
-    if (authState && authState.userName) {
-      userName = authState.userName;
-      console.log('Username from auth state:', userName);
-    } else {
-      // Try chrome.storage.local as backup
-      const storage = await chrome.storage.local.get(['userName']);
-      console.log('Chrome storage state:', storage);
-      
-      if (storage.userName && storage.userName !== 'undefined' && storage.userName !== 'null') {
-        userName = storage.userName;
-        console.log('Username from chrome storage:', userName);
-      } else {
-        // Try localStorage as final backup
-        const localStorageUserName = localStorage.getItem('userName');
-        console.log('localStorage username:', localStorageUserName);
-        
-        if (localStorageUserName && localStorageUserName !== 'undefined' && localStorageUserName !== 'null') {
-          userName = localStorageUserName;
-          console.log('Username from localStorage:', userName);
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error getting username:', error);
+ 
+  // First add the popup styles
+const popupStyles = document.createElement('style');
+popupStyles.textContent = `
+  .velocity-popup {
+  position: fixed !important;
+  transform: translate(-50%, 0) !important;
+  background: white !important;
+  color: #1a1a1a !important;
+  padding: 16px !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  z-index: 2147483647 !important;
+  width: 280px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.3s ease !important;
+  display: block !important;
+}
+
+
+.velocity-popup.show {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  display: block !important;
+}
+
+
+
+  .velocity-message {
+    margin-bottom: 12px !important;
   }
 
-  console.log('Final username being used:', userName);
+  .settings-section {
+    display: none !important;
+  }
 
+  .settings-section.show {
+    display: block !important;
+  }
 
+  .velocity-style-buttons {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .velocity-style-button {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 12px !important;
+    background: #F0F9FF !important;
+    border: none !important;
+    border-radius: 8px !important;
+    color: #1a1a1a !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    text-align: left !important;
+  }
+
+  .velocity-style-button:hover {
+    background: #E0F2FE !important;
+  }
+
+  .velocity-style-button.active {
+    background: #E0F2FE !important;
+    border: 1px solid #3B82F6 !important;
+  }
+
+  .velocity-style-button:before {
+    content: "" !important;
+    display: inline-block !important;
+    width: 20px !important;
+    height: 20px !important;
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%233B82F6" d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/></svg>') !important;
+    margin-right: 8px !important;
+  }
+
+  .velocity-toggle-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    background: #F3F4F6 !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+  }
+
+  .velocity-toggle-switch {
+    position: relative !important;
+    display: inline-block !important;
+    width: 44px !important;
+    height: 24px !important;
+  }
+
+  .velocity-toggle-switch input {
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .velocity-toggle-slider {
+    position: absolute !important;
+    cursor: pointer !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background-color: #E5E7EB !important;
+    transition: .4s !important;
+    border-radius: 24px !important;
+  }
+
+  .velocity-toggle-slider:before {
+    position: absolute !important;
+    content: "" !important;
+    height: 20px !important;
+    width: 20px !important;
+    left: 2px !important;
+    bottom: 2px !important;
+    background-color: white !important;
+    transition: .4s !important;
+    border-radius: 50% !important;
+  }
+
+  .velocity-toggle-switch input:checked + .velocity-toggle-slider {
+    background-color: #3B82F6 !important;
+  }
+
+  .velocity-toggle-switch input:checked + .velocity-toggle-slider:before {
+    transform: translateX(20px) !important;
+  }
+`;
+document.head.appendChild(popupStyles);
+
+// Create the popup structure
 const popup = document.createElement('div');
 popup.className = 'velocity-popup';
-wrapper.appendChild(popup);
-let popupTimeout;
-let isFirstAppearance = true;
-// Initial popup when button appears
-const buttonRect = button.getBoundingClientRect();
-popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
-popup.textContent = `Hey ${userName}, I am Velocity. Your personal magician!`;
+let userName = 'there'; // Default fallback
+
+let typingTimer;
+const TYPING_INTERVAL = 1000; // 1 second
+
+// Show initial message
 popup.classList.add('show');
-// Hide initial popup when user starts typing
-inputElement.addEventListener('input', () => {
-  clearTimeout(popupTimeout);
-  // Hide initial 'Click me' popup
-  if (isFirstAppearance) {
-    popup.classList.remove('show');
-    isFirstAppearance = false;
+
+// Add breathing effect CSS
+const breathingStyles = document.createElement('style');
+breathingStyles.textContent = `
+  @keyframes breathe {
+    0% { transform: translateY(-50%) scale(1); }
+    50% { transform: translateY(-50%) scale(1.1); }
+    100% { transform: translateY(-50%) scale(1); }
   }
-  // Set timeout for 'confused' message
-  popupTimeout = setTimeout(() => {
-    const buttonRect = button.getBoundingClientRect();
-    popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-    popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
-    popup.textContent = `Confused ${userName}, let me help you!`;
-    popup.classList.add('show');
-  }, 2000);
+  
+  .velocity-enhance-button.breathing {
+    animation: breathe 2s infinite ease-in-out !important;
+  }
+`;
+document.head.appendChild(breathingStyles);
+
+try {
+  const authState = await checkAuthState();
+  if (authState?.userName) {
+    userName = authState.userName;
+  } else {
+    const storage = await chrome.storage.local.get(['userName']);
+    if (storage.userName && storage.userName !== 'undefined' && storage.userName !== 'null') {
+      userName = storage.userName;
+    }
+  }
+} catch (error) {
+  console.error('Error getting username:', error);
+}
+// Create message element
+const messageEl = document.createElement('div');
+messageEl.className = 'velocity-message';
+messageEl.textContent = `Hey ${userName}, I am Velocity. Your personal magician!`;
+popup.appendChild(messageEl);
+
+// Create settings section
+const settingsSection = document.createElement('div');
+settingsSection.className = 'settings-section';
+
+// Create style buttons container
+const styleButtonsContainer = document.createElement('div');
+styleButtonsContainer.className = 'velocity-style-buttons';
+
+// Add style buttons
+const styles = ['Descriptive', 'Creative', 'Professional', 'Concise'];
+styles.forEach(style => {
+  const styleButton = document.createElement('button');
+  styleButton.className = 'velocity-style-button';
+  styleButton.textContent = style;
+  
+  styleButton.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    styleButtonsContainer.querySelectorAll('.velocity-style-button').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    styleButton.classList.add('active');
+    window.velocityState.styleType = style.toLowerCase();
+    hasStyleSelected = true;
+    messageEl.textContent = `Hey ${userName}, press the button below to enhance your prompt!`;
+    await chrome.storage.local.set({ selectedStyle: style.toLowerCase() });
+  });
+
+  styleButtonsContainer.appendChild(styleButton);
 });
+settingsSection.appendChild(styleButtonsContainer);
+
+// Create toggle container
+const toggleContainer = document.createElement('div');
+toggleContainer.className = 'velocity-toggle-container';
+
+const toggleLabel = document.createElement('span');
+toggleLabel.textContent = 'Enable Enhancement';
+
+const toggleSwitch = document.createElement('label');
+toggleSwitch.className = 'velocity-toggle-switch';
+
+const toggleInput = document.createElement('input');
+toggleInput.type = 'checkbox';
+toggleInput.checked = window.velocityState.isEnabled;
+
+const toggleSlider = document.createElement('span');
+toggleSlider.className = 'velocity-toggle-slider';
+
+toggleSwitch.appendChild(toggleInput);
+toggleSwitch.appendChild(toggleSlider);
+toggleContainer.appendChild(toggleLabel);
+toggleContainer.appendChild(toggleSwitch);
+settingsSection.appendChild(toggleContainer);
+
+// Add settings section to popup
+popup.appendChild(settingsSection);
+
+// Add popup to wrapper
+wrapper.appendChild(popup);
+
+// Track settings visibility
+let isSettingsVisible = false;
+
+// Add event listeners
 button.addEventListener('mouseenter', () => {
   const buttonRect = button.getBoundingClientRect();
   popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
   popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
-  popup.textContent = 'Click me and witness magic';
+  messageEl.textContent = hasStyleSelected ? 
+    `Hey ${userName}, press the button below to enhance your prompt!` : 
+    `Hey ${userName}, select a style that best matches your needs`;
+  settingsSection.classList.add('show');
   popup.classList.add('show');
 });
-button.addEventListener('mouseleave', () => {
-  popup.classList.remove('show');
-});
-// Optional: Hide popup if input becomes empty
-inputElement.addEventListener('input', () => {
-  if (inputElement.value.trim() === '') {
-    popup.classList.remove('show');
+
+
+
+
+document.addEventListener('mouseover', (e) => {
+  clearTimeout(hideTimeout);
+  
+  if (!button.contains(e.target) && !popup.contains(e.target)) {
+    hideTimeout = setTimeout(() => {
+      if (!button.matches(':hover') && !popup.matches(':hover')) {
+        popup.classList.remove('show');
+        settingsSection.classList.remove('show');
+      }
+    }, HIDE_DELAY);
   }
 });
+
+// button.addEventListener('mouseleave', (e) => {
+//   // Check if mouse moved to popup
+//   if (!popup.contains(e.relatedTarget)) {
+//     popup.classList.remove('show');
+//     settingsSection.classList.remove('show');
+//     messageEl.style.display = 'block';
+//   }
+// });
+
+// popup.addEventListener('mouseleave', (e) => {
+//   // Check if mouse moved to button
+//   if (!button.contains(e.relatedTarget)) {
+//     popup.classList.remove('show');
+//     settingsSection.classList.remove('show');
+//     messageEl.style.display = 'block';
+//   }
+// });
+button.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (!platformInfo?.isSupported) return;
+
+  const selectedText = getSelectedText(inputElement);
+  const fullText = inputElement.value || inputElement.textContent || '';
+  
+  if (!selectedText && !fullText) return;
+  let isLoading = true;
+
+  try {
+    showLoading();
+    const textToEnhance = selectedText || fullText;
+    const enhancedText = await enhancePrompt(textToEnhance);
+    isLoading = false;
+
+    if (selectedText) {
+      // Get current selection positions
+      let selectionStart, selectionEnd;
+      if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
+        selectionStart = inputElement.selectionStart;
+        selectionEnd = inputElement.selectionEnd;
+        // Replace only selected portion
+        const newText = fullText.substring(0, selectionStart) + 
+                       enhancedText + 
+                       fullText.substring(selectionEnd);
+        inputElement.value = newText;
+      } else {
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(document.createTextNode(enhancedText));
+      }
+    } else {
+      // Replace full text
+      if (inputElement.value !== undefined) {
+        inputElement.value = enhancedText;
+      } else {
+        inputElement.textContent = enhancedText;
+      }
+    }
+    
+    inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+  } catch (error) {
+    console.error('Enhancement failed:', error);
+    isLoading = false;
+
+  } finally {
+    if (!isLoading) {
+      hideLoading();
+    }
+  }
+});
+
+// Helper function to get selected text
+function getSelectedText(element) {
+  if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
+    return element.value.substring(element.selectionStart, element.selectionEnd);
+  } else {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (element.contains(range.commonAncestorContainer)) {
+        return selection.toString();
+      }
+    }
+  }
+  return '';
+}
+
+// Update popup mouseleave:
+popup.addEventListener('mouseleave', () => {
+  if (!button.matches(':hover')) {
+    popup.classList.remove('show');
+    settingsSection.classList.remove('show');
+    messageEl.style.display = 'block';
+  }
+});
+
+// Handle toggle changes
+toggleInput.addEventListener('change', () => {
+  window.velocityState.isEnabled = toggleInput.checked;
+  chrome.runtime.sendMessage({
+    action: 'toggleEnhanceButton',
+    enabled: toggleInput.checked
+  });
+});
+// Assemble popup structure
+
+
+
+
  }
 
  function shouldEnhanceInput(input) {

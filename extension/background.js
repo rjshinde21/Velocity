@@ -121,8 +121,41 @@ const SUPPORTED_PLATFORMS = {
   },
   runway: {
     urlPattern: /^https:\/\/app\.runwayml\.com/,
-    selectors: 'textarea, [contenteditable="true"], input[type="text"], .cm-content',
-    name: 'Runway'
+    selectors: '.TextEditor-module__textbox__lvV8X',
+    name: 'Runway',
+    customStyles: `
+      .velocity-wrapper {
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+        min-height: 81px !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+
+      .velocity-wrapper .TextEditor-module__textbox__lvV8X {
+        padding-right: 50px !important;
+        min-height: 81px !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+        background: transparent !important;
+        position: relative !important;
+      }
+
+      .velocity-wrapper .TextEditor-module__textbox__lvV8X p {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .velocity-enhance-button {
+        position: absolute !important;
+        top: 50% !important;
+        right: 12px !important;
+        transform: translateY(-50%) !important;
+        z-index: 999999 !important;
+      }
+    `
   },
   thinkvelocity: {
     urlPattern: /^https:\/\/(www\.)?thinkvelocity\.in/,

@@ -482,7 +482,6 @@ For the specific case of "{prompt}", analyze the implementation requirements and
 
 
     def _clean_json_content(self, content: str) -> str:
-        """Clean JSON content with robust handling for different response types"""
         try:
             self.logger.debug("=== Content Cleaning Start ===")
             self.logger.debug(f"Original content: {content}")
@@ -490,77 +489,74 @@ For the specific case of "{prompt}", analyze the implementation requirements and
             if not isinstance(content, str):
                 content = json.dumps(content)
 
-            # Remove any leading text before JSON
             json_start = content.find('{')
             if json_start == -1:
                 raise ValueError("No JSON object found in content")
             
             content = content[json_start:]
             
-            # Remove any trailing text after JSON
+            # Fix mangled parameter structure
+            param_pattern = r'"(temperature|top_p|presence_penalty|frequency_penalty)":\s*{[^}]*}value":-1,"reasoning":'
+            content = re.sub(param_pattern, r'"\1":{"value":-1,"reasoning":', content)
+            
+            # Remove duplicate parameter entries
+            content = re.sub(r'("value":-1,"reasoning":[^}]*})[^,}]*"value":-1,"reasoning":', r'\1', content)
+            
+            # Your existing code...
             json_end = content.rfind('}') + 1
             content = content[:json_end]
-
-            # Remove any markdown code blocks
             content = re.sub(r'```(?:json)?\s*(.*?)\s*```', r'\1', content, flags=re.DOTALL)
+            content = re.sub(r',(\s*})', r'\1', content)
+            content = re.sub(r',(\s*])', r'\1', content)
             
-            # Fix trailing commas and ensure proper array closure
-            content = re.sub(r',(\s*})', r'\1', content)  # Remove comma before closing brace
-            content = re.sub(r',(\s*])', r'\1', content)  # Remove comma before closing bracket
-            
-            # Balance braces in array objects
-            # Find each array's opening and ensure proper closure
+            # Array handling
             array_starts = [m.start() for m in re.finditer(r'\[', content)]
             for start in array_starts:
-                # Find the corresponding end bracket
                 stack = []
                 end = start + 1
                 while end < len(content):
                     if content[end] == '[':
                         stack.append('[')
                     elif content[end] == ']':
-                        if not stack:  # Found matching end bracket
+                        if not stack:
                             break
                         stack.pop()
                     end += 1
                 
-                # Check if the section before ] has proper object closure
                 section = content[start:end]
                 if section.count('{') > section.count('}'):
-                    # Add missing closing brace before ]
                     content = content[:end] + '}' + content[end:]
-            
-            # Normalize whitespace
+
+            # Normalize whitespace and ensure proper closure
             content = re.sub(r'\s+', ' ', content).strip()
+            open_count = content.count('{')
+            close_count = content.count('}')
+            if open_count > close_count:
+                content += '}' * (open_count - close_count)
             
             try:
-                # Try to parse to validate JSON
                 parsed = json.loads(content)
-                
-                # Handle newline escaping for different response types
                 if isinstance(parsed, dict):
-                    # Handle guidelines-like responses
                     if 'guidelines' in parsed:
                         if isinstance(parsed['guidelines'], str):
                             parsed['guidelines'] = parsed['guidelines'].replace('\n', '\\n')
-                    
-                    # Handle prompts-like responses
                     if 'prompts' in parsed:
                         for prompt in parsed.get('prompts', []):
                             if isinstance(prompt, dict) and 'prompt' in prompt:
                                 prompt['prompt'] = prompt['prompt'].replace('\n', '\\n')
                 
-                # Convert back to string with proper escaping
                 return json.dumps(parsed, ensure_ascii=False)
-            
+                
             except json.JSONDecodeError as e:
                 self.logger.error(f"JSON validation failed in cleaning: {str(e)}")
                 self.logger.debug(f"Failed content: {content}")
                 raise
-        
+            
         except Exception as e:
             self.logger.error(f"Error in content cleaning: {str(e)}")
             raise
+
+
 
 
 
@@ -764,6 +760,12 @@ Automated Analysis for: {prompt}
 
             full_response = response.json()
             self.logger.debug(f"Full API Response: {full_response}")
+            if isinstance(full_response, list) and len(full_response) > 0 and isinstance(full_response[0], dict) and 'error' in full_response[0]:
+                raise ValueError(f"API Error: {full_response[0]['error']}")
+
+            content = full_response.get('choices', [{}])[0].get('message', {}).get('content', '')
+            if not content:
+                raise ValueError("Empty or invalid response from API")
 
             # Safely extract content
             try:
