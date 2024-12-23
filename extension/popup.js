@@ -4,6 +4,7 @@ let selectedStyle = null; // Default value
 let selectedPlatform = null;   // Default value
 let hasText = false;  // Track if text exists
 let currentLength;
+let isShowingResponses = false;
 const MIXPANEL_TOKEN = '48a67766d0bb1b3399a4f956da9c52da';
 let creditRates = {
   basic_prompt: 2,
@@ -456,36 +457,214 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+const velocityUI = {
+  loadingStates: new Map(),
+  
+  createLoader(message = 'Processing your request...') {
+    const overlay = document.createElement('div');
+    overlay.className = 'velocity-overlay';
+    overlay.innerHTML = `
+      <div class="velocity-loader">
+        <div class="velocity-spinner"></div>
+        <div class="velocity-loader-text">${message}</div>
+      </div>
+    `;
+    return overlay;
+  },
+
+  async showLoading(key = 'default', message) {
+    if (this.loadingStates.has(key)) return;
+    
+    const loader = this.createLoader(message);
+    document.body.appendChild(loader);
+    this.loadingStates.set(key, loader);
+    
+    // Disable interactive elements
+    document.querySelectorAll('button, input, textarea').forEach(el => {
+      if (!el.disabled) {
+        el.dataset.wasEnabled = 'true';
+        el.disabled = true;
+      }
+    });
+  },
+
+
+
+  hideLoading(key = 'default') {
+    const loader = this.loadingStates.get(key);
+    if (loader) {
+      loader.remove();
+      this.loadingStates.delete(key);
+      
+      // Re-enable interactive elements
+      document.querySelectorAll('[data-was-enabled]').forEach(el => {
+        el.disabled = false;
+        delete el.dataset.wasEnabled;
+      });
+    }
+  }
+};
+
+// Enhanced Error Handling
+const velocityErrors = {
+  types: {
+    TOKEN: 'token',
+    NETWORK: 'network',
+    VALIDATION: 'validation',
+    SERVER: 'server'
+  },
+
+  createError(type, message, action) {
+    const error = document.createElement('div');
+    error.className = 'velocity-error';
+    error.innerHTML = `
+      <svg class="velocity-error-icon" width="20" height="20" viewBox="0 0 20 20">
+        <path d="M10 0C4.48 0 0 4.48 0 10s4.48 10 10 10 10-4.48 10-10S15.52 0 10 0zm0 11c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1 4H9v-2h2v2z" 
+              fill="currentColor"/>
+      </svg>
+      <div class="velocity-error-content">
+        <div>${message}</div>
+        ${action ? `<button class="velocity-error-action">${action}</button>` : ''}
+      </div>
+    `;
+    return error;
+  },
+
+  showError(type, message, duration = 5000) {
+    const responseDiv = document.getElementById('response');
+    const error = this.createError(type, message);
+    
+    // Clear existing errors
+    responseDiv.querySelectorAll('.velocity-error').forEach(el => el.remove());
+    
+    responseDiv.prepend(error);
+    
+    if (duration) {
+      setTimeout(() => error.remove(), duration);
+    }
+    
+    return error;
+  }
+};
+
+// Token Management
+const velocityTokens = {
+  async checkTokenBalance() {
+    const response = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    return {
+      available: data.data.token_received - data.data.tokens_used,
+      total: data.data.token_received
+    };
+  },
+
+  createTokenAlert() {
+    const alert = document.createElement('div');
+    alert.className = 'velocity-token-alert';
+    alert.innerHTML = `
+      <div class="velocity-token-header">
+        <span class="velocity-token-title">Out of tokens</span>
+      </div>
+      <p class="velocity-token-message">
+        You've used all your available tokens. Top up to continue generating responses.
+      </p>
+      <button onclick="velocityTokens.handleTopUp()" class="velocity-token-button">
+        Top Up Tokens
+      </button>
+    `;
+    return alert;
+  },
+
+  async handleTopUp() {
+    // Open token purchase page in new tab
+    chrome.tabs.create({ url: 'https://thinkvelocity.in/pricing' });
+  }
+};
+
+// Response Visibility Management
+const velocityResponses = {
+  scrollIndicator: null,
+
+  createScrollIndicator() {
+    const indicator = document.createElement('div');
+    indicator.className = 'velocity-scroll-indicator';
+    indicator.innerHTML = `
+      <div class="velocity-scroll-icon">
+        <div class="velocity-scroll-dot"></div>
+      </div>
+      <span>Scroll to see more</span>
+    `;
+    return indicator;
+  },
+
+  showScrollIndicator(container) {
+    if (!this.scrollIndicator) {
+      this.scrollIndicator = this.createScrollIndicator();
+      container.appendChild(this.scrollIndicator);
+      
+      // Show indicator when content exceeds viewport
+      if (container.scrollHeight > container.clientHeight) {
+        this.scrollIndicator.style.opacity = '1';
+      }
+      
+      // Hide indicator on scroll
+      container.addEventListener('scroll', () => {
+        this.scrollIndicator.style.opacity = '0';
+      }, { once: true });
+    }
+  }
+};
+
 async function sendRequest() {
   let promptHistoryId = null;
   let creditsDeducted = false;
-  
+
   try {
+    // Initialize loader and disable interactions
+    await velocityUI.showLoading('generate', 'Crafting your enhanced response...');
+    
     const promptInput = document.getElementById('promptInput');
     const prompt = promptInput.value.trim();
     const CHAR_LIMIT = 1100;
+
+    // Validate permissions and features
     const valid = await verifyAndRecordFeatures();
-    if(!valid)
-    {
+    if (!valid) {
+      velocityErrors.showError(
+        velocityErrors.types.VALIDATION, 
+        'Feature access validation failed'
+      );
       return;
     }
+
+    // Input validation with enhanced error handling
     if (!prompt) {
-      showError('Please enter a prompt text');
+      velocityErrors.showError(
+        velocityErrors.types.VALIDATION,
+        'Please enter a prompt text'
+      );
       return;
     }
+
     if (prompt.length > CHAR_LIMIT) {
       trackEvent('Generate Error', {
         error: 'Prompt Too Long',
         promptLength: prompt.length,
         platform: selectedPlatform,
         style: selectedStyle,
-        location:"Extension"
+        location: "Extension"
       });
 
-      showError(`Input too long. Please keep your text under ${CHAR_LIMIT} characters.`);
+      velocityErrors.showError(
+        velocityErrors.types.VALIDATION,
+        `Input too long. Please keep your text under ${CHAR_LIMIT} characters.`
+      );
       return;
     }
-    showLoading('Processing request...');
+
+    // Prepare request data
     const formData = new FormData();
     const requestData = {
       prompt: prompt,
@@ -493,6 +672,8 @@ async function sendRequest() {
       AIType: selectedPlatform,
       singlePrompt: false
     };
+
+    // Track button click
     trackEvent('Generate Button Clicked', {
       platform: selectedPlatform,
       style: selectedStyle,
@@ -502,29 +683,37 @@ async function sendRequest() {
 
     formData.append('data', JSON.stringify(requestData));
 
-    // Make the API request
+    // Update loader message for API call
+    velocityUI.showLoading('generate', 'Processing your request...');
+    
+    // Make the API request with enhanced error handling
     const response = await fetch('https://thinkvelocity.in/python-api/process', {
       method: 'POST',
       body: formData,
+    }).catch(error => {
+      throw new Error('Network error: Failed to connect to server');
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
       throw new Error(response.status === 500
-        ? `Server error (500): ${await response.text()}`
-        : `Server returned ${response.status}: ${await response.text()}`);
-    } 
-    trackEvent('Response Generated',
-      {
-        location:"Extension"
-      }
-    );
+        ? `Server error (500): ${errorText}`
+        : `Server returned ${response.status}: ${errorText}`);
+    }
+
+    // Track successful generation
+    trackEvent('Response Generated', {
+      location: "Extension"
+    });
+
     const data = await response.json();
     if (data.error) {
       throw new Error(data.error);
     }
 
-    // Save to history
+    // Save to history with enhanced error recovery
     try {
+      velocityUI.showLoading('history', 'Saving to history...');
       const promptData = await savePromptToHistory(userId, prompt, selectedPlatform);
       if (promptData.success) {
         promptHistoryId = promptData.data.history_id;
@@ -532,18 +721,35 @@ async function sendRequest() {
       }
     } catch (historyError) {
       console.error('Error saving prompt to history:', historyError);
+      // Non-blocking error - continue execution
+      velocityErrors.showError(
+        velocityErrors.types.SERVER,
+        'Warning: Failed to save to history',
+        3000
+      );
     }
 
-    // Process credit deductions
+    // Process credit deductions with token validation
+    velocityUI.showLoading('credits', 'Processing credits...');
     await handleCreditDeductions();
     creditsDeducted = true;
 
-    // Handle the response
+    // Handle the response with scroll indication
     if (data.response) {
+      const responseContainer = document.querySelector('.responses-wrapper');
+      responseContainer.classList.remove('hidden');
+      
       handleParsedResponse(data.response);
+      
+      // Show scroll indicator if content overflows
+      if (responseContainer.scrollHeight > responseContainer.clientHeight) {
+        velocityResponses.showScrollIndicator(responseContainer);
+      }
     } else {
       throw new Error('No response data received from server');
     }
+
+    // Cleanup stored prompt
     chrome.storage.local.remove(['promptText']);
 
   } catch (error) {
@@ -551,12 +757,45 @@ async function sendRequest() {
       error: error.message,
       platform: selectedPlatform,
       style: selectedStyle,
-      location:"Extension"
+      location: "Extension"
     });
+
     console.error('Request failed:', error);
-    showError(`Error: ${error.message}`);
+    
+    // Enhanced error handling with context
+    let errorType = velocityErrors.types.SERVER;
+    if (error.message.includes('Network error')) {
+      errorType = velocityErrors.types.NETWORK;
+    } else if (error.message.includes('token') || error.message.includes('credit')) {
+      errorType = velocityErrors.types.TOKEN;
+    }
+
+    velocityErrors.showError(errorType, error.message);
+
+    // Check if tokens were deducted but operation failed
+    if (creditsDeducted) {
+      velocityErrors.showError(
+        velocityErrors.types.SERVER,
+        'Warning: Credits were deducted but operation failed. Please contact support.',
+        0  // Don't auto-dismiss this error
+      );
+    }
+
   } finally {
-    resetInterface();
+    // Cleanup all loading states
+    velocityUI.hideLoading('generate');
+    velocityUI.hideLoading('history');
+    velocityUI.hideLoading('credits');
+    
+    // Reset interface with token check
+    await resetInterface();
+    
+    // Check remaining tokens after operation
+    const tokenBalance = await velocityTokens.checkTokenBalance();
+    if (tokenBalance.available < 1) {
+      const responseDiv = document.getElementById('response');
+      responseDiv.appendChild(velocityTokens.createTokenAlert());
+    }
   }
 }
 
@@ -580,6 +819,44 @@ function showLoading(message) {
     adjustPopupSize();
   }
 }
+const velocityLoader = {
+  container: null,
+  loadingMessages: [
+    'Processing your request...',
+    'Crafting the perfect response...',
+    'Analyzing your input...',
+    'Almost there...'
+  ],
+
+  init() {
+    this.container = document.createElement('div');
+    this.container.className = 'velocity-loader-container';
+    document.body.appendChild(this.container);
+  },
+
+  show(message = '') {
+    if (!this.container) this.init();
+    
+    this.container.innerHTML = `
+      <div class="velocity-loader-overlay">
+        <div class="velocity-loader-content">
+          <div class="velocity-loader-spinner"></div>
+          <div class="velocity-loader-text">
+            ${message || this.loadingMessages[Math.floor(Math.random() * this.loadingMessages.length)]}
+          </div>
+        </div>
+      </div>
+    `;
+    this.container.style.display = 'flex';
+  },
+
+  hide() {
+    if (this.container) {
+      this.container.style.display = 'none';
+    }
+  }
+};
+
 function adjustPopupSize() {
   const popupHeight = document.body.scrollHeight;
   const popupWidth = document.body.scrollWidth;
@@ -707,60 +984,60 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-function handleParsedResponse(parsedResponse) {
-  const responsesContainer = document.getElementById('responsesContainer');
-  const responsesTrack = responsesContainer.querySelector('.responses-track');
+// function handleParsedResponse(parsedResponse) {
+//   const responsesContainer = document.getElementById('responsesContainer');
+//   const responsesTrack = responsesContainer.querySelector('.responses-track');
   
-  // Clear previous responses
-  responsesTrack.innerHTML = '';
+//   // Clear previous responses
+//   responsesTrack.innerHTML = '';
   
-  // Show the responses container
-  responsesContainer.classList.remove('hidden');
+//   // Show the responses container
+//   responsesContainer.classList.remove('hidden');
   
-  try {
-      let prompts;
-      if (typeof parsedResponse === 'string') {
-          prompts = [{ prompt: parsedResponse }];
-      } else if (parsedResponse.prompts) {
-          prompts = parsedResponse.prompts;
-      } else if (Array.isArray(parsedResponse)) {
-          prompts = parsedResponse;
-      } else {
-          prompts = [{ prompt: String(parsedResponse) }];
-      }
+//   try {
+//       let prompts;
+//       if (typeof parsedResponse === 'string') {
+//           prompts = [{ prompt: parsedResponse }];
+//       } else if (parsedResponse.prompts) {
+//           prompts = parsedResponse.prompts;
+//       } else if (Array.isArray(parsedResponse)) {
+//           prompts = parsedResponse;
+//       } else {
+//           prompts = [{ prompt: String(parsedResponse) }];
+//       }
 
-      prompts.forEach((promptObj) => {
-          const responseItem = document.createElement('div');
-          responseItem.className = 'response-item';
+//       prompts.forEach((promptObj) => {
+//           const responseItem = document.createElement('div');
+//           responseItem.className = 'response-item';
           
-          const content = document.createElement('div');
-          content.className = 'response-content';
-          content.textContent = typeof promptObj === 'string' ? promptObj : promptObj.prompt;
+//           const content = document.createElement('div');
+//           content.className = 'response-content';
+//           content.textContent = typeof promptObj === 'string' ? promptObj : promptObj.prompt;
           
-          const copyButton = document.createElement('button');
-          copyButton.className = 'copy-button';
-          copyButton.innerHTML = `
-              <img src="./assets/copy 1.png" alt="Copy" class="w-5 h-5">
-              <span>Copy</span>
-          `;
+//           const copyButton = document.createElement('button');
+//           copyButton.className = 'copy-button';
+//           copyButton.innerHTML = `
+//               <img src="./assets/copy 1.png" alt="Copy" class="w-5 h-5">
+//               <span>Copy</span>
+//           `;
           
-          copyButton.addEventListener('click', async () => {
-              const textToCopy = content.textContent;
-              await navigator.clipboard.writeText(textToCopy);
+//           copyButton.addEventListener('click', async () => {
+//               const textToCopy = content.textContent;
+//               await navigator.clipboard.writeText(textToCopy);
               
-              copyButton.classList.add('copied');
-              setTimeout(() => copyButton.classList.remove('copied'), 2000);
-          });
+//               copyButton.classList.add('copied');
+//               setTimeout(() => copyButton.classList.remove('copied'), 2000);
+//           });
           
-          responseItem.appendChild(content);
-          responseItem.appendChild(copyButton);
-          responsesTrack.appendChild(responseItem);
-      });
-  } catch (error) {
-      console.error('Error handling response:', error);
-      showError('Error: Could not process the response from the server.');
-  }
-}
+//           responseItem.appendChild(content);
+//           responseItem.appendChild(copyButton);
+//           responsesTrack.appendChild(responseItem);
+//       });
+//   } catch (error) {
+//       console.error('Error handling response:', error);
+//       showError('Error: Could not process the response from the server.');
+//   }
+// }
 // function toggleEnhanceButton(enabled) {
 //   chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
 //     chrome.tabs.sendMessage(tabs[0].id, {
@@ -791,6 +1068,731 @@ function handleParsedResponse(parsedResponse) {
 //     });
 //   });
 // }
+// function handleParsedResponse(parsedResponse) {
+//   const mainContent = document.getElementById('mainContent');
+//   const responsesWrapper = document.getElementById('responsesWrapper');
+//   const responsesGrid = responsesWrapper.querySelector('.responses-grid');
+
+//   // Clear previous responses
+//   responsesGrid.innerHTML = '';
+
+//   try {
+//     const prompts = Array.isArray(parsedResponse) ? parsedResponse : 
+//                     typeof parsedResponse === 'string' ? [{ prompt: parsedResponse }] : 
+//                     parsedResponse.prompts || [{ prompt: String(parsedResponse) }];
+
+//     // Hide main content
+//     mainContent.classList.add('hidden');
+    
+//     // Show responses
+//     responsesWrapper.classList.remove('hidden');
+//     setTimeout(() => responsesWrapper.classList.add('visible'), 50);
+    
+//     prompts.forEach((promptObj, index) => {
+//       const responseCard = createResponseCard(promptObj, index);
+//       responsesGrid.appendChild(responseCard);
+//     });
+
+//     isShowingResponses = true;
+    
+//   } catch (error) {
+//     console.error('Error handling response:', error);
+//     showError('Failed to process response');
+//   }
+// }
+
+// function handleParsedResponse(parsedResponse) {
+//   const mainContent = document.getElementById('mainContent');
+//   const responsesWrapper = document.getElementById('responsesWrapper');
+//   const responsesGrid = responsesWrapper.querySelector('.responses-grid');
+
+//   // Clear previous responses
+//   responsesGrid.innerHTML = '';
+
+//   try {
+//     const prompts = Array.isArray(parsedResponse) ? parsedResponse : 
+//                     typeof parsedResponse === 'string' ? [{ prompt: parsedResponse }] : 
+//                     parsedResponse.prompts || [{ prompt: String(parsedResponse) }];
+
+//     // First, show the responses wrapper but keep it invisible
+//     responsesWrapper.style.display = 'block';
+    
+//     // Hide main content with transition
+//     mainContent.classList.add('hidden');
+    
+//     // Add responses with animation delay
+//     prompts.forEach((promptObj, index) => {
+//       const card = createResponseCard(promptObj);
+//       card.style.animationDelay = `${index * 100}ms`;
+//       responsesGrid.appendChild(card);
+//     });
+
+//     // Trigger visibility transition after a short delay
+//     setTimeout(() => {
+//       responsesWrapper.classList.add('visible');
+//     }, 50);
+
+//     isShowingResponses = true;
+
+//   } catch (error) {
+//     console.error('Error handling response:', error);
+//     showError('Failed to process response');
+//   }
+// }
+
+const ResponseDebugManager = {
+  debugMode: true,
+  stateLog: [],
+
+  logState(action, state) {
+    if (this.debugMode) {
+      console.log(`[Response State]: ${action}`, state);
+      this.stateLog.push({ action, state, timestamp: Date.now() });
+    }
+  },
+
+  // Add visual feedback during transitions
+  addLoadingIndicator() {
+    const wrapper = document.getElementById('responsesWrapper');
+    if (!wrapper) {
+      console.error('[Response Debug]: Responses wrapper not found');
+      return;
+    }
+    
+    wrapper.insertAdjacentHTML('afterbegin', `
+      <div class="response-loading">
+        <div class="loading-spinner"></div>
+        <div>Processing responses...</div>
+      </div>
+    `);
+  },
+
+  removeLoadingIndicator() {
+    const loading = document.querySelector('.response-loading');
+    loading?.remove();
+  },
+
+  // Check DOM structure integrity
+  validateStructure() {
+    const results = {
+      mainContent: !!document.getElementById('mainContent'),
+      responsesWrapper: !!document.getElementById('responsesWrapper'),
+      responsesGrid: !!document.querySelector('.responses-grid'),
+      structureValid: false
+    };
+    
+    results.structureValid = Object.values(results).every(Boolean);
+    this.logState('Structure Validation', results);
+    return results;
+  },
+
+  // Monitor visibility states
+  monitorVisibilityTransition(element, className) {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          this.logState('Visibility Change', {
+            element: element.id,
+            classes: element.className,
+            display: getComputedStyle(element).display,
+            opacity: getComputedStyle(element).opacity
+          });
+        }
+      });
+    });
+
+    observer.observe(element, { attributes: true });
+    return observer;
+  }
+};
+function handleParsedResponse(parsedResponse) {
+  const responsesWrapper = document.getElementById('responsesWrapper');
+  const mainContent = document.getElementById('mainContent');
+  const responsesGrid = document.querySelector('.responses-grid');
+
+  try {
+    // Clear existing responses
+    responsesGrid.innerHTML = '';
+
+    // Extract prompts from the response
+    const prompts = parsedResponse.prompts || [];
+
+    // Create and append response elements
+    prompts.forEach((promptObj, index) => {
+      const responseElement = createResponseElement(promptObj);
+      if (responseElement) {
+        responseElement.style.animationDelay = `${index * 100}ms`;
+        responsesGrid.appendChild(responseElement);
+      }
+    });
+
+    // Show responses wrapper
+    mainContent.classList.add('hidden');
+    responsesWrapper.classList.remove('hidden');
+    
+    // Ensure visibility transition
+    setTimeout(() => {
+      responsesWrapper.classList.add('visible');
+    }, 50);
+
+  } catch (error) {
+    console.error('Error displaying responses:', error);
+    showError('Failed to display responses');
+  }
+}
+
+function createResponseElement(promptObj) {
+  const card = document.createElement('div');
+  card.className = 'response-card';
+  
+  const content = document.createElement('div');
+  content.className = 'response-content';
+  content.textContent = promptObj.prompt || 'No response available';
+  
+  const copyButton = document.createElement('button');
+  copyButton.className = 'copy-button';
+  copyButton.innerHTML = `
+    <span>Copy</span>
+  `;
+  
+  copyButton.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(content.textContent);
+      copyButton.classList.add('copied');
+      copyButton.querySelector('span').textContent = 'Copied!';
+      
+      setTimeout(() => {
+        copyButton.classList.remove('copied');
+        copyButton.querySelector('span').textContent = 'Copy';
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  });
+  
+  card.appendChild(content);
+  card.appendChild(copyButton);
+  return card;
+}
+
+// function handleParsedResponse(parsedResponse) {
+//   ResponseDebugManager.logState('Response Received', { responseType: typeof parsedResponse });
+  
+//   const structureCheck = ResponseDebugManager.validateStructure();
+//   if (!structureCheck.structureValid) {
+//     console.error('[Response Debug]: Invalid DOM structure', structureCheck);
+//     return;
+//   }
+
+//   const responsesWrapper = document.getElementById('responsesWrapper');
+//   const mainContent = document.getElementById('mainContent');
+  
+//   // Monitor state transitions
+//   const visibilityObserver = ResponseDebugManager.monitorVisibilityTransition(responsesWrapper, 'visible');
+  
+//   try {
+//     ResponseDebugManager.addLoadingIndicator();
+
+//     // Force FOUC prevention
+//     responsesWrapper.style.display = 'none';
+//     responsesWrapper.style.opacity = '0';
+//     void responsesWrapper.offsetHeight; // Force reflow
+
+//     // Ensure clean state
+//     responsesWrapper.classList.remove('visible', 'hidden');
+//     mainContent.classList.remove('hidden');
+
+//     // Sequence the transition
+//     requestAnimationFrame(() => {
+//       responsesWrapper.style.display = 'block';
+      
+//       requestAnimationFrame(() => {
+//         mainContent.classList.add('hidden');
+        
+//         setTimeout(() => {
+//           responsesWrapper.style.opacity = '1';
+//           responsesWrapper.classList.add('visible');
+//           ResponseDebugManager.removeLoadingIndicator();
+          
+//           // Clean up observer
+//           visibilityObserver.disconnect();
+//           ResponseDebugManager.logState('Transition Complete', { 
+//             mainContentHidden: mainContent.classList.contains('hidden'),
+//             responsesVisible: responsesWrapper.classList.contains('visible')
+//           });
+//         }, 50);
+//       });
+//     });
+
+//     // Process responses with error boundary
+//     const normalizedResponses = Array.isArray(parsedResponse) ? parsedResponse : [parsedResponse];
+//     const responsesGrid = document.querySelector('.responses-grid');
+//     responsesGrid.innerHTML = ''; // Clear existing content
+
+//     normalizedResponses.forEach((response, index) => {
+//       const responseElement = createResponseElement(response);
+//       if (responseElement) {
+//         responseElement.style.animationDelay = `${index * 100}ms`;
+//         responsesGrid.appendChild(responseElement);
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error('[Response Debug]: Error handling response', error);
+//     ResponseDebugManager.logState('Error', { error: error.message });
+//     showError('Failed to display responses. Please try again.');
+//   }
+// }
+
+// function handleParsedResponse(parsedResponse) {
+//   console.log('Handle Parsed Response called with:', parsedResponse);
+  
+//   const responsesWrapper = document.getElementById('responsesWrapper');
+//   const mainContent = document.getElementById('mainContent');
+//   const responsesGrid = document.querySelector('.responses-grid');
+
+//   try {
+//     // Clear existing responses
+//     responsesGrid.innerHTML = '';
+
+//     // Normalize responses
+//     const normalizedResponses = Array.isArray(parsedResponse) 
+//       ? parsedResponse 
+//       : [{ prompt: String(parsedResponse) }];
+
+//     console.log('Normalized Responses:', normalizedResponses);
+
+//     // Create and append response elements
+//     normalizedResponses.forEach((response, index) => {
+//       const responseElement = createResponseElement(response);
+//       if (responseElement) {
+//         responseElement.style.animationDelay = `${index * 100}ms`;
+//         responsesGrid.appendChild(responseElement);
+//       }
+//     });
+
+//     // Show responses wrapper
+//     mainContent.classList.add('hidden');
+//     responsesWrapper.classList.remove('hidden');
+//     responsesWrapper.classList.add('visible');
+
+//   } catch (error) {
+//     console.error('Error in handleParsedResponse:', error);
+//   }
+// }
+
+// function handleParsedResponse(parsedResponse) {
+//   console.log('Handle Parsed Response called with:', parsedResponse);
+  
+//   const responsesWrapper = document.getElementById('responsesWrapper');
+//   const mainContent = document.getElementById('mainContent');
+//   const responsesGrid = document.querySelector('.responses-grid');
+
+//   try {
+//     // Clear existing responses
+//     responsesGrid.innerHTML = '';
+
+//     // Normalize responses
+//     const normalizedResponses = Array.isArray(parsedResponse) 
+//       ? parsedResponse 
+//       : [{ prompt: String(parsedResponse) }];
+
+//     console.log('Normalized Responses:', normalizedResponses);
+
+//     // Create and append response elements
+//     normalizedResponses.forEach((response, index) => {
+//       const responseElement = createResponseElement(response);
+//       if (responseElement) {
+//         responseElement.style.animationDelay = `${index * 100}ms`;
+//         responsesGrid.appendChild(responseElement);
+//       }
+//     });
+
+//     // Show responses wrapper
+//     mainContent.classList.add('hidden');
+//     responsesWrapper.classList.remove('hidden');
+    
+//     // Use a small timeout to ensure transition
+//     setTimeout(() => {
+//       responsesWrapper.classList.add('visible');
+//     }, 50);
+
+//   } catch (error) {
+//     console.error('Error in handleParsedResponse:', error);
+//     showError('Failed to display responses');
+//   }
+// }
+
+// function handleParsedResponse(parsedResponse) {
+//   console.log('Full Response:', parsedResponse);
+  
+//   const responsesWrapper = document.getElementById('responsesWrapper');
+//   const mainContent = document.getElementById('mainContent');
+//   const responsesGrid = document.querySelector('.responses-grid');
+
+//   try {
+//     // Clear existing responses
+//     responsesGrid.innerHTML = '';
+
+//     // Extract prompts from the response
+//     const prompts = parsedResponse.response?.prompts || [];
+
+//     console.log('Extracted Prompts:', prompts);
+
+//     // Create and append response elements
+//     prompts.forEach((promptObj, index) => {
+//       const responseElement = createResponseElement(promptObj);
+//       if (responseElement) {
+//         responseElement.style.animationDelay = `${index * 100}ms`;
+//         responsesGrid.appendChild(responseElement);
+//       }
+//     });
+
+//     // Show responses wrapper
+//     mainContent.classList.add('hidden');
+//     responsesWrapper.classList.remove('hidden');
+    
+//     // Use a small timeout to ensure transition
+//     setTimeout(() => {
+//       responsesWrapper.classList.add('visible');
+//     }, 50);
+
+//   } catch (error) {
+//     console.error('Error in handleParsedResponse:', error);
+//     showError('Failed to display responses');
+//   }
+// }
+
+// function createResponseElement(promptObj) {
+//   const card = document.createElement('div');
+//   card.className = 'response-card';
+  
+//   const content = document.createElement('div');
+//   content.className = 'response-content';
+//   content.textContent = promptObj.prompt || 'No response available';
+  
+//   const copyButton = document.createElement('button');
+//   copyButton.className = 'copy-button';
+//   copyButton.innerHTML = `
+//     <img src="./assets/copy.png" alt="Copy" class="copy-icon">
+//     <span>Copy</span>
+//   `;
+  
+//   copyButton.addEventListener('click', async () => {
+//     try {
+//       await navigator.clipboard.writeText(content.textContent);
+//       copyButton.classList.add('copied');
+//       copyButton.querySelector('span').textContent = 'Copied!';
+      
+//       setTimeout(() => {
+//         copyButton.classList.remove('copied');
+//         copyButton.querySelector('span').textContent = 'Copy';
+//       }, 2000);
+//     } catch (err) {
+//       console.error('Failed to copy:', err);
+//     }
+//   });
+  
+//   card.appendChild(content);
+//   card.appendChild(copyButton);
+//   return card;
+// }
+
+
+function createResponseElement(response) {
+  const card = document.createElement('div');
+  card.className = 'response-card';
+  
+  const content = document.createElement('div');
+  content.className = 'response-content';
+  content.textContent = response.prompt || response;
+  
+  const copyButton = document.createElement('button');
+  copyButton.className = 'copy-button';
+  copyButton.innerHTML = `
+    <span>Copy</span>
+  `;
+  
+  copyButton.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(content.textContent);
+      copyButton.classList.add('copied');
+      copyButton.querySelector('span').textContent = 'Copied!';
+      
+      setTimeout(() => {
+        copyButton.classList.remove('copied');
+        copyButton.querySelector('span').textContent = 'Copy';
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  });
+  
+  card.appendChild(content);
+  card.appendChild(copyButton);
+  return card;
+}
+
+function createResponseCard(promptObj) {
+  const card = document.createElement('div');
+  card.className = 'response-card';
+  
+  const content = document.createElement('div');
+  content.className = 'response-content';
+  content.textContent = promptObj.prompt;
+  
+  const copyButton = document.createElement('button');
+  copyButton.className = 'copy-button';
+  copyButton.innerHTML = `
+    <span>Copy</span>
+  `;
+  
+  copyButton.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(promptObj.prompt);
+      copyButton.classList.add('copied');
+      copyButton.querySelector('span').textContent = 'Copied!';
+      
+      setTimeout(() => {
+        copyButton.classList.remove('copied');
+        copyButton.querySelector('span').textContent = 'Copy';
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  });
+  
+  card.appendChild(content);
+  card.appendChild(copyButton);
+  return card;
+}
+
+const ResponseManager = {
+  transitionDuration: 300, // Match CSS transition duration
+  isTransitioning: false,
+
+  async showResponses(parsedResponse) {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+
+    const mainContent = document.getElementById('mainContent');
+    const responsesWrapper = document.getElementById('responsesWrapper');
+    const responsesGrid = responsesWrapper.querySelector('.responses-grid');
+
+    try {
+      // Clear existing responses
+      responsesGrid.innerHTML = '';
+
+      // Process responses
+      const prompts = this.normalizeResponseData(parsedResponse);
+
+      // Prepare responses but don't show yet
+      const responseElements = prompts.map((promptObj, index) => 
+        this.createResponseCard(promptObj, index)
+      );
+
+      // Add all responses to grid
+      responseElements.forEach(element => responsesGrid.appendChild(element));
+
+      // Begin transition sequence
+      await this.transitionToResponses(mainContent, responsesWrapper);
+
+    } catch (error) {
+      console.error('Error handling response:', error);
+      showError('Failed to process response');
+    } finally {
+      this.isTransitioning = false;
+    }
+  },
+
+  normalizeResponseData(parsedResponse) {
+    if (typeof parsedResponse === 'string') {
+      return [{ prompt: parsedResponse }];
+    }
+    if (Array.isArray(parsedResponse)) {
+      return parsedResponse;
+    }
+    if (parsedResponse.prompts) {
+      return parsedResponse.prompts;
+    }
+    return [{ prompt: String(parsedResponse) }];
+  },
+
+  createResponseCard(promptObj, index) {
+    const card = document.createElement('div');
+    card.className = 'response-card';
+    card.style.animationDelay = `${index * 100}ms`;
+    
+    const content = document.createElement('div');
+    content.className = 'response-content';
+    content.textContent = promptObj.prompt;
+    
+    const copyButton = this.createCopyButton(promptObj.prompt);
+    
+    card.appendChild(content);
+    card.appendChild(copyButton);
+    return card;
+  },
+
+  createCopyButton(text) {
+    const button = document.createElement('button');
+    button.className = 'copy-button';
+    button.innerHTML = `
+      <span>Copy</span>
+    `;
+    
+    button.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        this.showCopyFeedback(button);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    });
+    
+    return button;
+  },
+
+  showCopyFeedback(button) {
+    button.classList.add('copied');
+    button.querySelector('span').textContent = 'Copied!';
+    
+    setTimeout(() => {
+      button.classList.remove('copied');
+      button.querySelector('span').textContent = 'Copy';
+    }, 2000);
+  },
+
+  transitionToResponses(mainContent, responsesWrapper) {
+    return new Promise(resolve => {
+      // First, ensure responses wrapper is in the DOM but invisible
+      responsesWrapper.style.display = 'block';
+      
+      // Force reflow
+      void responsesWrapper.offsetHeight;
+
+      // Hide main content
+      mainContent.classList.add('hidden');
+
+      // After a brief delay, show responses
+      setTimeout(() => {
+        responsesWrapper.classList.add('visible');
+        
+        // Resolve after transition completes
+        setTimeout(resolve, this.transitionDuration);
+      }, 50);
+    });
+  },
+
+  async hideResponses() {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+
+    const mainContent = document.getElementById('mainContent');
+    const responsesWrapper = document.getElementById('responsesWrapper');
+
+    try {
+      // Remove visible class first
+      responsesWrapper.classList.remove('visible');
+
+      // Wait for transition
+      await new Promise(resolve => setTimeout(resolve, this.transitionDuration));
+
+      // Show main content
+      mainContent.classList.remove('hidden');
+
+      // Reset responses wrapper
+      responsesWrapper.style.display = 'none';
+    } finally {
+      this.isTransitioning = false;
+    }
+  }
+};
+
+// Update back button handler
+// document.addEventListener('DOMContentLoaded', () => {
+//   const backButton = document.getElementById('backToInput');
+  
+//   backButton.addEventListener('click', () => {
+//     if (!isShowingResponses) return;
+    
+//     const mainContent = document.getElementById('mainContent');
+//     const responsesWrapper = document.getElementById('responsesWrapper');
+    
+//     // Remove visible class first
+//     responsesWrapper.classList.remove('visible');
+    
+//     // Wait for transition to complete before hiding
+//     setTimeout(() => {
+//       mainContent.classList.remove('hidden');
+//       responsesWrapper.style.display = 'none';
+//     }, 300);
+    
+//     isShowingResponses = false;
+//   });
+// });
+
+document.addEventListener('DOMContentLoaded', () => {
+  const backButton = document.getElementById('backToInput');
+  backButton?.addEventListener('click', () => ResponseManager.hideResponses());
+});
+
+function createResponseCard(promptObj, index) {
+  const card = document.createElement('div');
+  card.className = 'response-card';
+  card.style.animationDelay = `${index * 100}ms`;
+  
+  const content = document.createElement('div');
+  content.className = 'response-content';
+  content.textContent = promptObj.prompt;
+  
+  const copyButton = document.createElement('button');
+  copyButton.className = 'copy-button';
+  copyButton.innerHTML = `
+    <span>Copy</span>
+  `;
+  
+  copyButton.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(promptObj.prompt);
+      copyButton.classList.add('copied');
+      copyButton.querySelector('span').textContent = 'Copied!';
+      
+      setTimeout(() => {
+        copyButton.classList.remove('copied');
+        copyButton.querySelector('span').textContent = 'Copy';
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  });
+  
+  card.appendChild(content);
+  card.appendChild(copyButton);
+  return card;
+}
+
+// Initialize back button handler
+document.addEventListener('DOMContentLoaded', () => {
+  const backButton = document.getElementById('backToInput');
+  
+  backButton.addEventListener('click', () => {
+    if (!isShowingResponses) return;
+    
+    const mainContent = document.getElementById('mainContent');
+    const responsesWrapper = document.getElementById('responsesWrapper');
+    
+    // Hide responses
+    responsesWrapper.classList.remove('visible');
+    setTimeout(() => {
+      responsesWrapper.classList.add('hidden');
+      // Show main content
+      mainContent.classList.remove('hidden');
+    }, 300);
+    
+    isShowingResponses = false;
+  });
+});
 
 
 function initializeRadioGroup() {
