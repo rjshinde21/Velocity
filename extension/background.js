@@ -8,6 +8,110 @@ function encodeData(data) {
   return btoa(JSON.stringify(data));
 }
 
+// background.js
+console.log('Background script loaded');
+
+// Function that creates the welcome box
+function createWelcomeBox() {
+  console.log('Creating welcome box');
+  
+  // Remove existing welcome box if present
+  const existingBox = document.getElementById('velocity-welcome');
+  if (existingBox) {
+    existingBox.remove();
+  }
+
+  const welcomeBox = document.createElement('div');
+  welcomeBox.id = 'velocity-welcome';
+  welcomeBox.style.cssText = `
+    position: fixed;
+    top: 48px;
+    right: 16px;
+    width: 220px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 12px;
+    z-index: 2147483647;
+    font-family: system-ui, -apple-system, sans-serif;
+    border: 1px solid #E5E7EB;
+  `;
+
+  welcomeBox.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+      <span style="font-weight: 500; color: #1a1a1a;">Velocity Activated</span>
+    </div>
+    <p style="margin: 0; font-size: 12px; color: #666; line-height: 1.4;">
+      Ready to enhance your prompts on this site
+    </p>
+    <div style="display: flex; align-items: center; margin-top: 8px; gap: 4px;">
+      <span style="font-size: 12px; color: #666;">1/2</span>
+      <div style="flex-grow: 1; display: flex; gap: 4px; justify-content: flex-end;">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #0284C7;"></div>
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #E5E7EB;"></div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(welcomeBox);
+  console.log('Welcome box created and added to DOM');
+
+  // Remove after 5 seconds
+  setTimeout(() => {
+    if (welcomeBox.parentNode) {
+      welcomeBox.remove();
+      console.log('Welcome box removed');
+    }
+  }, 5000);
+}
+
+// Function to inject the welcome message into a tab
+async function injectWelcomeMessage(tabId) {
+  console.log('Injecting welcome message into tab:', tabId);
+  
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      function: createWelcomeBox
+    });
+    console.log('Welcome box script injected successfully');
+  } catch (err) {
+    console.error('Failed to inject welcome box:', err);
+  }
+}
+
+// Show welcome message in all active tabs
+async function showWelcomeInAllTabs() {
+  const tabs = await chrome.tabs.query({});
+  console.log('Found tabs:', tabs.length);
+  
+  for (const tab of tabs) {
+    if (!tab.url?.startsWith('chrome://') && !tab.url?.startsWith('edge://')) {
+      console.log('Injecting into tab:', tab.id, tab.url);
+      try {
+        await injectWelcomeMessage(tab.id);
+      } catch (err) {
+        console.error('Error injecting into tab:', tab.id, err);
+      }
+    }
+  }
+}
+
+// Listen for installation and updates
+chrome.runtime.onInstalled.addListener(async (details) => {
+  if (details.reason === 'install') {
+    chrome.storage.local.set({ 'enhanceButtonEnabled': true }); // Enable by default
+    await showWelcomeInAllTabs();
+  }
+});
+
+// Listen for messages from popup
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'showWelcome') {
+    showWelcomeInAllTabs();
+  }
+});
+
 
 function sendToMixpanel(event) {
   const data = {

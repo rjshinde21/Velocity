@@ -683,198 +683,82 @@ function getSelectedPlatform() {
   return selectedPlatform;
 }
 
-
+document.addEventListener('DOMContentLoaded', function() {
+  const darkModeToggle = document.getElementById('darkModeToggle');
+  const body = document.body;
+  
+  // Check for saved dark mode preference
+  const darkMode = localStorage.getItem('darkMode') === 'true';
+  
+  // Apply saved preference
+  if (darkMode) {
+      body.classList.add('dark-mode');
+      darkModeToggle.querySelector('img').src = './assets/sun.png'; // You'll need a sun icon
+  }
+  
+  darkModeToggle.addEventListener('click', () => {
+      body.classList.toggle('dark-mode');
+      const isDarkMode = body.classList.contains('dark-mode');
+      localStorage.setItem('darkMode', isDarkMode);
+      
+      // Toggle icon between sun and moon
+      const icon = darkModeToggle.querySelector('img');
+      icon.src = isDarkMode ? './assets/sun.png' : './assets/moon.png';
+  });
+});
 
 function handleParsedResponse(parsedResponse) {
-  const responseDiv = document.getElementById('response');
-  console.log("parsed response:"+parsedResponse);
-  if (!responseDiv) {
-    console.error('Response div not found');
-    return;
-  }
-
-  responseDiv.innerHTML = '';  // Clear previous responses
-
+  const responsesContainer = document.getElementById('responsesContainer');
+  const responsesTrack = responsesContainer.querySelector('.responses-track');
+  
+  // Clear previous responses
+  responsesTrack.innerHTML = '';
+  
+  // Show the responses container
+  responsesContainer.classList.remove('hidden');
+  
   try {
-    let prompts;
-    let rawResponse = typeof parsedResponse === 'string' ? parsedResponse : JSON.stringify(parsedResponse);
-    console.log("raw response:"+rawResponse);
-    // Handle different response formats
-    if (typeof parsedResponse === 'string') {
-      try {
-        prompts = JSON.parse(parsedResponse).prompts;
-        
-      } catch (e) {
-        // If it's not JSON, treat it as a single response
-        prompts = [{ prompt: parsedResponse }];
+      let prompts;
+      if (typeof parsedResponse === 'string') {
+          prompts = [{ prompt: parsedResponse }];
+      } else if (parsedResponse.prompts) {
+          prompts = parsedResponse.prompts;
+      } else if (Array.isArray(parsedResponse)) {
+          prompts = parsedResponse;
+      } else {
+          prompts = [{ prompt: String(parsedResponse) }];
       }
-    } else if (parsedResponse.prompts) {
-      prompts = parsedResponse.prompts;
-    } else if (Array.isArray(parsedResponse)) {
-      prompts = parsedResponse;
-    } else {
-      prompts = [{ prompt: String(parsedResponse) }];
-    }
-    console.log("prompt:"+prompts.prompt)
-    trackEvent('Parsed Response', {
-      responseLength: rawResponse.length,          
-    });
-    // Create container for responses
-    const responsesContainer = document.createElement('div');
-    responsesContainer.className = 'responses-container';
 
-    // Create and append each prompt response
-    prompts.forEach((promptObj, index) => {
-      const container = document.createElement('div');
-      container.className = 'response-container bg-black/40 rounded-2xl border border-[#444444] p-4 mb-4';
-
-      const responseBox = document.createElement('div');
-      responseBox.className = 'response-box flex justify-between items-center';
-
-      const responseText = document.createElement('p');
-      responseText.className = 'response-text text-white flex-1 mr-4';
-      responseText.textContent = typeof promptObj === 'string' ? promptObj : promptObj.prompt;
-
-      // Create copy button
-      const copyButton = document.createElement('button');
-      copyButton.className = 'copy-button flex items-center justify-center';
-      copyButton.innerHTML = `
-            <img src="./assets/copy 1.png" 
-                 alt="Copy" 
-                 class="w-6 h-6 cursor-pointer"
-                 title="Copy to clipboard">
-        `;
-
-      // Add copy functionality
-      copyButton.addEventListener('click', async () => {
-        try {
-            trackEvent("Copied Prompt",
-              {
-                type: "Generated"
-              }
-            );
-            const textToCopy = typeof promptObj === 'string' ? promptObj : promptObj.prompt;
-            const userId = localStorage.getItem('userId');
-            const selectedAIType = getSelectedRadioValue();
-            
-            console.log('Copy request data:', {
-                user_id: userId,
-                prompt_text: textToCopy,
-                original_prompt_id: lastSavedPromptId,
-                ai_type: selectedAIType,
-                tokens_used: lastTokensUsed
-            });
-
-            // First copy to clipboard
-            await navigator.clipboard.writeText(textToCopy);
-
-            // Validate we have all required data before making the request
-            if (!userId || !lastSavedPromptId || !selectedAIType) {
-                console.error('Missing required data for saving copied response:', {
-                    userId,
-                    lastSavedPromptId,
-                    selectedAIType
-                });
-                throw new Error('Missing required data for saving response');
-            }
-
-            // Then save the copied response with the tokens used
-            const saveResponseResponse = await fetch('https://thinkvelocity.in/api/api/history/responses', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({
-                    user_id: userId,
-                    prompt_text: textToCopy,
-                    original_prompt_id: lastSavedPromptId,
-                    ai_type: selectedAIType,
-                    tokens_used: lastTokensUsed || 0
-                })
-            });
-
-            const responseData = await saveResponseResponse.json();
-            
-            if (!responseData.success) {
-                console.error('Save response error:', responseData);
-                throw new Error(responseData.message || 'Failed to save response');
-            }
-
-            // Visual feedback for successful copy and save
-            copyButton.classList.add('copied');
-            setTimeout(() => {
-                copyButton.classList.remove('copied');
-            }, 2000);
-
-            console.log('Successfully saved copied response:', responseData);
-
-        } catch (error) {
-            console.error('Failed to handle copy operation:', error);
-            showError(`Failed to copy: ${error.message}`);
-        }
-    });
-
-      // Assemble the response
-      responseBox.appendChild(responseText);
-      responseBox.appendChild(copyButton);
-      container.appendChild(responseBox);
-      responsesContainer.appendChild(container);
-    });
-
-    responseDiv.appendChild(responsesContainer);
-
+      prompts.forEach((promptObj) => {
+          const responseItem = document.createElement('div');
+          responseItem.className = 'response-item';
+          
+          const content = document.createElement('div');
+          content.className = 'response-content';
+          content.textContent = typeof promptObj === 'string' ? promptObj : promptObj.prompt;
+          
+          const copyButton = document.createElement('button');
+          copyButton.className = 'copy-button';
+          copyButton.innerHTML = `
+              <img src="./assets/copy 1.png" alt="Copy" class="w-5 h-5">
+              <span>Copy</span>
+          `;
+          
+          copyButton.addEventListener('click', async () => {
+              const textToCopy = content.textContent;
+              await navigator.clipboard.writeText(textToCopy);
+              
+              copyButton.classList.add('copied');
+              setTimeout(() => copyButton.classList.remove('copied'), 2000);
+          });
+          
+          responseItem.appendChild(content);
+          responseItem.appendChild(copyButton);
+          responsesTrack.appendChild(responseItem);
+      });
   } catch (error) {
-    console.error('Error handling response:', error);
-    showError('Error: Could not process the response from the server.');
-  }
-
-  // Add necessary styles
-  const style = document.createElement('style');
-  style.textContent = `
-    .responses-container {
-        max-height: 400px;
-        overflow-y: auto;
-        padding: 10px;
-    }
-    
-    .response-container {
-        transition: all 0.3s ease;
-    }
-    
-    .response-container:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    .copy-button {
-        opacity: 0.7;
-        transition: opacity 0.3s ease;
-    }
-    
-    .copy-button:hover {
-        opacity: 1;
-    }
-    
-    .copy-button.copied::after {
-        content: 'Copied!';
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        pointer-events: none;
-    }
-`;
-  document.head.appendChild(style);
-
-  // Adjust popup size after adding content
-  if (typeof adjustPopupSize === 'function') {
-    adjustPopupSize();
+      console.error('Error handling response:', error);
+      showError('Error: Could not process the response from the server.');
   }
 }
 // function toggleEnhanceButton(enabled) {
@@ -1694,7 +1578,7 @@ async function updateCreditDisplay() {
     // Update the button content with icon and credit count
     const editButton = document.getElementById('editButton');
     editButton.innerHTML = `
-      <span><img class="coinicon" src="./assets/coin.png" alt="coin"></span>
+      <span><img class="coinicon" src="./assets/coin1.png" alt="coin"></span>
       <span>${remainingCredits}</span>
     `;
   } catch (error) {

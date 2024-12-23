@@ -8,13 +8,54 @@
   <title>Extension Popup</title>
   <link rel="stylesheet" href="src/output.css">
   <style>
-    #logoutButton, #editButton, #signupButton {
+
+* {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --border-radius: 16px;
+    }
+
+    html, body {
+      width: 450px;
+      height: 900px;
+      margin: 0;
+      padding: 0;
+      /* overflow: hidden; */
+      border-radius: var(--border-radius) !important;
+      -webkit-border-radius: var(--border-radius) !important;
+      -moz-border-radius: var(--border-radius) !important;
+      background: #FFFFFF;
+      position: relative;
+      z-index: 0;
+    }
+    #logoutButton, #signupButton {
     transition: all 0.3s ease;
     height: 30px;
     padding: 0px 10px;
     border-radius: 12px;
-    font-size: 14px;
+    font-weight: bold;
+    background: #F5F5F5;
+    border: 1px solid #E5E7EB;
+    color: #008ACB;
+    font-size: 10px;
     cursor: pointer;
+}
+
+#editButton {
+  transition: all 0.3s ease;
+    height: 30px;
+    padding: 0px 10px;
+    border-radius: 12px;
+    background: #F5F5F5;
+    border: 1px solid #E5E7EB;
+    color: #F7AA1C;
+    font-size: 10px;
+    cursor: pointer;
+
 }
 
 
@@ -54,11 +95,13 @@
         padding: 0;
         display: flex;
         flex-direction: column;
-        background: linear-gradient(to bottom, #000000 20%, #00131c 80%);
-        color: white;
+        /* background: linear-gradient(to bottom, #000000 20%, #00131c 80%); */
+        background: #FFFFFF !important;
+        /* color: white; */
+        color: #000000;
         font-family: "Inter", sans-serif;
-        min-width: 500px;
-        min-height: 500px;
+        width: 460px;
+        height: 900px;
       }
       #advancedOptionsButton {
         background-color: transparent;
@@ -96,20 +139,14 @@
           box-shadow: 0 0 20px #008acb, 0 0 20px #008acb, 0 0 20px #008acb;
         }
       }
-      .copy-button {
-        cursor: pointer;
-        width: 24px;
-        height: 24px;
-        vertical-align: middle;
-        margin-left: 10px;
-      }
+    
       .response-text {
         margin-right: 70px; /* Make space for the button */
       }
       .scrollable-container {
         display: flex;
         flex-direction: column;
-        padding: 10px;
+        padding: 4px;
         overflow-y: hidden;
         flex-grow: 1;
         position: relative;
@@ -135,34 +172,35 @@
         border-radius: 4px;
       }
       .title1 {
+        background-color: #FFFFFF !important; /* Change from dark blue to white */
+        color: #000000;
     height: 50px;
     display: flex;
     justify-content: space-between; /* This spreads items to edges */
     align-items: center;
-    background-color: #005F7F;
+    
     font-weight: lighter;
     font-size: large;
-    color: #C9C9C9;
-    padding: 0 24px; /* Add padding on both sides */
+       padding: 0 18px; /* Add padding on both sides */
     width: 100%; /* Ensure full width */
 }
 .title1 > div:last-child {
     display: flex;
     align-items: center;
-    gap: 16px; /* Space between buttons */
-    margin-right: 8px; /* Add some right margin */
+    gap: 10px; /* Space between buttons */
+    margin-right: 1px; /* Add some right margin */
 }
 
 
       .title{
-height: 50px;
+height: 40px;
 display: flex;
 background-color: transparent;
 justify-content: center;
-font-weight: lighter;
+font-weight: bold;
 align-items: center;
-font-size: large;
-color: #C9C9C9;
+font-size: 12px;
+color: #292929;
 /* font-family: 'Inter'; */
 
       }
@@ -172,30 +210,33 @@ color: #C9C9C9;
         padding: 1px;
         justify-content: center;
         flex-wrap: wrap;
-        margin-bottom: 5%;
+        margin-bottom: 2%;
       }
       .radio-button {
         position: relative;
         display: inline-block;
       }
+      
       .radio-button input[type="radio"] {
         position: absolute;
         opacity: 0;
         cursor: pointer;
       }
       .radio-button label {
+        color: #000000;
+    text-shadow: none;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        width: 72px;
-        height: 72px;
+        width: 70px;
+        height: 70px;
         font-size: 12px;
-        color: white;
-        border-radius: 6px;
+        /* color: white; */
+        border-radius: 8px;
         cursor: pointer;
         transition: all 0.3s ease;
-        text-shadow: 0 0 10px #0099ff;
+        /* text-shadow: 0 0 10px #0099ff; */
       }
       .radio-button input[type="radio"]:checked + label {
         border-color: #0099ff;
@@ -222,38 +263,40 @@ color: #C9C9C9;
 
 .button-group label {
   display: flex;
-  border: 1.5px solid #353535
-  ;
+  border: 1.5px solid #353535;
+  border-radius: 16px;
+height: 85px;
+width: 220px;
 justify-content: flex-start;
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background-color: transparent;
-  border-radius: 9999px;
+  border-color: transparent;
+  background-color: #FFFFFF;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .button-group label:hover {
-  background-color: #000000;
+  background-color: #F5F5F5;
 }
 
 .dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
-  background-color: #292929;
+  border-radius: 0;
+  background-color: #E5E7EB;
   transition: background-color 0.2s;
 }
 
 .button-group input[type="radio"]:checked + label .dot {
-  background-color: #008ACB;
+  background-color: #0284C7;
 }
 
 .button-text {
   font-family: sans-serif;
   font-size: 12px;
-  color: #FFFFFF;
+  color: #000000;
 }
 
       .dropdowns-container {
@@ -282,10 +325,24 @@ justify-content: flex-start;
     flex-direction: column;
       }
       .radio-button label img {
-        width: 120px;
-        height: 120px;
-        /* margin-bottom: 5px; */
-      }
+    width: 90px;
+    height: 90px;
+    transition: filter 0.3s ease;
+}
+
+.dark-mode .radio-button label img {
+    filter: brightness(0.8) invert(1);
+}
+
+/* Optional: Hover state in dark mode */
+.dark-mode .radio-button:hover label img {
+    filter: brightness(0.9) invert(1);
+}
+
+/* Optional: Selected state in dark mode */
+.dark-mode .radio-button input[type="radio"]:checked + label img {
+    filter: brightness(1) invert(1);
+}
       .radio-button label span {
         text-align: center;
       }
@@ -413,10 +470,9 @@ justify-content: flex-start;
 
 display: flex;
 justify-content: center;
-padding-top: 5%;
-padding-bottom: 2%;
-font-size: 15px;
-color: #C9C9C9;
+padding-top: 3%;
+font-size: 8px;
+color: #000000;
 
       }
       
@@ -506,12 +562,12 @@ color: #C9C9C9;
       }
 
       #promptInput {
-        background-color: rgba(0, 0, 0, 0.4);
-        border: 1px solid #444;
-        border-radius: 6px;
+        background-color: #F5F5F5; /* Light gray background */
+    border: 1px solid #E5E7EB;
+    color: #000000;
+        border-radius: 16px;
         /* padding-right: 40px; Make room for the icon */
         width: 100%; /* Adjust width to account for padding and border */
-        color: #999999;
         padding: 30px;
         /* margin-top: 10px; */
         height: 80px;
@@ -529,7 +585,7 @@ color: #C9C9C9;
         font-family: sans-serif;
         align-items: center; /* Center items vertically */
         justify-content: center; /* Align items to the start (left) */
-        background-color: #00131C; /* Use your desired background color */
+        background-color: #00aeff; /* Use your desired background color */
         border: none;
         border-radius: 20px;
         color: white;
@@ -563,35 +619,66 @@ color: #C9C9C9;
         display: flex;
         justify-content: center;
       }
+
+      .responses-section {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 0 24px;
+}
+
+.response-container {
+  background-color: #F5F5F5;
+  border: 1px solid #E5E7EB;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.response-text {
+  color: #000000;
+    font-size: 14px;
+    line-height: 1.5;
+    flex-grow: 1;
+    margin-right: 16px;
+}
+
+
+
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+    .response-container {
+        background-color: rgb(0, 0, 0);
+        border-color: #000000;
+    }
+
+    .response-text {
+        color: #e5e7eb;
+    }
+}
       #sendButton {
-        background-color: #00000000;
-        border: none;
-        backdrop-filter: blur(5px);
-        border-radius: 30px;
+        background-color: #0284C7; /* Keep the blue for the generate button */
         color: white;
-        overflow: hidden; /* Prevent content from spilling out */
-        white-space: nowrap; /* Prevent text wrapping */
-        padding: 10px 20px;
-        text-align: center;
-        margin-bottom: 20px;
-        max-width: 800px;
-        width:200px;
-        /*margin-top: 3%;*/
-        /* display: block; */
-        /*width: calc(100% - 20px);*/
-        font-size: 16px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 0 10px #008ACB;
-      }
-      .generate-button-container{
-        width: 100%;
-        display: flex;
-        justify-content: center;
-      }
-      #sendButton:hover {
-        box-shadow: 0 0 20px #008ACB;
-      }
+    border: none;
+    border-radius: 9999px;
+    padding: 12px 24px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: auto;
+    min-width: 140px;
+    box-shadow: none;
+}
+
+#sendButton:hover {
+    background-color: #0369a1;
+}
+     
+     
       #response {
         white-space: pre-wrap;
         margin-bottom: 5px;
@@ -623,9 +710,84 @@ color: #C9C9C9;
       cursor: pointer;
       font-size: 14px;
     } */
-      .copy-button:hover {
-        background-color: #005F7F;
-      }
+    .responses-wrapper {
+    width: 100%;
+    padding: 0 24px;
+    margin-top: 24px;
+}
+
+.responses-scroll-container {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #008ACB #F5F5F5;
+}
+
+.responses-scroll-container::-webkit-scrollbar {
+    height: 6px;
+}
+
+.responses-scroll-container::-webkit-scrollbar-track {
+    background: #F5F5F5;
+    border-radius: 3px;
+}
+
+.responses-scroll-container::-webkit-scrollbar-thumb {
+    background: #008ACB;
+    border-radius: 3px;
+}
+
+.responses-track {
+    display: flex;
+    gap: 16px;
+    padding: 4px 0;
+}
+
+.response-item {
+    flex: 0 0 auto;
+    width: 300px;
+    background: #F5F5F5;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.response-content {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #000000;
+    margin-bottom: 12px;
+}
+
+.copy-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.copy-button:hover {
+    opacity: 1;
+}
+
+/* Dark mode styles */
+.dark-mode .response-item {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: #374151;
+}
+
+.dark-mode .response-content {
+    color: #FFFFFF;
+}
+
+.dark-mode .responses-scroll-container::-webkit-scrollbar-track {
+    background: #1F2937;
+}
       .image-upload-container {
         position: relative; /* or absolute if positioning relative to a parent */
         background-color: rgba(0, 0, 0, 0.4);
@@ -730,7 +892,7 @@ color: #C9C9C9;
     padding: 5px 10px !important;
     background: linear-gradient(180deg, #000000 0%, #008ACB 100%) !important;
     border: 1px solid #444444 !important;
-    border-radius: 5px !important;
+    /* border-radius: 5px !important; */
     color: white !important;
     cursor: pointer !important;
     font-size: 12px !important;
@@ -761,7 +923,7 @@ color: #C9C9C9;
     gap: 8px;
     /* padding: 8px 16px; */
     background-color: transparent;
-    border-radius: 9999px;
+    /* border-radius: 9999px; */
     cursor: pointer;
     transition: background-color 0.2s;
   }
@@ -798,18 +960,26 @@ color: #C9C9C9;
     gap: 8px; /* Space between icon and text */
 }
 
+.credits-display {
+    font-size: 14px;
+    color: #6B7280;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.credits-display span {
+    display: inline-flex;
+    align-items: center;
+}
 
 .mleft img {
     margin-right: 6px; /* Adds space between the image and text */
     height: 20px;
 }
 
-#generateIcon{
-  width: 16px;
-  height: 16px;
-  margin-left: 0px;
 
-}
 
 
 .profileicon {
@@ -894,6 +1064,13 @@ color: #C9C9C9;
   margin-right: 24px;
 }
 
+.tog {
+  color: #000000;
+  font-size: 9px;
+  font-weight: bold;
+
+}
+
 .premium-toggle {
   position: relative;
   display: inline-block;
@@ -918,6 +1095,196 @@ color: #C9C9C9;
   transition: 0.4s;
   border-radius: 34px;
 }
+
+
+.dark-mode {
+    background: #000000 !important;
+    color: #FFFFFF !important;
+}
+
+/* Dark mode styles for specific elements */
+.dark-mode .title1 {
+    background-color: #000000 !important;
+    color: #FFFFFF;
+}
+
+.dark-mode .title {
+    color: #C9C9C9;
+}
+
+.dark-mode #promptInput {
+    background-color: rgba(39, 39, 39, 0.4);
+    border: 1px solid #5a5a5a;
+    color: #FFFFFF;
+}
+
+.dark-mode .tone-label {
+    background-color: #000000;
+    border: 1px solid #000000;
+}
+
+.dark-mode .tone-icon {
+    background-color: #000000;
+}
+
+.dark-mode .tone-title {
+    color: #FFFFFF;
+}
+
+.dark-mode .tone-description {
+    color: #9CA3AF;
+}
+
+.dark-mode .button-text {
+    color: #FFFFFF;
+}
+
+.dark-mode .needs {
+    color: #FFFFFF;
+}
+
+.dark-mode .button-group label {
+    background-color: #000000;
+}
+
+.dark-mode .response-container {
+    background-color: rgba(0, 0, 0, 0.4);
+    border-color: #374151;
+}
+
+.dark-mode .response-text {
+    color: #FFFFFF;
+}
+
+.dark-mode .mode-icon {
+    filter: brightness(0) invert(1); /* Make moon icon white in dark mode */
+}
+
+.dark-mode .credits-display {
+    color: #9CA3AF;
+}
+
+.dark-mode .enhance-toggle-small {
+    background: #212121;
+}
+
+.dark-mode .small-toggle {
+    background-color: #00000000;
+}
+
+
+.dark-mode .tog {
+ color: #F5F5F5;
+
+}
+
+/* Dark mode hover states */
+.dark-mode .tone-label:hover {
+    border-color: #0284C7;
+    background-color: #082F49;
+}
+
+.dark-mode .tone-option input[type="radio"]:checked + .tone-label {
+    border-color: #0284C7;
+    background-color: #082F49;
+}
+
+.dark-mode .button-group label:hover {
+    background-color: #082F49;
+}
+
+.dark-mode-btn {
+    background: #D9D9D9;
+    border: none;
+    color: #000000;
+    padding: 0;
+    width: 32px;  /* Add fixed width */
+    height: 32px; /* Add fixed height */
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Add to center horizontally */
+}
+
+.dark-mode-btn img {
+    width: 20px; /* Set specific size for icon */
+    height: 20px;
+    margin: 0; /* Remove any margins */
+    display: block; /* Ensure block display */
+}
+
+.dark-mode-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .dark-mode-btn {
+
+  background-color: rgba(255, 255, 255, 0.1);
+
+}
+
+.mode-icon {
+  filter: brightness(0);
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.dark-mode-btn:hover .mode-icon {
+    opacity: 1;
+}
+
+.small-toggle {
+    position: relative;
+    display: inline-block;
+    background-color: #F5F5F5;
+    width: 36px;
+    height: 20px;
+}
+
+.toggle-slider-small {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #E5E7EB;
+    transition: 0.4s;
+    border-radius: 34px;
+}
+
+.toggle-slider-small:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: #ffffff;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+
+
+.toggle-input:checked + .toggle-slider-small {
+  background-color: #0284C7;
+}
+
+.toggle-input:checked + .toggle-slider-small:before {
+    transform: translateX(16px);
+}
+
+.enhance-toggle-small {
+    background: rgba(0, 0, 0, 0);
+    background-color: #F5F5F5;
+    padding: 8px 8px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+
 
 .toggle-slider:before {
   position: absolute;
@@ -948,7 +1315,7 @@ color: #C9C9C9;
 
 /* Add animation for the icon */
 .copy-icon.white {
-    filter: brightness(0) invert(1); /* Makes the icon white */
+    filter: none; /* Makes the icon white */
     transition: filter 0.3s ease;   /* Smooth transition */
     animation: revertColor 2s forwards; /* Animation to revert back */
 }
@@ -1010,14 +1377,143 @@ color: #C9C9C9;
       #deleteButton:hover, #signupButton:hover {
         box-shadow: 0 0 10px #008ACB /* Darker shade on hover for delete button */
       }
+
+      .needs {
+    font-size: 16px;
+    font-weight: bold;
+    color: #292929;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.button-group {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    padding: 0 24px;
+}
+
+.tone-option {
+    position: relative;
+}
+
+.tone-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.tone-label {
+    display: flex;
+    align-items: flex-start;
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 0; /* Removed rounded edges */
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tone-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background-color: transparent;
+    border-radius: 0; /* Removed rounded edges */
+    flex-shrink: 0;
+}
+
+.tone-icon img {
+    width: 24px;
+    height: 24px;
+    color: #0ea5e9;
+}
+
+.tone-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tone-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #000000;
+}
+
+.tone-description {
+    font-size: 10px;
+    color: #6B7280;
+    line-height: 1.4;
+}
+
+/* Hover and Selected States */
+.tone-label:hover {
+    border-color: #0ea5e9;
+    background-color: #f0f9ff;
+}
+
+.tone-option input[type="radio"]:checked + .tone-label {
+    border-color: #0ea5e9;
+    background-color: #f0f9ff;
+    box-shadow: 0 0 0 1px #0ea5e9;
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+    .needs {
+        color: #ffffff;
+    }
+
+    .tone-label {
+        border-color: #374151;
+        background-color: #1f2937;
+    }
+
+    .tone-icon {
+        background-color: transparent;
+    }
+
+    .tone-title {
+        color: #ffffff;
+    }
+
+    .tone-description {
+        color: #9ca3af;
+    }
+
+    .tone-label:hover {
+      border-color: #0284C7;
+      background-color: #F5F5F5;
+    }
+
+    .tone-option input[type="radio"]:checked + .tone-label {
+      border-color: #0284C7;
+      background-color: #F5F5F5;
+    }
+}
   </style>
 </head>
 <body>
-  <div class="title1 flex justify-between items-center" style="background-color: #00141D;">
-    <div class="mleft flex items-center pl-0">
-        <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto">
-        <span class="text-white ml-0">Velocity</span>
-    </div>
+  <!-- <div class="title1 flex justify-between items-center" style="background-color: #00141D;">
+    <div class="mleft flex items-center gap-4">
+      <button id="darkModeToggle" class="dark-mode-btn flex items-center gap-2 text-white">
+        <img src="./assets/moon.png" alt="Dark Mode" class="mode-icon h-5 w-5">
+    </button>
+
+    <div class="enhance-toggle-small flex items-center gap-2">
+      <span class="text-sm text-white">Enhance</span>
+      <label class="small-toggle">
+          <input type="checkbox" id="enhanceToggle" class="toggle-input">
+          <div class="toggle-slider-small"></div>
+      </label>
+  </div>
+         <img src="./assets/icon16 (1).png" alt="Icon" class="h-8 w-auto">
+        <span class="text-white ml-0">Velocity</span> -->
+    <!-- </div>
     
     <div class="flex items-center gap-4 pr-4">
         <button id="editButton" class="flex items-center gap-2 text-white">
@@ -1030,12 +1526,39 @@ color: #C9C9C9;
             <span>Login</span>
         </button>
     </div>
+</div> --> 
+<div class="title1 flex justify-between items-center" style="background-color: #00141D;">
+  <div class="mleft flex items-center gap-4">
+      <button id="darkModeToggle" class="dark-mode-btn flex items-center text-white">
+          <img src="./assets/moon.png" alt="Dark Mode" class="mode-icon h-5 w-5">
+      </button>
+      
+      <div class="enhance-toggle-small flex items-center gap-2">
+          <span class="tog">Toggle Enhance Button</span>
+          <label class="small-toggle">
+              <input type="checkbox" id="enhanceToggle" class="toggle-input">
+              <div class="toggle-slider-small"></div>
+          </label>
+      </div>
+  </div>
+  
+  <div class="flex items-center gap-2 pr-2">
+      <button id="editButton" class="flex items-center gap-2 text-white">
+          <span><img class="coinicon" src="./assets/coin1.png" alt="coin"></span>
+          <span class="credit-amount">0</span>
+      </button>
+      
+      <button id="signupButton" class="text-white space-x-2 flex items-center">
+          <span><img class="profileicon" src="./assets/profile.png" alt=""></span>
+          <span>Login</span>
+      </button>
+  </div>
 </div>
 
 
 
 
-<div class="premium-enhance-wrapper">
+<!-- <div class="premium-enhance-wrapper">
   <div class="premium-enhance-control">
     <div class="premium-enhance-content">
       <h3 class="premium-enhance-text">Toggle Enhance Button</h3>
@@ -1045,7 +1568,7 @@ color: #C9C9C9;
       </label>
     </div>
   </div>
-</div>
+</div> -->
 <div class="title">Select Your AI Model</div>
 
 <div class="radio-group">
@@ -1088,48 +1611,75 @@ color: #C9C9C9;
   </div>
 
   <div class="scrollable-container">
-    <div id="response"></div>
     <div class="input-container" style="position: relative; display: inline-block;">
       <textarea 
           id="promptInput"
           class="w-full bg-black/40 rounded-2xl pl-10"
           placeholder="Add your prompt here"
       ></textarea>
-      <img 
+      <!-- <img 
           src="./assets/copy 1.png" 
           alt="copy icon"
           id="copyButton"
           class="copy-icon"
           style="position: absolute; top: 50%; right: 40px; transform: translateY(-50%); width: 20px; height: 20px; cursor: pointer;"
-      >
+      > -->
   </div>
   
-    <div class="needs">Choose Your Style to Match Your Needs</div>
+    <div class="needs">Select your tone</div>
     <div class="button-group">
-        <input type="radio" name="style-option" id="descriptive">
-        <label for="descriptive">
-          <span class="dot"></span>
-          <span class="button-text">Descriptive</span>
-        </label>
-      
-        <input type="radio" name="style-option" id="creative">
-        <label for="creative">
-          <span class="dot"></span>
-          <span class="button-text">Creative</span>
-        </label>
-      
-        <input type="radio" name="style-option" id="professional">
-        <label for="professional">
-          <span class="dot"></span>
-          <span class="button-text">Professional</span>
-        </label>
-      
-        <input type="radio" name="style-option" id="concise">
-        <label for="concise">
-          <span class="dot"></span>
-          <span class="button-text">Concise</span>
-        </label>
-      </div>
+        <div class="tone-option">
+            <input type="radio" name="style-option" id="descriptive">
+            <label for="descriptive" class="tone-label">
+                <div class="tone-icon">
+                    <img src="./assets/desc.png" alt="Descriptive" class="w-6 h-6">
+                </div>
+                <div class="tone-content">
+                    <span class="tone-title">Descriptive</span>
+                    <span class="tone-description">Adds detailed context to enhance clarity and depth</span>
+                </div>
+            </label>
+        </div>
+    
+        <div class="tone-option">
+            <input type="radio" name="style-option" id="creative">
+            <label for="creative" class="tone-label">
+                <div class="tone-icon">
+                    <img src="./assets/cre.png" alt="Creative" class="w-6 h-6">
+                </div>
+                <div class="tone-content">
+                    <span class="tone-title">Creative</span>
+                    <span class="tone-description">Inspires unique, imaginative, & artistic outputs</span>
+                </div>
+            </label>
+        </div>
+    
+        <div class="tone-option">
+            <input type="radio" name="style-option" id="professional">
+            <label for="professional" class="tone-label">
+                <div class="tone-icon">
+                    <img src="./assets/pro.png" alt="Professional" class="w-6 h-6">
+                </div>
+                <div class="tone-content">
+                    <span class="tone-title">Professional</span>
+                    <span class="tone-description">Delivers polished, formal, and industry-specific results</span>
+                </div>
+            </label>
+        </div>
+    
+        <div class="tone-option">
+            <input type="radio" name="style-option" id="concise">
+            <label for="concise" class="tone-label">
+                <div class="tone-icon">
+                    <img src="./assets/conc.png" alt="Concise" class="w-6 h-6">
+                </div>
+                <div class="tone-content">
+                    <span class="tone-title">Concise</span>
+                    <span class="tone-description">Focuses on brevity and clarity, cutting out unnecessary details</span>
+                </div>
+            </label>
+        </div>
+    </div>
 
 
   
@@ -1152,17 +1702,26 @@ color: #C9C9C9;
       Category cards will be dynamically inserted here
 
   </div> -->
-  <div class="flex justify-center mt-6">
-    <button id="sendButton" class="generate-button flex items-center justify-between w-[400px] px-4">
-        <img id="generateIcon" src="./assets/Rectangle 32.png" alt="Generate" class="ml-2" />
+  <div class="flex flex-col items-center mt-6">
+    <button id="sendButton" class="generate-button flex items-center justify-center w-[170px] px-4">
         <span>Generate</span>
-        <div class="flex items-center gap-2">
-            <img src="./assets/coin.png" alt="Coin" class="h-4 w-4" />
-            <span id="creditAmount" class="text-sm">0</span>
-        </div>
     </button>
+    <div class="credits-display mt-2 text-sm text-gray-500">
+        Generate for <span class="flex items-center inline-flex gap-1">
+            <img src="./assets/coin.png" alt="Coin" class="h-4 w-4" />
+            <span id="creditAmount" class="text-sm">27</span>
+        </span>
+    </div>
 </div>
 
+<!-- New responses container -->
+<div id="responsesContainer" class="responses-wrapper hidden mt-6">
+    <div class="responses-scroll-container">
+        <div class="responses-track">
+            <!-- Responses will be dynamically inserted here -->
+        </div>
+    </div>
+</div>
 
   <!-- <div class="w-full bg-[#00141C] flex items-center justify-between text-white text-lg font-normal font-amenti h-[60px] relative px-4"> -->
 
