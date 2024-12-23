@@ -21,17 +21,264 @@
 
     html, body {
       width: 450px;
-      height: 900px;
+      height: 600px;
       margin: 0;
       padding: 0;
       /* overflow: hidden; */
-      border-radius: var(--border-radius) !important;
-      -webkit-border-radius: var(--border-radius) !important;
-      -moz-border-radius: var(--border-radius) !important;
-      background: #FFFFFF;
+   
+
       position: relative;
       z-index: 0;
     }
+
+
+    .app-container {
+  position: relative;
+  height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.main-content {
+  transition: opacity 0.3s ease-out;
+}
+
+.main-content.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.debug-highlight {
+  outline: 2px solid red !important;
+}
+
+    .velocity-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.velocity-loader-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: none;
+}
+
+.velocity-loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.velocity-loader-content {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.velocity-loader-spinner {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 16px;
+  border: 3px solid #E5E7EB;
+  border-top-color: #0284C7;
+  border-radius: 50%;
+  animation: velocity-spin 1s linear infinite;
+}
+
+.velocity-loader-message {
+  color: #1F2937;
+  font-size: 14px;
+}
+
+.velocity-loader-text {
+  color: #1F2937;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+@keyframes velocity-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Dark mode styles */
+.dark-mode .velocity-loader-content {
+  background: #1F2937;
+}
+
+.dark-mode .velocity-loader-text {
+  color: #F3F4F6;
+}
+
+.velocity-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.velocity-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #0284C7;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.velocity-loader-text {
+  color: white;
+  font-size: 14px;
+  text-align: center;
+}
+
+.velocity-scroll-indicator {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.velocity-scroll-icon {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #0284C7;
+  border-radius: 12px;
+  position: relative;
+}
+
+.velocity-scroll-dot {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: #0284C7;
+  border-radius: 50%;
+  animation: scrollBounce 1.5s infinite;
+}
+
+.velocity-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 24px;
+}
+
+.velocity-error-icon {
+  flex-shrink: 0;
+  color: rgb(239, 68, 68);
+}
+
+.velocity-error-content {
+  flex-grow: 1;
+  font-size: 14px;
+  color: rgb(239, 68, 68);
+}
+
+.velocity-token-alert {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  padding: 16px;
+  border-radius: 8px;
+  margin: 16px 24px;
+}
+
+.velocity-token-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.velocity-token-title {
+  font-weight: 500;
+  color: #F59E0B;
+}
+
+.velocity-token-message {
+  font-size: 14px;
+  color: #78350F;
+  margin-bottom: 16px;
+}
+
+.velocity-token-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: #F59E0B;
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes scrollBounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0) translateX(-50%); }
+  40% { transform: translateY(4px) translateX(-50%); }
+  60% { transform: translateY(2px) translateX(-50%); }
+}
+
+/* Dark mode variants */
+.dark-mode .velocity-error {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.dark-mode .velocity-token-alert {
+  background: rgba(251, 191, 36, 0.2);
+}
+
+.dark-mode .velocity-token-message {
+  color: #FCD34D;
+}
+
     #logoutButton, #signupButton {
     transition: all 0.3s ease;
     height: 30px;
@@ -90,19 +337,7 @@
 	.hidden2 {
         display: none !important;
       }
-      body {
-        margin: 0;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        /* background: linear-gradient(to bottom, #000000 20%, #00131c 80%); */
-        background: #FFFFFF !important;
-        /* color: white; */
-        color: #000000;
-        font-family: "Inter", sans-serif;
-        width: 460px;
-        height: 900px;
-      }
+      
       #advancedOptionsButton {
         background-color: transparent;
         color: #ffffff;
@@ -172,7 +407,7 @@
         border-radius: 4px;
       }
       .title1 {
-        background-color: #FFFFFF !important; /* Change from dark blue to white */
+        background-color: transparent !important; /* Change from dark blue to white */
         color: #000000;
     height: 50px;
     display: flex;
@@ -645,6 +880,47 @@ color: #000000;
     margin-right: 16px;
 }
 
+.responses-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+  margin-top: 16px;
+}
+
+.response-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+.response-card:hover {
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dark-mode .response-card {
+  background: rgba(0, 0, 0, 0.4);
+  border-color: #374151;
+}
+
+
 
 
 
@@ -676,6 +952,34 @@ color: #000000;
 
 #sendButton:hover {
     background-color: #0369a1;
+}
+
+.response-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  z-index: 10;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #0284C7;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+#generateButtonContainer {
+    width: 100%;
+    padding: 0 24px;
+    margin-top: 24px;
+    margin-bottom: 24px;
 }
      
      
@@ -710,10 +1014,63 @@ color: #000000;
       cursor: pointer;
       font-size: 14px;
     } */
-    .responses-wrapper {
-    width: 100%;
-    padding: 0 24px;
-    margin-top: 24px;
+    /* .responses-wrapper {
+  position: fixed;
+  top: 50px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #FFFFFF;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+  z-index: 1000;
+  overflow-y: auto;
+} */
+
+
+.responses-wrapper {
+  opacity: 0;
+  padding: 20px;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+.responses-wrapper.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.dark-mode .responses-wrapper {
+  background: #000000;
+}
+
+.responses-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.responses-header h2 {
+  font-size: 18px;
+  font-weight: 500;
+  color: #000000;
+}
+
+.dark-mode .responses-header h2 {
+  color: #FFFFFF;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: #0284C7;
+  cursor: pointer;
+  font-size: 14px;
 }
 
 .responses-scroll-container {
@@ -753,26 +1110,49 @@ color: #000000;
 }
 
 .response-content {
-    font-size: 14px;
-    line-height: 1.5;
-    color: #000000;
-    margin-bottom: 12px;
+  font-size: 16px;
+  line-height: 1.6;
+  margin-right: 20px;
+  flex-grow: 1;
+  color: #374151;
 }
 
 .copy-button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 0.2s;
+  background-color: #0284C7;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .copy-button:hover {
-    opacity: 1;
+  background-color: #0369a1;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.copy-button .copy-icon {
+  display: none;
+}
+.dark-mode .copy-button {
+  background: #1F2937;
+  border-color: #374151;
+}
+
+.dark-mode .copy-button:hover {
+  background: #374151;
+}
+
+.copy-button.copied {
+  background: #0284C7;
+  color: #FFFFFF;
+  border-color: #0284C7;
 }
 
 /* Dark mode styles */
@@ -961,17 +1341,31 @@ color: #000000;
 }
 
 .credits-display {
-    font-size: 14px;
-    color: #6B7280;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     margin-top: 8px;
+    font-size: 12px;
+    color: #6B7280;
+}
+
+.dark-mode .credits-display {
+    color: #9CA3AF;
 }
 
 .credits-display span {
     display: inline-flex;
     align-items: center;
+}
+
+.credits-display img {
+    width: 16px;
+    height: 16px;
+}
+
+.main-content.hidden #generateButtonContainer {
+    display: none;
 }
 
 .mleft img {
@@ -1266,7 +1660,24 @@ color: #000000;
     border-radius: 50%;
 }
 
+.generate-button {
+    background-color: #0284C7;
+    color: white;
+    border: none;
+    border-radius: 9999px;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: auto;
+    min-width: 140px;
+    box-shadow: none;
+}
 
+.generate-button:hover {
+    background-color: #0369a1;
+}
 
 .toggle-input:checked + .toggle-slider-small {
   background-color: #0284C7;
@@ -1311,6 +1722,16 @@ color: #000000;
 
 .toggle-input:checked + .toggle-slider:before {
   transform: translateX(24px);
+}
+
+.copy-icon {
+  width: 16px;
+  height: 16px;
+  transition: all 0.2s ease;
+}
+
+.copied .copy-icon {
+  filter: brightness(0) invert(1);
 }
 
 /* Add animation for the icon */
@@ -1527,6 +1948,7 @@ color: #000000;
         </button>
     </div>
 </div> --> 
+<div class="app-container">
 <div class="title1 flex justify-between items-center" style="background-color: #00141D;">
   <div class="mleft flex items-center gap-4">
       <button id="darkModeToggle" class="dark-mode-btn flex items-center text-white">
@@ -1555,7 +1977,7 @@ color: #000000;
   </div>
 </div>
 
-
+<div class="main-content" id="mainContent">
 
 
 <!-- <div class="premium-enhance-wrapper">
@@ -1681,7 +2103,19 @@ color: #000000;
         </div>
     </div>
 
+</div>
 
+<div class="flex flex-col items-center mt-6" id="generateButtonContainer">
+  <button id="sendButton" class="generate-button flex items-center justify-center gap-2">
+      <span>Generate</span>
+  </button>
+  <div class="credits-display mt-2 text-sm text-gray-500">
+      Generate for <span class="flex items-center inline-flex gap-1">
+          <img src="./assets/coin.png" alt="Coin" class="h-4 w-4" />
+          <span id="creditAmount" class="text-sm">0</span>
+      </span>
+  </div>
+</div>
   
   <!-- <div class="image-upload-container">
     <div class="image-upload-header">
@@ -1702,7 +2136,7 @@ color: #000000;
       Category cards will be dynamically inserted here
 
   </div> -->
-  <div class="flex flex-col items-center mt-6">
+  <!-- <div class="flex flex-col items-center mt-6">
     <button id="sendButton" class="generate-button flex items-center justify-center w-[170px] px-4">
         <span>Generate</span>
     </button>
@@ -1712,19 +2146,31 @@ color: #000000;
             <span id="creditAmount" class="text-sm">27</span>
         </span>
     </div>
-</div>
+</div> -->
+
 
 <!-- New responses container -->
-<div id="responsesContainer" class="responses-wrapper hidden mt-6">
+<!-- <div id="responsesContainer" class="responses-wrapper hidden mt-6">
     <div class="responses-scroll-container">
         <div class="responses-track">
-            <!-- Responses will be dynamically inserted here -->
-        </div>
+          </div>
     </div>
+</div> -->
 </div>
-
   <!-- <div class="w-full bg-[#00141C] flex items-center justify-between text-white text-lg font-normal font-amenti h-[60px] relative px-4"> -->
-
+    <div class="responses-wrapper hidden" id="responsesWrapper">
+      <div class="responses-header">
+        <h2>Generated Responses</h2>
+        <button class="back-button" id="backToInput">
+          <!-- <img src="./assets/back-arrow.png" alt="Back"> -->
+          Back to Input
+        </button>
+      </div>
+      <div class="responses-grid">
+        <!-- Responses will be dynamically inserted here -->
+      </div>
+    </div>
+  
  
 </div>
   <script src="popup.js"></script>
