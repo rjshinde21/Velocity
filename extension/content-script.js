@@ -248,23 +248,36 @@
           display: block !important;
           width: 100% !important;
           min-height: 24px !important;
+          overflow: hidden !important; /* Hide scrollbar */
         }
         
         .velocity-wrapper .ProseMirror {
-          padding-right: 50px !important;
+          padding-right: 45px !important; /* Reduced padding */
           min-height: 24px !important;
+          overflow: hidden !important;
         }
   
         .velocity-wrapper textarea {
-          padding-right: 50px !important;
+          padding-right: 45px !important;
+          overflow: hidden !important;
         }
   
         .velocity-enhance-button {
           position: absolute !important;
           top: 50% !important;
-          right: 12px !important;
+          right: 8px !important; /* Moved closer to edge */
           transform: translateY(-50%) !important;
+          width: 28px !important; /* Smaller button */
+          height: 28px !important;
+          padding: 4px !important;
           z-index: 999999 !important;
+        }
+  
+        /* Hide scrollbars */
+        .velocity-wrapper *::-webkit-scrollbar {
+          display: none !important;
+          width: 0 !important;
+          height: 0 !important;
         }
       `
     },
@@ -279,26 +292,38 @@
           width: 100% !important;
           min-height: 24px !important;
           background: transparent !important;
+          overflow: hidden !important;
         }
         
-    
+        .velocity-wrapper textarea,
+        .velocity-wrapper [contenteditable="true"] {
+          padding-right: 45px !important;
+          min-height: inherit !important;
+          overflow: hidden !important;
+          resize: none !important;
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+          background: transparent !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
   
         .velocity-enhance-button {
           position: absolute !important;
           top: 50% !important;
-          right: 12px !important;
+          right: 8px !important;
           transform: translateY(-50%) !important;
-          width: 32px !important;
-          height: 32px !important;
-          padding: 6px !important;
-          background: transparent !important;
-          border: 1px solid #444444 !important;
-          border-radius: 6px !important;
-          cursor: pointer !important;
+          width: 28px !important;
+          height: 28px !important;
+          padding: 4px !important;
           z-index: 999999 !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
+        }
+  
+        /* Hide scrollbars */
+        .velocity-wrapper *::-webkit-scrollbar {
+          display: none !important;
+          width: 0 !important;
+          height: 0 !important;
         }
   
         .velocity-wrapper textarea::-webkit-scrollbar,
@@ -547,15 +572,16 @@
     transition: visibility 0s, opacity 0.2s ease !important;
   }
   
-   .velocity-enhance-button {
+     .velocity-enhance-button {
     position: absolute !important;
-    top: 50% !important;
+    top: 60% !important;
     right: 12px !important;
     transform: translateY(-50%) !important;
     width: 32px !important;
     height: 32px !important;
     padding: 6px !important;
     background: transparent !important;
+    color: white !important;
     border: 1px solid #444444 !important;
     border-radius: 6px !important;
     cursor: pointer !important;
@@ -564,9 +590,11 @@
     align-items: center !important;
     justify-content: center !important;
     opacity: 0 !important;
+    transition: all 0.2s ease !important;
     pointer-events: none !important;
-    transition: opacity 0.2s ease !important;
+    box-shadow: none !important;    
   }
+
         .velocity-enhance-button:hover {
           background: black !important;
           box-shadow: 0 2px 8px rgba(0, 138, 203, 0.3) !important;
@@ -582,12 +610,20 @@
           transform: translateY(-50%) scale(1) !important;
           pointer-events: none !important;
         }
-        .velocity-enhance-button img {
-          width: 35px !important;
-          height: 35px !important;
-          transition: transform 0.2s ease !important;
-          object-fit: contain !important;
-        }
+          .velocity-enhance-button img {
+    width: 35px !important;
+    height: 35px !important;
+    transition: transform 0.2s ease !important;
+    object-fit: contain !important;
+    background: transparent !important;
+    display: block !important;
+    filter: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
         .velocity-enhance-button:hover:not(:disabled) img {
           transform: scale(1.1) !important;
         }
@@ -1102,14 +1138,12 @@
           AIType: state.platform,
           singlePrompt: true
         };
-        formData.append('data', JSON.stringify(requestData));
+          formData.append('data', JSON.stringify(requestData));
         const response = await fetch('https://thinkvelocity.in/python-api/process', {
           method: 'POST',
           body: formData,
         });
         console.log("raw response:"+response);
-        
-        //const response = {"prompts":[{"prompt":"Imagine a world where trial is not a test of guilt or innocence, but rather a ritual to awaken the hidden abilities of the accused. Design an immersive and surreal courtroom where the defendant's powers are revealed through an ancient dance, with each step unlocking a new dimension of their potential. The judge is an enigmatic being with the power to manipulate reality itself, using their gaze to guide the defendant through this transformative experience."},{"prompt":"Envision a futuristic city where trial has evolved into a high-stakes competition between rival factions vying for control. The defendants are advanced AI entities that have developed sentience, and their trials are broadcasted as spectacular events in zero-gravity arenas. Each faction must strategically deploy their unique technologies and cybernetic enhancements to outmaneuver and defeat their opponents in an intricate ballet of light, sound, and energy."},{"prompt":"In this post-apocalyptic wasteland, trial has become an ancient art form passed down through generations of survivors. The accused are presented before the 'Council of Elders', who evaluate their worthiness for membership in society by challenging them to create innovative solutions using scavenged materials from the ruins. As each member presents their creations, they must also navigate complex web-like puzzles that shift and adapt based on their successes or failures."}]}
         const data = await response.json();
         console.dir("response data"+data.response);
         const parsedResponse = data.response;
@@ -1164,40 +1198,62 @@
       }
     }  // Function to create and attach enhance button
     
-    function handleButtonHover(button, popup, delay = 50) {
-      let hideTimeout;
-      let popupVisible = false;
-    
-      button.addEventListener('mouseenter', () => {
-        clearTimeout(hideTimeout);
-        if (!popupVisible) {
-          button.dataset.showingPopup = 'true';
-          setTimeout(() => {
-            const buttonRect = button.getBoundingClientRect();
-            popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-            popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
-            popup.classList.add('show');
-            popupVisible = true;
-          }, delay);
+    function handleButtonHover(button, popup) {
+      // Add hover related styles
+      const hoverStyles = document.createElement('style');
+      hoverStyles.textContent = `
+        .velocity-enhance-button:not(.loading):hover + .velocity-popup,
+        .velocity-popup:hover {
+          opacity: 1 !important;
+          visibility: visible !important;
+          pointer-events: auto !important;
         }
-      });
     
-      popup.addEventListener('mouseenter', () => {
-        clearTimeout(hideTimeout);
-      });
+        .velocity-enhance-button.loading:hover + .velocity-popup {
+          opacity: 0 !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
     
-      [button, popup].forEach(el => {
-        el.addEventListener('mouseleave', (e) => {
-          if (!button.contains(e.relatedTarget) && !popup.contains(e.relatedTarget)) {
-            hideTimeout = setTimeout(() => {
-              popup.classList.remove('show');
-              button.dataset.showingPopup = 'false';
-              popupVisible = false;
-            }, 300);
-          }
-        });
-      });
+        .velocity-popup {
+          opacity: 0 !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+          transition: opacity 0.3s ease, visibility 0.3s ease !important;
+          z-index: 999999 !important;
+        }
+    
+        .velocity-popup.show {
+          opacity: 1 !important;
+          visibility: visible !important;
+          pointer-events: auto !important;
+        }
+      `;
+      document.head.appendChild(hoverStyles);
+    
+      // Position the popup whenever button position changes
+      const updatePopupPosition = () => {
+        const buttonRect = button.getBoundingClientRect();
+        popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+        popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+      };
+    
+      // Update position on scroll and resize
+      window.addEventListener('scroll', updatePopupPosition, { passive: true });
+      window.addEventListener('resize', updatePopupPosition, { passive: true });
+    
+      // Initial position
+      updatePopupPosition();
+    
+      return {
+        forceHide: () => {
+          popup.classList.remove('show');
+        },
+        updatePosition: updatePopupPosition
+      };
     }
+    
+    
     
     async function createEnhanceButton(inputElement) {
       const wrapper = document.createElement('div');
@@ -1294,16 +1350,47 @@
   `;
   const popup = document.createElement('div');
   popup.className = 'velocity-popup';
+  const messageEl = document.createElement('div');
+  messageEl.className = 'velocity-message';
+  popup.style.opacity = '0';
+  popup.style.visibility = 'hidden';
+  popup.appendChild(messageEl);
+  wrapper.appendChild(popup);
+  
+  // Wait for next frame to ensure button is positioned
+  requestAnimationFrame(() => {
+    // Wait another frame to be extra sure
+    requestAnimationFrame(async() => {
+      const buttonRect = button.getBoundingClientRect();
+      if (buttonRect.height > 0) { // Check if button has been rendered
+        popup.style.position = 'fixed';
+        popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+        popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+        popup.style.transform = 'translateX(-50%)';
+        const storage = await chrome.storage.local.get(['userName']);
+        messageEl.textContent = `Hey ${storage.userName}, I am Velocity. Your personal magician!`;
+        popup.style.opacity = '1';
+        popup.style.visibility = 'visible';
+        popup.classList.add('show');
+      }
+    });
+  });
   
       const charCounter = addCharacterLimitation(inputElement);
   
       const button = document.createElement('button');
       button.className = 'velocity-enhance-button';
+      button.style.cssText += `
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      `;
+
       if (window.velocityState?.isEnabled) {
         button.classList.add('visible');
       }
 
-      handleButtonHover(button, popup);
+      const hoverHandler = handleButtonHover(button, popup);
       // Add token check before enabling the button
       chrome.storage.local.get(['token', 'isAuthenticated', 'userId'], async (result) => {
         if (!result.isAuthenticated || !result.token) {
@@ -1345,14 +1432,33 @@
       img.src = chrome.runtime.getURL('assets/logo.png'); // Make sure to update this path
       img.alt = 'Enhance';
       img.draggable = false; // Prevent image dragging
+      img.style.cssText = `
+        width: 35px !important;
+        height: 35px !important;
+        transition: transform 0.2s ease !important;
+        object-fit: contain !important;
+        background: transparent !important; /* Ensure no background */
+        display: block !important;
+        filter: brightness(1) !important; /* Ensure no filter is adding white */
+      `;
+
       button.appendChild(img);
       button.title = `Enhance ${platformInfo?.config?.name || ''} prompt`;
       // Add loading state handling
       const showLoading = () => {
+       
+        // const wrapper = button.closest('.velocity-wrapper');
+        // if (wrapper) {
+        //   wrapper.classList.add('loading');
+        // }
+        interactions.forceHide();
+        button.classList.add('loading'); 
         button.disabled = true;
-        button.style.pointerEvents = 'none';
+        // button.style.pointerEvents = 'none';
+        // button.style.opacity = '0.5'; // Make it look disabled
+             
         img.classList.add('animate-spin');
-        
+        hoverHandler.forceHide(); // Force hide popup when loading starts
         const showLoadingMessage = () => {
           const buttonRect = button.getBoundingClientRect();
           popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
@@ -1376,6 +1482,8 @@
     if (window.velocityState.isEnabled) {
       button.style.pointerEvents = 'auto';
     }
+    button.style.opacity = '1';
+    button.classList.remove('loading');  
     img.classList.remove('animate-spin');
     popup.classList.remove('show');
   };
@@ -1499,7 +1607,7 @@ function getSelectedText(element) {
         button.classList.add('visible');
       }
     });
-    inputElement.addEventListener('input', () => {
+    inputElement.addEventListener('input', async() => {
   
       clearTimeout(typingTimer);
     typingTimer = setTimeout(() => {
@@ -1507,13 +1615,14 @@ function getSelectedText(element) {
       // Handle input after delay
     }, TYPING_INTERVAL);
       const text = inputElement.value || inputElement.textContent || '';
-      
+      const storage = await chrome.storage.local.get(['userName']);
+
       if (text.length >= CHAR_THRESHOLD_MESSAGE && !helpMessageVisible) {
         const buttonRect = button.getBoundingClientRect();
         popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
         popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
         if (!settingsSection.classList.contains('show')) {
-          messageEl.textContent = `Hey, seems like you need help crafting this. I'm here to assist!`;
+          messageEl.textContent = `Hey, ${storage.userName} seems like you need help crafting this. I'm here to assist! Click the button once you're done typing.`;
           popup.classList.add('show');
           messageEl.style.display = 'block';
         }
@@ -1541,29 +1650,28 @@ function getSelectedText(element) {
   const popupStyles = document.createElement('style');
   popupStyles.textContent = `
    .velocity-popup {
-    position: fixed !important;
-    transform: translate(-50%, 0) !important;
-    background: white !important;
-    color: #1a1a1a !important;
-    padding: 16px !important;
-    border-radius: 12px !important;
-    font-size: 14px !important;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
-    border: 1px solid rgba(0, 0, 0, 0.1) !important;
-    z-index: 9999999 !important; /* Higher than button */
-    width: 280px !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-    transition: opacity 0.2s ease !important;
-    visibility: hidden !important;
-  }
-  
-  
- .velocity-popup.show {
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    visibility: visible !important;
-  }
+  position: fixed !important;
+  transform: translate(-50%, 0) !important;
+  background: white !important;
+  color: #1a1a1a !important;
+  padding: 16px !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  z-index: 9999999 !important;
+  width: 420px !important; /* Increased width to accommodate the grid */
+  opacity: 0 !important;
+  pointer-events: auto !important;
+  transition: opacity 0.2s ease !important;
+  visibility: hidden !important;
+}
+.velocity-popup.show {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+
   
   /* Prevent hover conflicts */
   .velocity-enhance-button[data-showing-popup="true"] {
@@ -1583,6 +1691,7 @@ function getSelectedText(element) {
     .velocity-message {
       margin-bottom: 12px !important;
     }
+
   
     .settings-section {
       display: none !important;
@@ -1593,15 +1702,17 @@ function getSelectedText(element) {
     }
   
     .velocity-style-buttons {
-      display: flex !important;
-      flex-direction: column !important;
+      display: grid !important;
+      grid-template-columns: repeat(2, 1fr) !important;
       gap: 8px !important;
       margin-bottom: 16px !important;
     }
+
   
     .velocity-style-button {
       display: flex !important;
-      align-items: center !important;
+      align-items: flex-start !important;
+      flex-direction: column !important;
       width: 100% !important;
       padding: 12px !important;
       background: #F0F9FF !important;
@@ -1611,7 +1722,10 @@ function getSelectedText(element) {
       font-size: 14px !important;
       cursor: pointer !important;
       text-align: left !important;
+      height: 80px !important; /* Fixed height for consistent grid */
+      justify-content: center !important;
     }
+
   
     .velocity-style-button:hover {
       background: #E0F2FE !important;
@@ -1621,7 +1735,17 @@ function getSelectedText(element) {
       background: #E0F2FE !important;
       border: 1px solid #3B82F6 !important;
     }
-  
+    .velocity-style-button-title {
+      font-weight: 500 !important;
+      margin-bottom: 4px !important;
+    }
+    .velocity-style-button-description {
+      font-size: 12px !important;
+      color: #6B7280 !important;
+      line-height: 1.2 !important;
+    }
+
+
     .velocity-style-button:before {
       content: "" !important;
       display: inline-block !important;
@@ -1684,6 +1808,13 @@ function getSelectedText(element) {
     .velocity-toggle-switch input:checked + .velocity-toggle-slider:before {
       transform: translateX(20px) !important;
     }
+        .velocity-enhance-button.loading,
+  .velocity-enhance-button.loading:hover {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+    opacity: 0.5 !important;
+  }
+
   `;
   document.head.appendChild(popupStyles);
   
@@ -1726,10 +1857,9 @@ function getSelectedText(element) {
   } catch (error) {
     console.error('Error getting username:', error);
   }
+  const storage = await chrome.storage.local.get(['userName']);
   // Create message element
-  const messageEl = document.createElement('div');
-  messageEl.className = 'velocity-message';
-  messageEl.textContent = `Hey, I am Velocity. Your personal magician!`;
+  messageEl.textContent = `Hey ${storage.userName}, I am Velocity. Your personal magician!`;
   popup.appendChild(messageEl);
   
   // Create settings section
@@ -1760,8 +1890,9 @@ buttonStyles.textContent = `
     justify-content: center !important;
     opacity: 0 !important;
     transition: all 0.3s ease !important;
-    pointer-events: none !important;
+    pointer-events: auto !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    z-index: 999998 !important;
   }
 
   .velocity-enhance-button:hover {
@@ -1802,8 +1933,75 @@ buttonStyles.textContent = `
 
 document.head.appendChild(buttonStyles);
 
+function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSection, inputElement) {
+  let hideTimeout;
+  const HIDE_DELAY = 300;
 
-// Add this function to handle button animations
+  function updateButtonAnimations(button, inputElement) {
+    const hasContent = (inputElement.value || inputElement.textContent || '').trim().length > 0;
+    button.classList.remove('breathing', 'spin');
+    if (hasContent && !button.matches(':hover')) {
+      button.classList.add('breathing');
+    }
+  }
+  
+
+  function hidePopup() {
+    popup.classList.remove('show');
+    settingsSection.classList.remove('show');
+    messageEl.style.display = 'block';
+  }
+
+  function showPopup() {
+    if (button.classList.contains('loading')) return;
+
+    const buttonRect = button.getBoundingClientRect();
+    popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+    popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+    popup.classList.add('show');
+  }
+
+  // Button interactions
+  button.addEventListener('mouseenter', () => {
+    if (button.classList.contains('loading')) return;
+    
+    clearTimeout(hideTimeout);
+    showPopup();
+  });
+
+  button.addEventListener('mouseleave', (e) => {
+    updateButtonAnimations(button, inputElement);
+    
+    // Check if mouse moved to popup
+    if (!popup.contains(e.relatedTarget)) {
+      hideTimeout = setTimeout(hidePopup, HIDE_DELAY);
+    }
+  });
+
+  // Popup interactions
+  popup.addEventListener('mouseenter', () => {
+    clearTimeout(hideTimeout);
+  });
+
+  popup.addEventListener('mouseleave', (e) => {
+    // Check if mouse moved to button
+    if (!button.contains(e.relatedTarget)) {
+      hideTimeout = setTimeout(hidePopup, HIDE_DELAY);
+    }
+  });
+
+  return {
+    forceHide: hidePopup,
+    forceShow: showPopup,
+    updatePosition: () => {
+      if (popup.classList.contains('show')) {
+        const buttonRect = button.getBoundingClientRect();
+        popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+        popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+      }
+    }
+  };
+}
 function updateButtonAnimations(button, inputElement) {
   const hasContent = (inputElement.value || inputElement.textContent || '').trim().length > 0;
   button.classList.remove('breathing', 'spin');
@@ -1812,75 +2010,108 @@ function updateButtonAnimations(button, inputElement) {
   }
 }
 
+const interactions = handleButtonAndPopupInteractions(
+  button, 
+  popup, 
+  messageEl, 
+  settingsSection, 
+  inputElement
+);
+
+// Add this function to handle button animations
+
   // Add style buttons
-  const styles = ['Descriptive', 'Creative', 'Professional', 'Concise'];
+  const styles = [
+    {
+      name: 'Descriptive',
+      description: 'Adds detail and depth'
+    },
+    {
+      name: 'Creative',
+      description: 'Unique and imaginative'
+    },
+    {
+      name: 'Professional',
+      description: 'Formal and polished'
+    },
+    {
+      name: 'Concise',
+      description: 'Clear and brief'
+    }
+  ];
   styles.forEach(style => {
     const styleButton = document.createElement('button');
     styleButton.className = 'velocity-style-button';
-    styleButton.textContent = style;
+    styleButton.dataset.style = style.name.toLowerCase(); // Add a data attribute
+    
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'velocity-style-button-title';
+    titleSpan.textContent = style.name;
+    
+    const descriptionSpan = document.createElement('span');
+    descriptionSpan.className = 'velocity-style-button-description';
+    descriptionSpan.textContent = style.description;
+    
+    styleButton.appendChild(titleSpan);
+    styleButton.appendChild(descriptionSpan);
     
     styleButton.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
-  
-      // For ChatGPT, prevent form submission
-      if (window.velocityState.platformInfo?.platform === 'chatgpt') {
-        const form = inputElement.closest('form');
-        if (form) {
-          // Temporarily disable form submission
-          const originalSubmit = form.onsubmit;
-          form.onsubmit = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-          };
-  
-          // Restore after a short delay
-          setTimeout(() => {
-            form.onsubmit = originalSubmit;
-          }, 100);
-        }
-      }
-  
-      // Update style selection
+      
+      const currentStyle = styleButton.dataset.style;
+      const isCurrentlyActive = styleButton.classList.contains('active');
+      
+      // Remove active class from all buttons
       styleButtonsContainer.querySelectorAll('.velocity-style-button').forEach(btn => {
         btn.classList.remove('active');
       });
-      styleButton.classList.add('active');
-      window.velocityState.styleType = style.toLowerCase();
-      hasStyleSelected = true;
-      messageEl.textContent = `Hey , press the button below to enhance your prompt!`;
-      await chrome.storage.local.set({ selectedStyle: style.toLowerCase() });
   
-      // Prevent any default input events
-      e.stopImmediatePropagation();
-    }, { capture: true });
+      // If the clicked style was not active, activate it
+      if (!isCurrentlyActive) {
+        styleButton.classList.add('active');
+        window.velocityState.styleType = currentStyle;
+        hasStyleSelected = true;
+        
+        const storage = await chrome.storage.local.get(['userName']);
+        messageEl.textContent = `Hey ${storage.userName}, press the button below to enhance your prompt!`;
+        await chrome.storage.local.set({ selectedStyle: currentStyle });
+      } else {
+        // If the clicked style was active, deactivate it
+        window.velocityState.styleType = '';
+        hasStyleSelected = false;
+        
+        const storage = await chrome.storage.local.get(['userName']);
+        messageEl.textContent = `Hey ${storage.userName}, select a style that best matches your needs`;
+        await chrome.storage.local.remove('selectedStyle');
+      }
+    });
   
     styleButtonsContainer.appendChild(styleButton);
-  });
+  });  
   settingsSection.appendChild(styleButtonsContainer);
   
   // Create toggle container
   const toggleContainer = document.createElement('div');
   toggleContainer.className = 'velocity-toggle-container';
   
-  const toggleLabel = document.createElement('span');
-  toggleLabel.textContent = 'Enable Enhancement';
+  // const toggleLabel = document.createElement('span');
+  // toggleLabel.textContent = 'Enable Enhancement';
   
-  const toggleSwitch = document.createElement('label');
-  toggleSwitch.className = 'velocity-toggle-switch';
+  // const toggleSwitch = document.createElement('label');
+  // toggleSwitch.className = 'velocity-toggle-switch';
   
-  const toggleInput = document.createElement('input');
-  toggleInput.type = 'checkbox';
-  toggleInput.checked = window.velocityState.isEnabled;
+  // const toggleInput = document.createElement('input');
+  // toggleInput.type = 'checkbox';
+  // toggleInput.checked = window.velocityState.isEnabled;
   
-  const toggleSlider = document.createElement('span');
-  toggleSlider.className = 'velocity-toggle-slider';
+  // const toggleSlider = document.createElement('span');
+  // toggleSlider.className = 'velocity-toggle-slider';
   
-  toggleSwitch.appendChild(toggleInput);
-  toggleSwitch.appendChild(toggleSlider);
-  toggleContainer.appendChild(toggleLabel);
-  toggleContainer.appendChild(toggleSwitch);
+  //toggleSwitch.appendChild(toggleInput);
+  //toggleSwitch.appendChild(toggleSlider);
+  //toggleContainer.appendChild(toggleLabel);
+  //toggleContainer.appendChild(toggleSwitch);
   settingsSection.appendChild(toggleContainer);
   
   // Add settings section to popup
@@ -1895,7 +2126,7 @@ function updateButtonAnimations(button, inputElement) {
 button.addEventListener('mouseenter', () => button.classList.remove('breathing'));
 button.addEventListener('mouseleave', () => updateButtonAnimations(button, inputElement));
   // Add event listeners
-  button.addEventListener('mouseenter', () => {
+  button.addEventListener('mouseenter', async() => {
     // Clear any existing hide timeout
     clearTimeout(hideTimeout);
     
@@ -1903,11 +2134,12 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
     // Position the popup relative to the button
     popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
     popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
-    
+    const storage = await chrome.storage.local.get(['userName']);
+
     // Show appropriate message based on style selection
     messageEl.textContent = hasStyleSelected ? 
-      `Hey, press the button below to enhance your prompt!` : 
-      `Hey, select a style that best matches your needs`;
+      `Hey ${storage.userName}, press the button below to enhance your prompt!` : 
+      `Hey ${storage.userName}, select a style that best matches your needs`;
     
     // Show both message and settings
     messageEl.style.display = 'block';
@@ -2045,13 +2277,13 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
   }
   
   // Update popup mouseleave:
-  popup.addEventListener('mouseleave', () => {
-    if (!button.matches(':hover')) {
-      popup.classList.remove('show');
-      settingsSection.classList.remove('show');
-      messageEl.style.display = 'block';
-    }
-  });
+  // popup.addEventListener('mouseleave', () => {
+  //   if (!button.matches(':hover')) {
+  //     popup.classList.remove('show');
+  //     settingsSection.classList.remove('show');
+  //     messageEl.style.display = 'block';
+  //   }
+  // });
   
   // Handle toggle changes
   toggleInput.addEventListener('change', () => {

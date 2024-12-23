@@ -166,30 +166,89 @@ const SUPPORTED_PLATFORMS = {
         display: block !important;
         width: 100% !important;
         min-height: 24px !important;
+        overflow: hidden !important; /* Hide scrollbar */
       }
       
       .velocity-wrapper .ProseMirror {
-        padding-right: 50px !important;
+        padding-right: 45px !important; /* Reduced padding */
         min-height: 24px !important;
+        overflow: hidden !important;
       }
 
       .velocity-wrapper textarea {
-        padding-right: 50px !important;
+        padding-right: 45px !important;
+        overflow: hidden !important;
       }
 
       .velocity-enhance-button {
         position: absolute !important;
         top: 50% !important;
-        right: 12px !important;
+        right: 8px !important; /* Moved closer to edge */
         transform: translateY(-50%) !important;
+        width: 28px !important; /* Smaller button */
+        height: 28px !important;
+        padding: 4px !important;
         z-index: 999999 !important;
+      }
+
+      /* Hide scrollbars */
+      .velocity-wrapper *::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
       }
     `
   },
   claude: {
     urlPattern: /^https:\/\/claude\.ai/,
     selectors: '.claude-textarea, div[contenteditable="true"]',
-    name: 'Claude'
+    name: 'Claude',
+    customStyles: `
+      .velocity-wrapper {
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+        min-height: 24px !important;
+        background: transparent !important;
+        overflow: hidden !important;
+      }
+      
+      .velocity-wrapper textarea,
+      .velocity-wrapper [contenteditable="true"] {
+        padding-right: 45px !important;
+        min-height: inherit !important;
+        overflow: hidden !important;
+        resize: none !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+        background: transparent !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+
+      .velocity-enhance-button {
+        position: absolute !important;
+        top: 50% !important;
+        right: 8px !important;
+        transform: translateY(-50%) !important;
+        width: 28px !important;
+        height: 28px !important;
+        padding: 4px !important;
+        z-index: 999999 !important;
+      }
+
+      /* Hide scrollbars */
+      .velocity-wrapper *::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+
+      .velocity-wrapper textarea::-webkit-scrollbar,
+      .velocity-wrapper [contenteditable="true"]::-webkit-scrollbar {
+        display: none !important;
+      }
+    `
   },
   gemini: {
     urlPattern: /^https:\/\/gemini\.google\.com/,
