@@ -1622,7 +1622,7 @@ function getSelectedText(element) {
         popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
         popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
         if (!settingsSection.classList.contains('show')) {
-          messageEl.textContent = `Hey, ${storage.userName} seems like you need help crafting this. I'm here to assist! Click the button once you're done typing.`;
+          messageEl.textContent = `Hey, ${storage.userName} ,I'm here to assist! Click me once you're done typing.`;
           popup.classList.add('show');
           messageEl.style.display = 'block';
         }
