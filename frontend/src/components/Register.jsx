@@ -351,11 +351,11 @@ const Register = () => {
             />
           </div>
 
-      <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
+      <div className="relative z-10 min-h-screen flex flex-col justify-center lg:flex-row">
         {/* Form Section */}
         <div className="w-full lg:w-[45%] px-4 sm:px-8 lg:px-12 xl:px-24 2xl:px-36 
-          flex flex-col justify-center bg-transparent">
-          <div className="lg:hidden w-full flex justify-left pl-8 mt-6 sm:mt-8">
+        flex flex-col justify-center">
+          <div className="lg:hidden w-full flex justify-left  mt-6 sm:mt-8">
             <Link to="/">
               <img 
                 src={velocitylogo} 
