@@ -21,7 +21,9 @@
 
     html, body {
       width: 450px;
-      height: 600px;
+      /* height: 600px !important; */
+  max-height: 600px !important;
+  overflow: hidden !important;
       margin: 0;
       padding: 0;
       /* overflow: hidden; */
@@ -34,7 +36,7 @@
 
     .app-container {
   position: relative;
-  height: 100vh;
+  height: 100%;
   width: 100%;
   overflow-x: hidden;
   display: flex;
@@ -413,10 +415,10 @@
     display: flex;
     justify-content: space-between; /* This spreads items to edges */
     align-items: center;
-    
+    margin-top: 1%;
     font-weight: lighter;
     font-size: large;
-       padding: 0 18px; /* Add padding on both sides */
+       padding: 7px 15px; /* Add padding on both sides */
     width: 100%; /* Ensure full width */
 }
 .title1 > div:last-child {
@@ -501,7 +503,7 @@ color: #292929;
   border: 1.5px solid #353535;
   border-radius: 16px;
 height: 85px;
-width: 220px;
+width: 200px;
 justify-content: flex-start;
   align-items: center;
   gap: 8px;
@@ -568,6 +570,7 @@ justify-content: flex-start;
 .dark-mode .radio-button label img {
     filter: brightness(0.8) invert(1);
 }
+
 
 /* Optional: Hover state in dark mode */
 .dark-mode .radio-button:hover label img {
@@ -881,10 +884,48 @@ color: #000000;
 }
 
 .responses-grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: 1fr;
-  margin-top: 16px;
+  height: calc(100% - 60px); /* Subtract header height */
+  overflow-y: auto; /* Enable vertical scrolling */
+  padding-right: 10px; /* Space for scrollbar */
+  padding-left: 10px;
+}
+
+.responses-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.responses-grid::-webkit-scrollbar-track {
+  background: #F5F5F5;
+  border-radius: 3px;
+}
+
+.responses-grid::-webkit-scrollbar-thumb {
+  background: #008ACB;
+  border-radius: 3px;
+}
+
+.dark-mode .responses-grid::-webkit-scrollbar-track {
+  background: #1F2937;
+}
+
+/* Custom scrollbar styling to match your existing design */
+.responses-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.responses-grid::-webkit-scrollbar-track {
+  background: #F5F5F5;
+  border-radius: 3px;
+}
+
+.responses-grid::-webkit-scrollbar-thumb {
+  background: #008ACB;
+  border-radius: 3px;
+}
+
+/* Dark mode scrollbar */
+.dark-mode .responses-grid::-webkit-scrollbar-track {
+  background: #1F2937;
 }
 
 .response-card {
@@ -1030,11 +1071,11 @@ color: #000000;
 
 
 .responses-wrapper {
-  opacity: 0;
-  padding: 20px;
-  visibility: hidden;
-  transition: opacity 0.3s, visibility 0.3s;
+  position: relative;
+  height: 500px; /* Fixed height */
+  overflow: hidden;
 }
+
 
 .responses-wrapper.visible {
   opacity: 1;
@@ -1050,6 +1091,7 @@ color: #000000;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  padding: 15px 20px 0px 20px;
 }
 
 .responses-header h2 {
