@@ -9,7 +9,7 @@ const ScrollAnchor = ({ scrollRefs }) => {
     {
       id: 2,
       label: "How it works",
-      refKey: "howItWorks",
+      refKey: "howItWorksRef",
     },
     {
       id: 3,
