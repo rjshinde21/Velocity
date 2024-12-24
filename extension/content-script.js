@@ -94,6 +94,29 @@
       }
     }
   }
+  function calculatePopupPosition(button, popup) {
+    const buttonRect = button.getBoundingClientRect();
+    const popupHeight = popup.offsetHeight;
+    const viewportHeight = window.innerHeight;
+    
+    // Calculate available space above and below
+    const spaceAbove = buttonRect.top;
+    const spaceBelow = viewportHeight - buttonRect.bottom;
+    
+    // Add some padding for better appearance
+    const MARGIN = 20;
+    
+    // Determine if popup should go above or below
+    const position = spaceAbove > spaceBelow ? 'top' : 'bottom';
+    
+    return {
+      position,
+      left: buttonRect.left + buttonRect.width/2,
+      top: position === 'top' ? 
+        buttonRect.top - MARGIN : 
+        buttonRect.bottom + MARGIN
+    };
+  }
   
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     
@@ -1219,7 +1242,7 @@
           opacity: 0 !important;
           visibility: hidden !important;
           pointer-events: none !important;
-          transition: opacity 0.3s ease, visibility 0.3s ease !important;
+          transition: opacity 0.3s ease, visibility 0.3s ease, top 0.2s ease, bottom 0.2s ease !important;
           z-index: 999999 !important;
         }
     
@@ -1231,20 +1254,43 @@
       `;
       document.head.appendChild(hoverStyles);
     
-      // Position the popup whenever button position changes
+      // Enhanced updatePopupPosition with dynamic positioning
       const updatePopupPosition = () => {
         const buttonRect = button.getBoundingClientRect();
+        const popupHeight = popup.offsetHeight || 300; // Fallback height if not rendered
+        const viewportHeight = window.innerHeight;
+        const spaceAbove = buttonRect.top;
+        const spaceBelow = viewportHeight - buttonRect.bottom;
+    
+        // Always maintain horizontal centering
         popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-        popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+        
+        // Determine if popup should go above or below
+        if (spaceBelow >= popupHeight || spaceBelow > spaceAbove) {
+          // Position below button
+          popup.style.bottom = 'auto';
+          popup.style.top = `${buttonRect.bottom + 10}px`;
+        } else {
+          // Position above button
+          popup.style.top = 'auto';
+          popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+        }
       };
     
       // Update position on scroll and resize
-      window.addEventListener('scroll', updatePopupPosition, { passive: true });
-      window.addEventListener('resize', updatePopupPosition, { passive: true });
+      window.addEventListener('scroll', () => {
+        if (popup.classList.contains('show')) {
+          updatePopupPosition();
+        }
+      }, { passive: true });
     
-      // Initial position
-      updatePopupPosition();
+      window.addEventListener('resize', () => {
+        if (popup.classList.contains('show')) {
+          updatePopupPosition();
+        }
+      }, { passive: true });
     
+      // Return the same interface
       return {
         forceHide: () => {
           popup.classList.remove('show');
@@ -1356,7 +1402,8 @@
   popup.style.visibility = 'hidden';
   popup.appendChild(messageEl);
   wrapper.appendChild(popup);
-  
+
+
   // Wait for next frame to ensure button is positioned
   requestAnimationFrame(() => {
     // Wait another frame to be extra sure
@@ -1649,28 +1696,41 @@ function getSelectedText(element) {
     // First add the popup styles
   const popupStyles = document.createElement('style');
   popupStyles.textContent = `
-   .velocity-popup {
-  position: fixed !important;
-  transform: translate(-50%, 0) !important;
-  background: white !important;
-  color: #1a1a1a !important;
-  padding: 16px !important;
-  border-radius: 12px !important;
-  font-size: 14px !important;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  z-index: 9999999 !important;
-  width: 420px !important; /* Increased width to accommodate the grid */
-  opacity: 0 !important;
-  pointer-events: auto !important;
-  transition: opacity 0.2s ease !important;
-  visibility: hidden !important;
-}
-.velocity-popup.show {
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  visibility: visible !important;
-}
+       .velocity-popup {
+    position: fixed !important;
+    transform: translateX(-50%) !important;
+    background: white !important;
+    color: #1a1a1a !important;
+    padding: 12px 16px !important;
+    border-radius: 12px !important;
+    font-size: 14px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    z-index: 9999999 !important;
+    width: 480px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: all 0.2s ease !important;
+    visibility: hidden !important;
+  }
+
+  .velocity-popup.show {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+  }
+
+
+  .velocity-popup.position-top {
+    transform: translate(-50%, -100%) !important;
+    margin-top: -10px !important;
+  }
+
+  .velocity-popup.position-bottom {
+    transform: translate(-50%, 0) !important;
+    margin-top: 10px !important;
+  }
+
 
   
   /* Prevent hover conflicts */
@@ -1701,32 +1761,15 @@ function getSelectedText(element) {
       display: block !important;
     }
   
-    .velocity-style-buttons {
-      display: grid !important;
-      grid-template-columns: repeat(2, 1fr) !important;
-      gap: 8px !important;
-      margin-bottom: 16px !important;
-    }
+      .velocity-style-buttons {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 8px !important; /* Reduced gap */
+  margin-bottom: 12px !important; /* Reduced margin */
+}
 
-  
-    .velocity-style-button {
-      display: flex !important;
-      align-items: flex-start !important;
-      flex-direction: column !important;
-      width: 100% !important;
-      padding: 12px !important;
-      background: #F0F9FF !important;
-      border: none !important;
-      border-radius: 8px !important;
-      color: #1a1a1a !important;
-      font-size: 14px !important;
-      cursor: pointer !important;
-      text-align: left !important;
-      height: 80px !important; /* Fixed height for consistent grid */
-      justify-content: center !important;
-    }
 
-  
+
     .velocity-style-button:hover {
       background: #E0F2FE !important;
     }
@@ -1735,16 +1778,6 @@ function getSelectedText(element) {
       background: #E0F2FE !important;
       border: 1px solid #3B82F6 !important;
     }
-    .velocity-style-button-title {
-      font-weight: 500 !important;
-      margin-bottom: 4px !important;
-    }
-    .velocity-style-button-description {
-      font-size: 12px !important;
-      color: #6B7280 !important;
-      line-height: 1.2 !important;
-    }
-
 
     .velocity-style-button:before {
       content: "" !important;
@@ -1944,6 +1977,59 @@ function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSect
       button.classList.add('breathing');
     }
   }
+
+  function calculatePopupPosition() {
+    const buttonRect = button.getBoundingClientRect();
+    const popupHeight = popup.offsetHeight || 300;
+    const viewportHeight = window.innerHeight;
+    const spaceAbove = buttonRect.top;
+    const spaceBelow = viewportHeight - buttonRect.bottom;
+  
+    // Always maintain the horizontal centering
+    popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+    
+    // Reset any previous positioning
+    popup.style.transform = 'translateX(-50%)';
+    
+    if (spaceBelow >= popupHeight || spaceBelow > spaceAbove) {
+      // Position below the button
+      popup.style.bottom = 'auto';
+      popup.style.top = `${buttonRect.bottom + 30}px`;
+      const popupContent = document.createElement('div');
+      popupContent.className = 'velocity-popup-content';
+      popupContent.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        width: 100%; /* Ensure full width */
+        max-width: 560px; /* Limit maximum width */
+      `;
+
+
+      // Append the message and settings section to the popupContent
+      popupContent.appendChild(messageEl);
+      popupContent.appendChild(settingsSection);
+      popup.innerHTML = ''; // Clear existing content
+      popup.appendChild(popupContent);
+
+      // Add white background and border styles for bottom positioning
+      // popup.style.backgroundColor = 'white';
+      // popup.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+      // popup.style.borderRadius = '12px';
+      // popup.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.1)';
+    } else {
+      // Position above the button
+      popup.style.top = 'auto';
+      popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+      
+      // // Maintain existing styles
+      // popup.style.backgroundColor = 'white';
+      // popup.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+      // popup.style.borderRadius = '12px';
+      // popup.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.1)';
+    }
+  }
   
 
   function hidePopup() {
@@ -1955,9 +2041,7 @@ function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSect
   function showPopup() {
     if (button.classList.contains('loading')) return;
 
-    const buttonRect = button.getBoundingClientRect();
-    popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-    popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+    calculatePopupPosition();
     popup.classList.add('show');
   }
 
@@ -1990,14 +2074,25 @@ function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSect
     }
   });
 
+  // Add scroll and resize listeners
+  window.addEventListener('scroll', () => {
+    if (popup.classList.contains('show')) {
+      calculatePopupPosition();
+    }
+  }, { passive: true });
+
+  window.addEventListener('resize', () => {
+    if (popup.classList.contains('show')) {
+      calculatePopupPosition();
+    }
+  }, { passive: true });
+
   return {
     forceHide: hidePopup,
     forceShow: showPopup,
     updatePosition: () => {
       if (popup.classList.contains('show')) {
-        const buttonRect = button.getBoundingClientRect();
-        popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-        popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+        calculatePopupPosition();
       }
     }
   };
@@ -2024,25 +2119,44 @@ const interactions = handleButtonAndPopupInteractions(
   const styles = [
     {
       name: 'Descriptive',
-      description: 'Adds detail and depth'
+      description: 'Adds detailed context to enhance clarity and depth',
+      imagePath: 'assets/desc.png'
     },
     {
       name: 'Creative',
-      description: 'Unique and imaginative'
+      description: 'Inspires unique, imaginative, & artistic outputs',
+      imagePath: 'assets/cre.png'
     },
     {
       name: 'Professional',
-      description: 'Formal and polished'
+      description: 'Delivers polished, formal, and industry-specific results',
+      imagePath: 'assets/pro.png'
     },
     {
       name: 'Concise',
-      description: 'Clear and brief'
+      description: 'Focuses on brevity and clarity, cutting out unnecessary details',
+      imagePath: 'assets/conc.png'
     }
   ];
+
+  
   styles.forEach(style => {
     const styleButton = document.createElement('button');
     styleButton.className = 'velocity-style-button';
-    styleButton.dataset.style = style.name.toLowerCase(); // Add a data attribute
+    styleButton.dataset.style = style.name.toLowerCase();
+    
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'velocity-style-grid';
+    
+    const imageContainer = document.createElement('div');
+    imageContainer.className = 'velocity-style-image';
+    const img = document.createElement('img');
+    img.src = chrome.runtime.getURL(style.imagePath);
+    img.alt = style.name;
+    imageContainer.appendChild(img);
+    
+    const textContainer = document.createElement('div');
+    textContainer.className = 'velocity-style-text';
     
     const titleSpan = document.createElement('span');
     titleSpan.className = 'velocity-style-button-title';
@@ -2052,9 +2166,92 @@ const interactions = handleButtonAndPopupInteractions(
     descriptionSpan.className = 'velocity-style-button-description';
     descriptionSpan.textContent = style.description;
     
-    styleButton.appendChild(titleSpan);
-    styleButton.appendChild(descriptionSpan);
+    textContainer.appendChild(titleSpan);
+    textContainer.appendChild(descriptionSpan);
     
+    gridContainer.appendChild(imageContainer);
+    gridContainer.appendChild(textContainer);
+    styleButton.appendChild(gridContainer);
+  
+    // Update the styles in popupStyles.textContent
+    const newStyles = `
+       .velocity-style-button {
+  padding: 12px 16px !important; /* Reduced padding */
+  background: rgb(255, 255, 255) !important;
+  border: 1px solid #E5E7EB !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  width: 100% !important;
+  text-align: left !important;
+  transition: all 0.2s ease !important;
+}
+
+.velocity-style-grid {
+  display: grid !important;
+  grid-template-columns: 32px 1fr !important; /* Reduced first column width */
+  gap: 12px !important; /* Reduced gap */
+  align-items: start !important;
+}
+
+.velocity-style-image {
+  grid-row: span 2 !important;
+  width: 32px !important; /* Reduced width */
+  height: 32px !important; /* Reduced height */
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+}
+
+.velocity-style-image img {
+  width: 24px !important; /* Reduced image size */
+  height: 24px !important;
+  object-fit: contain !important;
+}
+
+.velocity-style-text {
+  display: grid !important;
+  grid-template-rows: auto 1fr !important;
+  gap: 4px !important; /* Reduced gap */
+}
+
+.velocity-style-button-title {
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  color: #1a1a1a !important;
+  line-height: 1.2 !important;
+  margin-bottom: 2px !important; /* Added small margin */
+}
+
+.velocity-style-button-description {
+  font-size: 12px !important;
+  color: #6B7280 !important;
+  line-height: 1.3 !important; /* Reduced line height */
+}
+
+
+.velocity-style-button:hover {
+  background: rgb(255, 255, 255) !important;
+  border: 1px solid rgb(2, 123, 199) !important;
+}
+
+.velocity-style-button.active {
+  background: rgb(255, 255, 255) !important;
+  border: 2px solid rgb(2, 132, 199) !important;
+}
+
+    `;
+  
+    // Add the new styles to the existing popupStyles
+    if (popupStyles.textContent.includes('.velocity-style-button {')) {
+      popupStyles.textContent = popupStyles.textContent.replace(
+        /.velocity-style-button {[\s\S]*?}(?=\s*\.velocity-style-button\.active|$)/g,
+        newStyles
+      );
+    } else {
+      popupStyles.textContent += newStyles;
+    }
+  
+    // Add event listener...
     styleButton.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -2062,12 +2259,10 @@ const interactions = handleButtonAndPopupInteractions(
       const currentStyle = styleButton.dataset.style;
       const isCurrentlyActive = styleButton.classList.contains('active');
       
-      // Remove active class from all buttons
       styleButtonsContainer.querySelectorAll('.velocity-style-button').forEach(btn => {
         btn.classList.remove('active');
       });
   
-      // If the clicked style was not active, activate it
       if (!isCurrentlyActive) {
         styleButton.classList.add('active');
         window.velocityState.styleType = currentStyle;
@@ -2077,7 +2272,6 @@ const interactions = handleButtonAndPopupInteractions(
         messageEl.textContent = `Hey ${storage.userName}, press the button below to enhance your prompt!`;
         await chrome.storage.local.set({ selectedStyle: currentStyle });
       } else {
-        // If the clicked style was active, deactivate it
         window.velocityState.styleType = '';
         hasStyleSelected = false;
         
@@ -2088,7 +2282,10 @@ const interactions = handleButtonAndPopupInteractions(
     });
   
     styleButtonsContainer.appendChild(styleButton);
-  });  
+  });
+  
+  
+   
   settingsSection.appendChild(styleButtonsContainer);
   
   // Create toggle container
