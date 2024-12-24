@@ -115,7 +115,7 @@ const LaunchlistModal = ({ isOpen, onClose }) => {
 
                     {/* Right side - Content */}
                     <div className="flex-1 space-y-4 sm:space-y-5">
-                        <h2 className="text-white text-2xl sm:text-3xl md:text-4xl font-bold text-center sm:text-left">
+                        <h2 className="text-white text-3xl sm:text-3xl md:text-4xl font-bold text-center sm:text-left">
                             Join the Launchlist
                         </h2>
                         <p className="text-gray-400 text-sm sm:text-base md:text-lg text-center sm:text-left">

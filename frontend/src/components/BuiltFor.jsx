@@ -109,7 +109,7 @@ const BuiltFor = () => {
         `}
       </style>
 
-      <div className="max-w-8xl mx-auto py-20 built-for-container">
+      <div className="max-w-8xl mx-auto py-10 built-for-container">
         <h2 className="font-[Amenti] text-4xl text-center mb-12 mt-8 text-white built-for-title">
           Built For
         </h2>

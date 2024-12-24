@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../config/firebaseConfig';
-import { setAuthData } from '../utils/authUtils';
+import Particles from "react-tsparticles";
+import { loadFull } from "tsparticles";
 import velocitylogo from "../assets/velocitylogo.png";
 import googleLogo from '../assets/googleLogo.png';
 import ThreeDLogo from './3dLogo/ThreeDLogo';
@@ -25,6 +26,68 @@ const Register = () => {
     confirmPassword: '',
     referralCode: ''
   });
+
+  const particlesInit = useCallback(async (engine) => {
+    await loadFull(engine);
+  }, []);
+
+  const particlesLoaded = useCallback(async (container) => {
+    console.log("Particles loaded:", container);
+  }, []);
+
+  const particlesConfig = {
+    autoPlay: true,
+    background: {
+      color: {
+        value: "#000000"
+      },
+      opacity: 1
+    },
+    fullScreen: {
+      enable: false,
+    },
+    detectRetina: true,
+    fpsLimit: 120,
+    particles: {
+      color: {
+        value: "#ffffff"
+      },
+      links: {
+        color: "#ffffff",
+        distance: 150,
+        enable: true,
+        opacity: 0.2,
+        width: 1
+      },
+      move: {
+        direction: "none",
+        enable: true,
+        outModes: {
+          default: "bounce"
+        },
+        random: true,
+        speed: 1,
+        straight: false
+      },
+      number: {
+        density: {
+          enable: true,
+          area: 800
+        },
+        value: 30
+      },
+      opacity: {
+        value: 0.3
+      },
+      shape: {
+        type: "circle"
+      },
+      size: {
+        value: { min: 1, max: 3 }
+      }
+    }
+  };
+
 
   // Extract referral code from URL if present
   useEffect(() => {
@@ -275,15 +338,37 @@ const Register = () => {
     }
   };
     return (
-      <div className="min-h-screen bg-[#0C0C0C] sm:bg-black fixed h-full w-full flex justify-center items-center sm:flex-row flex-col z-30 sm:gap-0 gap-12">
-  {/* Form Section */}
-  <div
-    className="bg-[#0C0C0C] sm:bg-black/60 order-2 sm:order-1 rounded-lg shadow-sm px-6 sm:px-12 md:px-16 lg:px-24 sm:w-3/4 md:w-2/3 lg:w-1/2 w-full"
-    style={{ zIndex: 2 }}
-  >
-    <h2 className="text-left text-2xl sm:text-3xl lg:text-[42px] font-normal text-primary mb-8">
-      Create an account
-    </h2>
+      
+        <div className="relative min-h-screen">
+          {/* Particles background */}
+          <div className="fixed inset-0">
+            <Particles
+              id="tsparticles"
+              init={particlesInit}
+              loaded={particlesLoaded}
+              options={particlesConfig}
+              className="w-full h-full"
+            />
+          </div>
+
+      <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
+        {/* Form Section */}
+        <div className="w-full lg:w-[45%] px-4 sm:px-8 lg:px-12 xl:px-24 2xl:px-36 
+          flex flex-col justify-center bg-transparent">
+          <div className="lg:hidden w-full flex justify-left pl-8 mt-6 sm:mt-8">
+            <Link to="/">
+              <img 
+                src={velocitylogo} 
+                className="h-8 sm:h-10 transition-all duration-300" 
+                alt="Velocity Logo" 
+              />
+            </Link>
+          </div>
+
+          <div className="max-w-xl mx-auto w-full py-6 sm:py-8 lg:py-10">
+            <h2 className="text-left text-2xl sm:text-3xl lg:text-[42px] font-normal text-primary mb-8">
+              Create an account
+            </h2>
     <form onSubmit={handleSubmit}>
       <div className="space-y-4">
         {/* Name */}
@@ -429,23 +514,27 @@ const Register = () => {
       </p>
     </div>
   </div>
+  </div>
 
   {/* Logo and 3D Animation Section */}
-  <div className="flex justify-center order-1 sm:order-2 items-center w-full sm:w-1/2 sm:h-screen bg-[#0C0C0C]">
-    <Link
-      to="/"
-      className={
-        'flex items-center space-x-3 sm:w-auto w-auto absolute top-16 right-16 hidden sm:block'
-      }
-    >
-      <img src={velocitylogo} className="h-10 sm:h-14" alt="Velocity Logo" />
-    </Link>
-
-    <div className="relative hidden sm:block">
-      <ThreeDLogo />
+  <div className="hidden lg:flex w-[55%] relative">
+        <Link to="/" className="absolute top-8 sm:top-12 right-8 sm:right-12 z-10">
+          <img 
+            src={velocitylogo} 
+            className="h-10 sm:h-14 transition-all duration-300" 
+            alt="Velocity Logo" 
+          />
+        </Link>
+        <div className="w-full h-full flex items-center justify-center">
+          <ThreeDLogo />
+        </div>
+      </div>
     </div>
+
+    {/* Gradient overlay */}
+    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent via-[12%] bottom-0 pointer-events-none" />
   </div>
-</div>
+  
     
   );
 };

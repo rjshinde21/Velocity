@@ -28,7 +28,7 @@ function ThreeDLogo() {
       <directionalLight position={[10, 10, 10]} intensity={5} castShadow />
       
       {/* The Model */}
-      <Model scale={1} position={[0, 0, 0]} />
+      <Model scale={1.5} position={[0, 0, 0]} />
 
       {/* Controls to move around */}
       <OrbitControls enabled={false}/>
