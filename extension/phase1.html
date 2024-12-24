@@ -1957,6 +1957,27 @@ color: #000000;
 .dark-mode .midjourney-icon {
     filter: brightness(0) invert(1) !important;
 }
+.dark-mode .gpt-icon,
+.dark-mode .midjourney-icon {
+    filter: brightness(0) invert(1);
+}
+
+/* Hover state in dark mode */
+.dark-mode .radio-button:hover .gpt-icon,
+.dark-mode .radio-button:hover .midjourney-icon {
+    filter: brightness(0) invert(1);
+}
+
+/* Selected state in dark mode */
+.dark-mode .radio-button input[type="radio"]:checked + label .gpt-icon,
+.dark-mode .radio-button input[type="radio"]:checked + label .midjourney-icon {
+    filter: brightness(0) invert(1);
+}
+
+/* Ensure icons for other platforms stay unchanged */
+.radio-button label img:not(.gpt-icon):not(.midjourney-icon) {
+    filter: none !important;
+}
 
 
 
