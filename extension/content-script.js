@@ -1682,7 +1682,7 @@ function getSelectedText(element) {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
     border: 1px solid rgba(0, 0, 0, 0.1) !important;
     z-index: 9999999 !important;
-    width: 580px !important;
+    width: 275px !important;
     opacity: 0 !important;
     pointer-events: auto !important;
     transition: all 0.2s ease !important;
@@ -1724,6 +1724,7 @@ function getSelectedText(element) {
   
     .velocity-message {
       margin-bottom: 12px !important;
+      font-size:14px;
     }
 
   
@@ -1737,11 +1738,10 @@ function getSelectedText(element) {
   
       .velocity-style-buttons {
   display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
-  gap: 8px !important; /* Reduced gap */
-  margin-bottom: 12px !important; /* Reduced margin */
+  grid-template-columns: auto auto !important;
+  justify-content: start !important;
+  gap: 12px !important;
 }
-
 
 
     .velocity-style-button:hover {
@@ -1753,14 +1753,7 @@ function getSelectedText(element) {
       border: 1px solid #3B82F6 !important;
     }
 
-    .velocity-style-button:before {
-      content: "" !important;
-      display: inline-block !important;
-      width: 20px !important;
-      height: 20px !important;
-  
-      margin-right: 8px !important;
-    }
+    
   
     .velocity-toggle-container {
       display: flex !important;
@@ -2074,12 +2067,7 @@ const interactions = handleButtonAndPopupInteractions(
     titleSpan.className = 'velocity-style-button-title';
     titleSpan.textContent = style.name;
     
-    const descriptionSpan = document.createElement('span');
-    descriptionSpan.className = 'velocity-style-button-description';
-    descriptionSpan.textContent = style.description;
-    
     textContainer.appendChild(titleSpan);
-    textContainer.appendChild(descriptionSpan);
     
     gridContainer.appendChild(imageContainer);
     gridContainer.appendChild(textContainer);
@@ -2088,7 +2076,9 @@ const interactions = handleButtonAndPopupInteractions(
     // Update the styles in popupStyles.textContent
     const newStyles = `
        .velocity-style-button {
-  padding: 12px 16px !important; /* Reduced padding */
+  padding: 8px 8px !important;
+  white-space: nowrap !important;
+  width: auto !important;
   background: rgb(255, 255, 255) !important;
   border: 1px solid #E5E7EB !important;
   border-radius: 8px !important;
@@ -2096,49 +2086,43 @@ const interactions = handleButtonAndPopupInteractions(
   width: 100% !important;
   text-align: left !important;
   transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
 }
 
 .velocity-style-grid {
-  display: grid !important;
-  grid-template-columns: 32px 1fr !important; /* Reduced first column width */
-  gap: 12px !important; /* Reduced gap */
-  align-items: start !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
 }
 
 .velocity-style-image {
-  grid-row: span 2 !important;
-  width: 32px !important; /* Reduced width */
-  height: 32px !important; /* Reduced height */
+  width: 24px !important;
+  height: 24px !important;
   display: flex !important;
-  align-items: flex-start !important;
-  justify-content: flex-start !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .velocity-style-image img {
-  width: 24px !important; /* Reduced image size */
-  height: 24px !important;
+  width: 20px !important;
+  height: 20px !important;
   object-fit: contain !important;
 }
 
 .velocity-style-text {
-  display: grid !important;
-  grid-template-rows: auto 1fr !important;
-  gap: 4px !important; /* Reduced gap */
+  display: flex !important;
+  align-items: center !important;
 }
 
 .velocity-style-button-title {
   font-weight: 500 !important;
   font-size: 14px !important;
   color: #1a1a1a !important;
-  line-height: 1.2 !important;
-  margin-bottom: 2px !important; /* Added small margin */
 }
 
-.velocity-style-button-description {
-  font-size: 12px !important;
-  color: #6B7280 !important;
-  line-height: 1.3 !important; /* Reduced line height */
-}
+
 
 
 .velocity-style-button:hover {
@@ -2147,9 +2131,11 @@ const interactions = handleButtonAndPopupInteractions(
 }
 
 .velocity-style-button.active {
-  background: rgb(255, 255, 255) !important;
+  background: rgb(240, 249, 255) !important;
   border: 2px solid rgb(2, 132, 199) !important;
 }
+
+
 
     `;
   
@@ -2221,7 +2207,7 @@ const interactions = handleButtonAndPopupInteractions(
   //toggleSwitch.appendChild(toggleSlider);
   //toggleContainer.appendChild(toggleLabel);
   //toggleContainer.appendChild(toggleSwitch);
-  settingsSection.appendChild(toggleContainer);
+  // settingsSection.appendChild(toggleContainer);
   
   // Add settings section to popup
   popup.appendChild(settingsSection);
