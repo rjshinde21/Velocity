@@ -575,9 +575,9 @@ justify-content: flex-start;
 
 
 /* Optional: Hover state in dark mode */
-.dark-mode .radio-button:hover label img {
+/* .dark-mode .radio-button:hover label img {
     filter: brightness(0.9) invert(1);
-}
+} */
 
 /* Optional: Selected state in dark mode */
 .dark-mode .radio-button input[type="radio"]:checked + label img {
@@ -1926,6 +1926,39 @@ color: #000000;
     background-color: #f0f9ff;
     box-shadow: 0 0 0 1px #0ea5e9;
 }
+.dark-mode .model-name {
+    color: #FFFFFF !important;  /* Text becomes white in dark mode */
+}
+
+.radio-button label img[alt="Gemini"] {
+    width: 42px;
+    height: 42px;
+}
+.radio-button label img[alt="Gamma"] {
+    width: 45px;
+    height: 40px;
+    
+}
+
+.radio-button label img[alt="Claude"] {
+    width: 45px;
+    height: 40px;
+    
+}
+
+/* Text color in dark mode */
+.dark-mode .radio-button label {
+    color: #FFFFFF !important; /* Force white text in dark mode */
+}
+.dark-mode .gpt-icon {
+    filter: brightness(0) invert(1) !important;
+}
+
+.dark-mode .midjourney-icon {
+    filter: brightness(0) invert(1) !important;
+}
+
+
 
 /* Dark mode styles */
 @media (prefers-color-scheme: dark) {
@@ -1960,65 +1993,6 @@ color: #000000;
 
 
 /* Dark mode styles */
-.dark-mode .model-name {
-    color: #FFFFFF;  /* Text becomes white in dark mode */
-}
-
-.radio-button label img[alt="Gemini"] {
-    width: 42px;
-    height: 42px;
-}
-.radio-button label img[alt="Gamma"] {
-    width: 45px;
-    height: 40px;
-    
-}
-
-.radio-button label img[alt="Claude"] {
-    width: 45px;
-    height: 40px;
-    
-}
-
-.radio-button label img[alt="Gemini"] {
-    width: 42px;
-    height: 42px;
-}
-
-.model-name {
-    font-size: 11px;
-    font-weight: 500;
-    text-align: center;
-    margin-top: 4px;
-}
-
-/* Dark mode styles - ONLY invert specific icons */
-/* .dark-mode .gpt-icon,
-.dark-mode .midjourney-icon {
-  filter: invert(1) !important;
-} */
-
-/* All other icons remain unchanged in dark mode */
-/* .dark-mode .radio-button label img:not(.gpt-icon):not(.midjourney-icon) {
-  filter: none !important;
-} */
-
-/* Text color in dark mode */
-.dark-mode .model-name {
-    color: #FFFFFF !important; /* Force white text in dark mode */
-}
-.dark-mode .radio-button label {
-    color: #FFFFFF !important; /* Force white text in dark mode */
-}
-.dark-mode .gpt-icon {
-    filter: brightness(0) invert(1) !important;
-}
-
-.dark-mode .midjourney-icon {
-    filter: brightness(0) invert(1) !important;
-}
-
-
 
     .needs {
         color: #ffffff;
