@@ -196,7 +196,36 @@ function showTokenError() {
     tokenErrorMsg.remove();
   }, 5000);
 }
-
+function showLoginError() {
+  const signupButton = document.getElementById('signupButton');
+  signupButton.style.border = '1px solid #FF0000';
+  
+  const existingError = document.getElementById('loginErrorMsg');
+  if (existingError) existingError.remove();
+  
+  const loginErrorMsg = document.createElement('span');
+  loginErrorMsg.id = 'loginErrorMsg';
+  loginErrorMsg.style.cssText = `
+    color: #FF0000;
+    font-size: 9px;
+    margin-top: 8px;
+    position: absolute;
+    top: 100%;
+    left: -40px; /* Added left margin */
+    font-weight: 500;
+    white-space: nowrap;
+  `;
+  
+  loginErrorMsg.innerHTML = 'Please <a href="https://thinkvelocity.in/login" style="color: #FF0000; text-decoration: underline; cursor: pointer;" target="_blank">login</a> to continue.';
+  
+  signupButton.parentElement.style.position = 'relative';
+  signupButton.parentElement.appendChild(loginErrorMsg);
+  
+  setTimeout(() => {
+    signupButton.style.border = '';
+    loginErrorMsg.remove();
+  }, 5000);
+ }
 function addUnselectCapability() {
   // Style radio handling
   document.querySelectorAll('.button-group input[type="radio"]').forEach(input => {
@@ -2037,6 +2066,14 @@ async function initializeEnhanceToggle() {
   });
   // Handle toggle changes
   toggle.addEventListener('change', async (event) => {
+    if (!userId || !token) {
+      event.preventDefault();
+      toggle.checked = false;
+      showLoginError();
+      return;
+    }
+   
+   
         const tokenResponse = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
       method: 'GET',
       headers: {
@@ -2854,7 +2891,8 @@ advancedOptionButtons.forEach(button => {
 // Event listener for generate button
 document.getElementById('sendButton').addEventListener('click', async function () {
   if (!userId || !token) {
-    showError("Please login to continue");
+    showLoginError();
+    //showError("Please login to continue");
     return;
   }
     //document.getElementById('promptInput').disabled = true;
