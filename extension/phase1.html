@@ -471,8 +471,10 @@ color: #292929;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
-    gap: 8px; /* Consistent spacing between icon and text */
+    gap: 8px;
 }
+
+
 
       .radio-button input[type="radio"]:checked + label {
         border-color: #0099ff;
@@ -1952,16 +1954,14 @@ color: #000000;
     font-size: 11px;
     font-weight: 500;
     text-align: center;
+    margin-top: 4px;
+    color: #000000; /* Explicit color for light mode */
 }
+
 
 /* Dark mode styles */
 .dark-mode .model-name {
     color: #FFFFFF;  /* Text becomes white in dark mode */
-}
-
-.radio-button label img[alt="General"] {
-    width: 25px;
-    height: 25px;
 }
 
 .radio-button label img[alt="Gemini"] {
@@ -1971,19 +1971,18 @@ color: #000000;
 .radio-button label img[alt="Gamma"] {
     width: 45px;
     height: 40px;
-    filter: none !important; /* Force no filter */
+    
 }
 
 .radio-button label img[alt="Claude"] {
-    width: 40px;
+    width: 45px;
     height: 40px;
-    filter: none !important; /* Force no filter */
+    
 }
 
 .radio-button label img[alt="Gemini"] {
     width: 42px;
     height: 42px;
-    filter: none !important; /* Force no filter */
 }
 
 .model-name {
@@ -1994,20 +1993,32 @@ color: #000000;
 }
 
 /* Dark mode styles - ONLY invert specific icons */
-.dark-mode .gpt-icon,
+/* .dark-mode .gpt-icon,
 .dark-mode .midjourney-icon {
   filter: invert(1) !important;
-}
+} */
 
 /* All other icons remain unchanged in dark mode */
-.dark-mode .radio-button label img:not(.gpt-icon):not(.midjourney-icon) {
+/* .dark-mode .radio-button label img:not(.gpt-icon):not(.midjourney-icon) {
   filter: none !important;
-}
+} */
 
 /* Text color in dark mode */
 .dark-mode .model-name {
-    color: #FFFFFF;
+    color: #FFFFFF !important; /* Force white text in dark mode */
 }
+.dark-mode .radio-button label {
+    color: #FFFFFF !important; /* Force white text in dark mode */
+}
+.dark-mode .gpt-icon {
+    filter: brightness(0) invert(1) !important;
+}
+
+.dark-mode .midjourney-icon {
+    filter: brightness(0) invert(1) !important;
+}
+
+
 
     .needs {
         color: #ffffff;
