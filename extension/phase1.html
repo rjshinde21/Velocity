@@ -460,21 +460,20 @@ color: #292929;
         cursor: pointer;
       }
       .radio-button label {
-        color: #000000;
-    text-shadow: none;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        width: 70px;
-        height: 70px;
-        font-size: 12px;
-        /* color: white; */
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        /* text-shadow: 0 0 10px #0099ff; */
-      }
+    color: #000000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 90px;
+    font-size: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    gap: 8px; /* Consistent spacing between icon and text */
+}
+
       .radio-button input[type="radio"]:checked + label {
         border-color: #0099ff;
         box-shadow: 0 0 10px #0099ff;
@@ -562,8 +561,8 @@ justify-content: flex-start;
     flex-direction: column;
       }
       .radio-button label img {
-    width: 90px;
-    height: 90px;
+    width: 50px;
+    height: 40px;
     transition: filter 0.3s ease;
 }
 
@@ -1019,7 +1018,7 @@ color: #000000;
 #generateButtonContainer {
     width: 100%;
     padding: 0 24px;
-    margin-top: 24px;
+    margin-top: 12px;
     margin-bottom: 24px;
 }
      
@@ -1564,7 +1563,7 @@ color: #000000;
 }
 
 .dark-mode .tone-title {
-    color: #FFFFFF;
+  color: #FFFFFF !important;
 }
 
 .dark-mode .tone-description {
@@ -1576,7 +1575,7 @@ color: #000000;
 }
 
 .dark-mode .needs {
-    color: #FFFFFF;
+    color: #FFFFFF !important;
 }
 
 .dark-mode .button-group label {
@@ -1844,7 +1843,7 @@ color: #000000;
       .needs {
     font-size: 16px;
     font-weight: bold;
-    color: #292929;
+    color: #292929 !important;
     text-align: center;
     margin-bottom: 10px;
 }
@@ -1904,7 +1903,7 @@ color: #000000;
 .tone-title {
     font-size: 14px;
     font-weight: 500;
-    color: #000000;
+    color: #000000 !important; /* Force black color */
 }
 
 .tone-description {
@@ -1927,6 +1926,71 @@ color: #000000;
 
 /* Dark mode styles */
 @media (prefers-color-scheme: dark) {
+  .radio-button label {
+    color: #000000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 70px;
+    height: 90px;  /* Increased height to accommodate text */
+    font-size: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.model-icon {
+    width: 40px;  /* Consistent size for all icons */
+    height: 40px;
+    transition: filter 0.3s ease;
+}
+
+
+.model-name {
+    font-size: 11px;
+    font-weight: 500;
+    text-align: center;
+}
+
+/* Dark mode styles */
+.dark-mode .model-name {
+    color: #FFFFFF;  /* Text becomes white in dark mode */
+}
+
+.radio-button label img[alt="General"] {
+    width: 25px;
+    height: 25px;
+}
+
+.radio-button label img[alt="Gemini"] {
+    width: 42px;
+    height: 42px;
+}
+
+.model-name {
+    font-size: 11px;
+    font-weight: 500;
+    text-align: center;
+    margin-top: 4px;
+}
+
+/* Dark mode styles - ONLY invert specific icons */
+.dark-mode .gpt-icon,
+.dark-mode .midjourney-icon {
+    filter: invert(1);
+}
+
+/* All other icons remain unchanged in dark mode */
+.dark-mode .model-icon:not(.gpt-icon):not(.midjourney-icon) {
+    filter: none;
+}
+
+/* Text color in dark mode */
+.dark-mode .model-name {
+    color: #FFFFFF;
+}
+
     .needs {
         color: #ffffff;
     }
@@ -2036,43 +2100,47 @@ color: #000000;
 <div class="title">Select Your AI Model</div>
 
 <div class="radio-group">
-    <div class="radio-button">
-      <input type="radio" id="option1" name="option" value="Stability.ai">
-      <label class="radio-button" for="option1">
-        <img src="./assets/radiobutton1.png" alt="Stability.ai">
-        <!-- <span>General</span> -->
-      </label>
-    </div>
-
-    <div class="radio-button">
-      <input type="radio" id="option2" name="option" value="GPT 4o">
-      <label class="radio-button" for="option2">
-        <img src="./assets/radiobutton2.png" alt="GPT 4o">
-        <!-- <span>DALL-E</span> -->
-      </label>
-    </div>
-    <div class="radio-button">
-      <input type="radio" id="option3" name="option" value="Claude">
-      <label class="radio-button" for="option3">
-        <img src="./assets/radiobutton3.png" alt="Claude">
-        <!-- <span>Midjourney</span> -->
-      </label>
-    </div>
-    <div class="radio-button">
-      <input type="radio" id="option4" name="option" value="Midjourney">
-      <label class="radio-button" for="option4">
-        <img src="./assets/radiobutton4.png" alt="Midjourney">
-        <!-- <span>Meta AI</span> -->
-      </label>
-    </div>
-    <div class="radio-button">
-      <input type="radio" id="option6" name="option" value="Gemini">
-      <label class="radio-button" for="option6">
-        <img src="./assets/geminiIcon.png" alt="Gemini">
-        <!-- <span>Meta AI</span> -->
-      </label>
-    </div>
+  <div class="radio-button">
+    <input type="radio" id="option1" name="option" value="Gamma">
+    <label class="radio-button" for="option1">
+      <img src="./assets/radiobutton1.png" alt="Gamma" class="model-icon">
+      <span class="model-name">Gamma</span>
+    </label>
   </div>
+
+  <div class="radio-button">
+    <input type="radio" id="option2" name="option" value="GPT 4o">
+    <label class="radio-button" for="option2">
+      <img src="./assets/radiobutton2.png" alt="GPT 4o" class="model-icon gpt-icon">
+      <span class="model-name">ChatGPT</span>
+    </label>
+  </div>
+
+  <div class="radio-button">
+    <input type="radio" id="option3" name="option" value="Claude">
+    <label class="radio-button" for="option3">
+      <img src="./assets/radiobutton3.png" alt="Claude" class="model-icon">
+      <span class="model-name">Claude</span>
+    </label>
+  </div>
+
+  <div class="radio-button">
+    <input type="radio" id="option4" name="option" value="Midjourney">
+    <label class="radio-button" for="option4">
+      <img src="./assets/radiobutton4.png" alt="Midjourney" class="model-icon midjourney-icon">
+      <span class="model-name">Midjourney</span>
+    </label>
+  </div>
+
+  <div class="radio-button">
+    <input type="radio" id="option6" name="option" value="Gemini">
+    <label class="radio-button" for="option6">
+      <img src="./assets/geminiIcon.png" alt="Gemini" class="model-icon">
+      <span class="model-name">Gemini</span>
+    </label>
+  </div>
+</div>
+
 
   <div class="scrollable-container">
     <div class="input-container" style="position: relative; display: inline-block;">

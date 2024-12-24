@@ -119,24 +119,84 @@ async function checkFeatureAccess(featureId) {
     throw error;
   }
 }
-// function showTextBoxError()
-// {
-//   promptInput.style.border = '0.2px solid red';
-
-//   // Add error message
-//   if (errorContainer) {
-//     errorContainer.textContent = 'Please enter a prompt first';
-//     errorContainer.style.color = 'red';
-//   } else {
-//     // Create error container if it doesn't exist
-//     const newErrorContainer = document.createElement('div');
-//     newErrorContainer.className = 'error-message-container text-red-500 text-sm mt-1';
-//     newErrorContainer.textContent = 'Please enter a prompt text';
-//     promptInput.parentNode.appendChild(newErrorContainer);
-//   }
+function showTextBoxError(message)
+{ 
   
-//   return;
-// }
+  const promptInput = document.getElementById('promptInput');
+  const errorContainer = document.querySelector('.error-message-container');
+
+
+  promptInput.style.border = '0.2px solid red';
+
+  // Add error message
+  if (errorContainer) {
+    errorContainer.textContent = `${message}`;
+    errorContainer.style.color = 'red';
+  } else {
+    // Create error container if it doesn't exist
+    const newErrorContainer = document.createElement('div');
+    newErrorContainer.className = 'error-message-container text-red-500 text-sm mt-1';
+    newErrorContainer.textContent = 'Please enter a prompt text';
+    promptInput.parentNode.appendChild(newErrorContainer);
+  }
+  setTimeout(() => {
+    promptInput.style.border = '';
+    errorContainer.textContent = '';
+    //errorContainer.remove();
+  }, 3000);
+  //return;
+}
+function showTokenError() {
+  const editButton = document.getElementById('editButton');
+  
+  // Add only red border while preserving original shape
+  editButton.style.border = '1px solid #FF0000';
+  // Don't modify any other styles of the button
+  
+  // Check if error message already exists and remove it
+  const existingError = document.getElementById('tokenErrorMsg');
+  if (existingError) {
+    existingError.remove();
+  }
+  
+  // Create new error message
+  const tokenErrorMsg = document.createElement('div');
+  tokenErrorMsg.id = 'tokenErrorMsg';
+  
+  // Style the container
+  tokenErrorMsg.style.cssText = `
+    color: #FF0000;
+    font-size: 9px;
+    margin-top: 8px;
+    width: 100%;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    text-align: center;
+    font-weight: 500;
+  `;
+  
+  // Create the error message with a linked "top up"
+  tokenErrorMsg.innerHTML = `
+    Not enough credits. Please 
+    <a href="https://thinkvelocity.in/profile" 
+       style="color: #FF0000; text-decoration: underline; cursor: pointer;"
+       target="_blank">
+      top up
+    </a>.
+  `;
+  
+  // Insert after editButton
+  editButton.parentElement.style.position = 'relative';
+  editButton.parentElement.appendChild(tokenErrorMsg);
+  
+  // Remove styling after 5 seconds
+  setTimeout(() => {
+    editButton.style.border = '';
+    tokenErrorMsg.remove();
+  }, 5000);
+}
+
 function addUnselectCapability() {
   // Style radio handling
   document.querySelectorAll('.button-group input[type="radio"]').forEach(input => {
@@ -235,6 +295,20 @@ async function recordFeatureUsage(featureId) {
 
 const style = document.createElement('style');
   style.textContent = `
+    #editButton.token-error {
+    border: 1px solid #FF0000;
+    transition: border-color 0.3s ease;
+  }
+  
+  #tokenErrorMsg {
+    opacity: 1;
+    transition: opacity 0.3s ease;
+  }
+  
+  #tokenErrorMsg.hiding {
+    opacity: 0;
+  }
+
     .responses-container {
         max-height: 400px;
         overflow-y: auto;
@@ -305,6 +379,7 @@ const style = document.createElement('style');
         pointer-events: none;
     }
 `;
+document.head.appendChild(style);
 
 function updateHeaderUI() {
   if (!userId || !token) {
@@ -674,8 +749,7 @@ async function sendRequest() {
         location: "Extension"
       });
 
-      velocityErrors.showError(
-        velocityErrors.types.VALIDATION,
+      showTextBoxError(
         `Input too long. Please keep your text under ${CHAR_LIMIT} characters.`
       );
       return;
@@ -898,6 +972,46 @@ function adjustPopupSize() {
 //       content.style.display = 'none';
 //   });
 // }
+async function saveResponseToHistory(promptText, originalPromptId, aiType, tokensUsed) {
+  console.log("selected ai type:"+aiType);
+  try {
+    const storage = await chrome.storage.local.get(['userId', 'token']);
+    const userId = storage.userId;
+    const token = storage.token;
+
+    if (!userId || !token) {
+      throw new Error('User authentication required');
+    }
+
+    // Ensure aiType is a string
+    const aiTypeString = String(aiType || 'General');
+
+    const response = await fetch('https://thinkvelocity.in/api/api/history/responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        prompt_text: promptText,
+        original_prompt_id: originalPromptId,
+        ai_type: aiTypeString,  // Convert to string
+        tokens_used: tokensUsed || 0
+      })
+    });
+
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.message);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error saving response to history:', error);
+    throw error;
+  }
+}
 
 async function savePromptToHistory(userId, promptText, aiType) {
   try {
@@ -1532,6 +1646,7 @@ function createResponseElement(response) {
   
   copyButton.addEventListener('click', async () => {
     try {
+      saveResponseToHistory(content.textContent, lastSavedPromptId,getSelectedPlatform())
       await navigator.clipboard.writeText(content.textContent);
       copyButton.classList.add('copied');
       copyButton.querySelector('span').textContent = 'Copied!';
@@ -1939,7 +2054,8 @@ async function initializeEnhanceToggle() {
   }
   else{
     toggle.checked = false;
-    showError('Not enough credits available. Please top up your credits.');
+    showTokenError();
+    //showError('Not enough credits available. Please top up your credits.');
   }
     try {
       // Save state
@@ -2747,19 +2863,20 @@ document.getElementById('sendButton').addEventListener('click', async function (
     const errorContainer = document.querySelector('.error-message-container');
 
     if (!promptInput || !promptInput.value.trim()) {
-      promptInput.style.border = '0.2px solid red';
+      showTextBoxError('Please enter a prompt first');
+      // promptInput.style.border = '0.2px solid red';
 
-      // Add error message
-      if (errorContainer) {
-        errorContainer.textContent = 'Please enter a prompt first';
-        errorContainer.style.color = 'red';
-      } else {
-        // Create error container if it doesn't exist
-        const newErrorContainer = document.createElement('div');
-        newErrorContainer.className = 'error-message-container text-red-500 text-sm mt-1';
-        newErrorContainer.textContent = 'Please enter a prompt text';
-        promptInput.parentNode.appendChild(newErrorContainer);
-      }
+      // // Add error message
+      // if (errorContainer) {
+      //   errorContainer.textContent = 'Please enter a prompt first';
+      //   errorContainer.style.color = 'red';
+      // } else {
+      //   // Create error container if it doesn't exist
+      //   const newErrorContainer = document.createElement('div');
+      //   newErrorContainer.className = 'error-message-container text-red-500 text-sm mt-1';
+      //   newErrorContainer.textContent = 'Please enter a prompt text';
+      //   promptInput.parentNode.appendChild(newErrorContainer);
+      // }
       
       return;
     }
@@ -2793,12 +2910,12 @@ document.getElementById('sendButton').addEventListener('click', async function (
 async function verifyAndRecordFeatures() {
   try {
     
-    const currentStyle = getSelectedStyle();
-    const currentPlatform = getSelectedPlatform();
-    const { selectedStyle, selectedPlatform } = await chrome.storage.local.get([
-      'selectedStyle',
-      'selectedPlatform'
-  ]);
+    const selectedStyle = getSelectedStyle();
+    const selectedPlatform = getSelectedPlatform();
+  //   const { selectedStyle, selectedPlatform } = await chrome.storage.local.get([
+  //     'selectedStyle',
+  //     'selectedPlatform'
+  // ]);
   
     // if (!currentStyle) {
     //   throw new Error('Please select a style');
@@ -2864,6 +2981,7 @@ async function verifyAndRecordFeatures() {
           requiredTokens:requiredTokens
         }
       )
+      showTokenError(); 
       showError('Not enough credits available. Please top up your credits.');
       return false;
     }
