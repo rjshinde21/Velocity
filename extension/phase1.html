@@ -567,8 +567,9 @@ justify-content: flex-start;
 }
 
 .dark-mode .radio-button label img {
-    filter: brightness(0.8) invert(1);
+    filter: none;
 }
+
 
 
 /* Optional: Hover state in dark mode */
@@ -1967,6 +1968,23 @@ color: #000000;
     width: 42px;
     height: 42px;
 }
+.radio-button label img[alt="Gamma"] {
+    width: 45px;
+    height: 40px;
+    filter: none !important; /* Force no filter */
+}
+
+.radio-button label img[alt="Claude"] {
+    width: 40px;
+    height: 40px;
+    filter: none !important; /* Force no filter */
+}
+
+.radio-button label img[alt="Gemini"] {
+    width: 42px;
+    height: 42px;
+    filter: none !important; /* Force no filter */
+}
 
 .model-name {
     font-size: 11px;
@@ -1978,12 +1996,12 @@ color: #000000;
 /* Dark mode styles - ONLY invert specific icons */
 .dark-mode .gpt-icon,
 .dark-mode .midjourney-icon {
-    filter: invert(1);
+  filter: invert(1) !important;
 }
 
 /* All other icons remain unchanged in dark mode */
-.dark-mode .model-icon:not(.gpt-icon):not(.midjourney-icon) {
-    filter: none;
+.dark-mode .radio-button label img:not(.gpt-icon):not(.midjourney-icon) {
+  filter: none !important;
 }
 
 /* Text color in dark mode */
