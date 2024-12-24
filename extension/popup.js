@@ -119,6 +119,24 @@ async function checkFeatureAccess(featureId) {
     throw error;
   }
 }
+// function showTextBoxError()
+// {
+//   promptInput.style.border = '0.2px solid red';
+
+//   // Add error message
+//   if (errorContainer) {
+//     errorContainer.textContent = 'Please enter a prompt first';
+//     errorContainer.style.color = 'red';
+//   } else {
+//     // Create error container if it doesn't exist
+//     const newErrorContainer = document.createElement('div');
+//     newErrorContainer.className = 'error-message-container text-red-500 text-sm mt-1';
+//     newErrorContainer.textContent = 'Please enter a prompt text';
+//     promptInput.parentNode.appendChild(newErrorContainer);
+//   }
+  
+//   return;
+// }
 function addUnselectCapability() {
   // Style radio handling
   document.querySelectorAll('.button-group input[type="radio"]').forEach(input => {
@@ -641,8 +659,7 @@ async function sendRequest() {
 
     // Input validation with enhanced error handling
     if (!prompt) {
-      velocityErrors.showError(
-        velocityErrors.types.VALIDATION,
+      showError(
         'Please enter a prompt text'
       );
       return;
@@ -2061,6 +2078,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Save text on input
   promptInput.addEventListener('input', function() {
+    const trimmedPrompt = this.value.trim();
+    
+    if (trimmedPrompt) {
+      this.style.border = '1px solid #E5E7EB';
+      errorContainer.textContent = '';
+    }
+
     chrome.storage.local.set({ promptText: this.value });
     updateCharCount(this);
     updateCalculatedCredits();
@@ -2084,8 +2108,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
   //categoriesContainer.classList.add('hidden2');
   const errorContainer = document.createElement('div');
-  errorContainer.className = 'error-message-container text-red-500 text-sm mt-1';
-  promptInput.parentNode.appendChild(errorContainer);
+  errorContainer.className = 'error-message-container';
+  errorContainer.style.cssText = `
+    color: red;
+    font-size: 11px;  // Smaller font size
+    padding: 4px 8px;  // Add some padding
+    margin-top: 4px;  // Slight margin from the input
+    width: 100%;  // Full width
+    text-align: left;  // Left-align the text
+  `;
+    promptInput.parentNode.appendChild(errorContainer);
   promptInput.parentElement.style.position = 'relative';
 
   // Create character counter
@@ -2123,6 +2155,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Add input and paste event listeners
   promptInput.addEventListener('input', function() {
+    
     updateCharCount(this);
     updateCalculatedCredits();
     // console.log("heyyy");
@@ -2708,35 +2741,54 @@ document.getElementById('sendButton').addEventListener('click', async function (
     showError("Please login to continue");
     return;
   }
-
-  try {
-    document.getElementById('promptInput').disabled = true;
+    //document.getElementById('promptInput').disabled = true;
     
     const promptInput = document.getElementById('promptInput');
+    const errorContainer = document.querySelector('.error-message-container');
+
     if (!promptInput || !promptInput.value.trim()) {
-      showError('Please enter a prompt text');
+      promptInput.style.border = '0.2px solid red';
+
+      // Add error message
+      if (errorContainer) {
+        errorContainer.textContent = 'Please enter a prompt first';
+        errorContainer.style.color = 'red';
+      } else {
+        // Create error container if it doesn't exist
+        const newErrorContainer = document.createElement('div');
+        newErrorContainer.className = 'error-message-container text-red-500 text-sm mt-1';
+        newErrorContainer.textContent = 'Please enter a prompt text';
+        promptInput.parentNode.appendChild(newErrorContainer);
+      }
+      
       return;
     }
-
-    const imageUpload = document.getElementById('imageUpload');
-    const hasImage = imageUpload && imageUpload.files.length > 0;
-
-    // First verify access to all required features
-    // const canProceed = await verifyAndRecordFeatures(hasImage);
-    // if (!canProceed) {
-    //   return;
-    // }
-
-    // If verification passed, proceed with the request
-    await sendRequest();
-
-  } catch (error) {
-    console.error('Error during processing:', error);
-    showError(`Error: ${error.message}`);
-  } finally {
-    resetInterface();
-  }
-});
+    else{
+      document.getElementById('promptInput').disabled = true;
+    }
+  
+    try {
+      //promptInput.disabled = true;
+      
+      // Remove any existing error styling
+      promptInput.classList.remove('border-2', 'border-red-500');
+      if (errorContainer) {
+        errorContainer.textContent = '';
+      }
+  
+      const hasImage = document.getElementById('imageUpload') && document.getElementById('imageUpload').files.length > 0;
+  
+      // Proceed with request
+      await sendRequest();
+  
+    } catch (error) {
+      console.error('Error during processing:', error);
+      showError(`Error: ${error.message}`);
+    } finally {
+      resetInterface();
+    }
+  });
+  
 
 async function verifyAndRecordFeatures() {
   try {

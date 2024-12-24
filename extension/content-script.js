@@ -1242,7 +1242,7 @@
           opacity: 0 !important;
           visibility: hidden !important;
           pointer-events: none !important;
-          transition: opacity 0.3s ease, visibility 0.3s ease, top 0.2s ease, bottom 0.2s ease !important;
+          transition: opacity 0.3s ease, visibility 0.3s ease !important;
           z-index: 999999 !important;
         }
     
@@ -1254,43 +1254,20 @@
       `;
       document.head.appendChild(hoverStyles);
     
-      // Enhanced updatePopupPosition with dynamic positioning
+      // Position the popup whenever button position changes
       const updatePopupPosition = () => {
         const buttonRect = button.getBoundingClientRect();
-        const popupHeight = popup.offsetHeight || 300; // Fallback height if not rendered
-        const viewportHeight = window.innerHeight;
-        const spaceAbove = buttonRect.top;
-        const spaceBelow = viewportHeight - buttonRect.bottom;
-    
-        // Always maintain horizontal centering
         popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-        
-        // Determine if popup should go above or below
-        if (spaceBelow >= popupHeight || spaceBelow > spaceAbove) {
-          // Position below button
-          popup.style.bottom = 'auto';
-          popup.style.top = `${buttonRect.bottom + 10}px`;
-        } else {
-          // Position above button
-          popup.style.top = 'auto';
-          popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
-        }
+        popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
       };
     
       // Update position on scroll and resize
-      window.addEventListener('scroll', () => {
-        if (popup.classList.contains('show')) {
-          updatePopupPosition();
-        }
-      }, { passive: true });
+      window.addEventListener('scroll', updatePopupPosition, { passive: true });
+      window.addEventListener('resize', updatePopupPosition, { passive: true });
     
-      window.addEventListener('resize', () => {
-        if (popup.classList.contains('show')) {
-          updatePopupPosition();
-        }
-      }, { passive: true });
+      // Initial position
+      updatePopupPosition();
     
-      // Return the same interface
       return {
         forceHide: () => {
           popup.classList.remove('show');
@@ -1402,8 +1379,7 @@
   popup.style.visibility = 'hidden';
   popup.appendChild(messageEl);
   wrapper.appendChild(popup);
-
-
+  
   // Wait for next frame to ensure button is positioned
   requestAnimationFrame(() => {
     // Wait another frame to be extra sure
@@ -1696,9 +1672,8 @@ function getSelectedText(element) {
     // First add the popup styles
   const popupStyles = document.createElement('style');
   popupStyles.textContent = `
-       .velocity-popup {
+     .velocity-popup {
     position: fixed !important;
-    transform: translateX(-50%) !important;
     background: white !important;
     color: #1a1a1a !important;
     padding: 12px 16px !important;
@@ -1707,9 +1682,9 @@ function getSelectedText(element) {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
     border: 1px solid rgba(0, 0, 0, 0.1) !important;
     z-index: 9999999 !important;
-    width: 480px !important;
+    width: 580px !important;
     opacity: 0 !important;
-    pointer-events: none !important;
+    pointer-events: auto !important;
     transition: all 0.2s ease !important;
     visibility: hidden !important;
   }
@@ -1719,7 +1694,6 @@ function getSelectedText(element) {
     pointer-events: auto !important;
     visibility: visible !important;
   }
-
 
   .velocity-popup.position-top {
     transform: translate(-50%, -100%) !important;
@@ -1977,59 +1951,6 @@ function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSect
       button.classList.add('breathing');
     }
   }
-
-  function calculatePopupPosition() {
-    const buttonRect = button.getBoundingClientRect();
-    const popupHeight = popup.offsetHeight || 300;
-    const viewportHeight = window.innerHeight;
-    const spaceAbove = buttonRect.top;
-    const spaceBelow = viewportHeight - buttonRect.bottom;
-  
-    // Always maintain the horizontal centering
-    popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-    
-    // Reset any previous positioning
-    popup.style.transform = 'translateX(-50%)';
-    
-    if (spaceBelow >= popupHeight || spaceBelow > spaceAbove) {
-      // Position below the button
-      popup.style.bottom = 'auto';
-      popup.style.top = `${buttonRect.bottom + 30}px`;
-      const popupContent = document.createElement('div');
-      popupContent.className = 'velocity-popup-content';
-      popupContent.style.cssText = `
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        width: 100%; /* Ensure full width */
-        max-width: 560px; /* Limit maximum width */
-      `;
-
-
-      // Append the message and settings section to the popupContent
-      popupContent.appendChild(messageEl);
-      popupContent.appendChild(settingsSection);
-      popup.innerHTML = ''; // Clear existing content
-      popup.appendChild(popupContent);
-
-      // Add white background and border styles for bottom positioning
-      // popup.style.backgroundColor = 'white';
-      // popup.style.border = '1px solid rgba(0, 0, 0, 0.1)';
-      // popup.style.borderRadius = '12px';
-      // popup.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.1)';
-    } else {
-      // Position above the button
-      popup.style.top = 'auto';
-      popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
-      
-      // // Maintain existing styles
-      // popup.style.backgroundColor = 'white';
-      // popup.style.border = '1px solid rgba(0, 0, 0, 0.1)';
-      // popup.style.borderRadius = '12px';
-      // popup.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.1)';
-    }
-  }
   
 
   function hidePopup() {
@@ -2041,7 +1962,9 @@ function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSect
   function showPopup() {
     if (button.classList.contains('loading')) return;
 
-    calculatePopupPosition();
+    const buttonRect = button.getBoundingClientRect();
+    popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+    popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
     popup.classList.add('show');
   }
 
@@ -2074,25 +1997,14 @@ function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSect
     }
   });
 
-  // Add scroll and resize listeners
-  window.addEventListener('scroll', () => {
-    if (popup.classList.contains('show')) {
-      calculatePopupPosition();
-    }
-  }, { passive: true });
-
-  window.addEventListener('resize', () => {
-    if (popup.classList.contains('show')) {
-      calculatePopupPosition();
-    }
-  }, { passive: true });
-
   return {
     forceHide: hidePopup,
     forceShow: showPopup,
     updatePosition: () => {
       if (popup.classList.contains('show')) {
-        calculatePopupPosition();
+        const buttonRect = button.getBoundingClientRect();
+        popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+        popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
       }
     }
   };
