@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import velocitylogo from "../assets/velocitylogo.png";
 import { Link } from "react-router-dom";
 import ScrollAnchor from "./ScrollAnchor";
@@ -16,12 +16,46 @@ const Navbar = ({
 }) => {
   const scrollRefs = {
     home: homeRef,
-    howItWorks: howItWorksRef,
+    howItWorksRef: howItWorksRef,
     pricing: pricingRef,
     built: builtRef,
     carousel: carouselRef,
   };
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+
+  // Effect to handle auto-opening of modal
+  useEffect(() => {
+    // Only set the timer if user hasn't interacted yet
+    if (!hasUserInteracted) {
+      const timer = setTimeout(() => {
+        setIsModalOpen(true);
+        // Analytics.track('Modal Auto Opened', {
+        //   type: 'Launchlist',
+        //   timeToOpen: '6000ms'
+        // });
+      }, 3000); // 6 seconds delay
+
+      // Cleanup timer on component unmount
+      return () => clearTimeout(timer);
+    }
+  }, [hasUserInteracted]);
+
+  // Handler for manual modal opening
+  const handleManualModalOpen = () => {
+    setHasUserInteracted(true);
+    setIsModalOpen(true);
+    Analytics.track('Button Clicked', {
+      buttonName: 'Launchlist'
+    });
+  };
+
+  // Handler for modal closing
+  const handleModalClose = () => {
+    setHasUserInteracted(true);
+    setIsModalOpen(false);
+  };
 
   return (
     <div>
@@ -37,36 +71,32 @@ const Navbar = ({
           </div>
 
           {/* Mobile View: Direct Buttons */}
-      <div className="sm:hidden flex items-center gap-4">
-        <button
-          className="text-primary hover:text-blue-500 transition-colors text-sm"
-          onClick={() => setIsModalOpen(true)}
-        >
-          Join Launchlist
-        </button>
-
-        {!isLoggedIn ? (
-          <Link to="/register">
-            <button className="rounded-full bg-black text-white py-2 px-4">
-              Get Started
+          <div className="sm:hidden flex items-center gap-4">
+            <button
+              className="text-primary hover:text-blue-500 transition-colors text-sm"
+              onClick={handleManualModalOpen}
+            >
+              Join Launchlist
             </button>
-          </Link>
-        ) : (
-          <Link to="/profile">
-            <UserRound className="border rounded-full w-8 h-8" />
-          </Link>
-        )}
-      </div>
+
+            {!isLoggedIn ? (
+              <Link to="/register">
+                <button className="rounded-full bg-black text-white py-2 px-4">
+                  Get Started
+                </button>
+              </Link>
+            ) : (
+              <Link to="/profile">
+                <UserRound className="border rounded-full w-8 h-8" />
+              </Link>
+            )}
+          </div>
 
           {/* Desktop View Buttons */}
           <div className="hidden sm:flex items-center gap-4 sm:gap-6">
             <button
               className="text-primary hover:text-blue-500 transition-colors text-base sm:text-xl hidden sm:block"
-              onClick={() => {
-                Analytics.track('Button Clicked',{
-                  buttonName:'Launchlist'
-                });
-                setIsModalOpen(true)}}
+              onClick={handleManualModalOpen}
             >
               Join Launchlist
             </button>
@@ -74,12 +104,12 @@ const Navbar = ({
             {!isLoggedIn ? (
               <Link to="/register">
                 <button className="navbtn rounded-[30px] bg-[#0a0a0a] py-[10px] sm:py-[16px] flex items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)] transition-all duration-200">
-                <div className="inner rounded-[30px]">
-                  <span className="relative z-10 bg-black px-5 sm:px-9 py-[12px] sm:py-[18px] rounded-[30px] text-lg text-white whitespace-nowrap">
-                    Get Started
-                  </span>
-                </div>
-              </button>
+                  <div className="inner rounded-[30px]">
+                    <span className="relative z-10 bg-black px-5 sm:px-9 py-[12px] sm:py-[18px] rounded-[30px] text-lg text-white whitespace-nowrap">
+                      Get Started
+                    </span>
+                  </div>
+                </button>
               </Link>
             ) : (
               <Link to="/profile">
@@ -88,7 +118,7 @@ const Navbar = ({
             )}
           </div>
         </div>
-        <LaunchlistModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+        <LaunchlistModal isOpen={isModalOpen} onClose={handleModalClose} />
       </nav>
     </div>
   );
