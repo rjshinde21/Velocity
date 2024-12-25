@@ -116,11 +116,10 @@
       if (position === 'bottom') {
         popup.style.bottom = '';
         popup.style.top = `${buttonRect.bottom + MARGIN}px`;
-        popup.style.transform = 'translateX(-50%)';
+        //popup.style.transform = 'translateX(-50%)';
       } else {
-        console.log
         popup.style.bottom = `${window.innerHeight - buttonRect.top + MARGIN}px`;
-        popup.style.transform = 'translateX(-50%)';
+        //popup.style.transform = 'translateX(-50%)';
       }
       
       return position;
@@ -282,14 +281,6 @@
       selectors: '.ProseMirror[contenteditable="true"][id="prompt-textarea"]',
       name: 'GPT',
       customStyles: `
-        .velocity-wrapper {
-          position: relative !important;
-          display: block !important;
-          width: 100% !important;
-          min-height: 24px !important;
-          overflow: hidden !important; /* Hide scrollbar */
-        }
-        
         .velocity-wrapper .ProseMirror {
           padding-right: 45px !important; /* Reduced padding */
           min-height: 24px !important;
@@ -300,18 +291,6 @@
           padding-right: 45px !important;
           overflow: hidden !important;
         }
-  
-        .velocity-enhance-button {
-          position: absolute !important;
-          top: 50% !important;
-          right: 8px !important; /* Moved closer to edge */
-          transform: translateY(-50%) !important;
-          width: 28px !important; /* Smaller button */
-          height: 28px !important;
-          padding: 4px !important;
-          z-index: 999999 !important;
-        }
-  
         /* Hide scrollbars */
         .velocity-wrapper *::-webkit-scrollbar {
           display: none !important;
@@ -325,51 +304,28 @@
       selectors: '.claude-textarea, div[contenteditable="true"]',
       name: 'Claude',
       customStyles: `
-        .velocity-wrapper {
-          position: relative !important;
-          display: block !important;
-          width: 100% !important;
-          min-height: 24px !important;
-          background: transparent !important;
-          overflow: hidden !important;
-        }
-        
-        .velocity-wrapper textarea,
-        .velocity-wrapper [contenteditable="true"] {
-          padding-right: 45px !important;
-          min-height: inherit !important;
-          overflow: hidden !important;
-          resize: none !important;
-          scrollbar-width: none !important;
-          -ms-overflow-style: none !important;
-          background: transparent !important;
-          width: 100% !important;
-          box-sizing: border-box !important;
-        }
-  
-        .velocity-enhance-button {
-          position: absolute !important;
-          top: 50% !important;
-          right: 8px !important;
-          transform: translateY(-50%) !important;
-          width: 28px !important;
-          height: 28px !important;
-          padding: 4px !important;
-          z-index: 999999 !important;
-        }
-  
-        /* Hide scrollbars */
-        .velocity-wrapper *::-webkit-scrollbar {
-          display: none !important;
-          width: 0 !important;
-          height: 0 !important;
-        }
-  
-        .velocity-wrapper textarea::-webkit-scrollbar,
-        .velocity-wrapper [contenteditable="true"]::-webkit-scrollbar {
-          display: none !important;
-        }
-      `
+      .velocity-wrapper {
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+        min-height: 24px !important;
+        background: transparent !important;
+        overflow: hidden !important;
+      }
+      
+      .velocity-wrapper textarea,
+      .velocity-wrapper [contenteditable="true"] {
+        padding-right: 45px !important;
+        min-height: inherit !important;
+        overflow: hidden !important;
+        resize: none !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+        background: transparent !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+    `  
     },
     gemini: {
       urlPattern: /^https:\/\/gemini\.google\.com/,
@@ -584,7 +540,7 @@
     position: absolute;
     right: 100%;
     top: 50%;
-    transform: translateY(-50%);
+   
     background: rgba(0, 0, 0, 0.8);
     color: white;
     padding: 8px;
@@ -613,14 +569,12 @@
   
      .velocity-enhance-button {
     position: absolute !important;
-    top: 60% !important;
+    bottom: 8px !important;  // Changed from top positioning
     right: 12px !important;
-    transform: translateY(-50%) !important;
     width: 32px !important;
     height: 32px !important;
     padding: 6px !important;
     background: transparent !important;
-    color: white !important;
     border: 1px solid #444444 !important;
     border-radius: 6px !important;
     cursor: pointer !important;
@@ -631,13 +585,13 @@
     opacity: 0 !important;
     transition: all 0.2s ease !important;
     pointer-events: none !important;
-    box-shadow: none !important;    
+    box-shadow: none !important;
   }
 
         .velocity-enhance-button:hover {
           background: black !important;
           box-shadow: 0 2px 8px rgba(0, 138, 203, 0.3) !important;
-          transform: translateY(-50%) scale(1.05) !important;
+          transform: scale(1.05) !important;
         }
         .velocity-wrapper.loaded .velocity-enhance-button.visible {
     opacity: 1 !important;
@@ -646,7 +600,7 @@
         .velocity-enhance-button:disabled.visible {
           opacity: 0.5 !important;
           cursor: not-allowed !important;
-          transform: translateY(-50%) scale(1) !important;
+          transform:  scale(1) !important;
           pointer-events: none !important;
         }
           .velocity-enhance-button img {
@@ -1881,9 +1835,9 @@ function getSelectedText(element) {
   const breathingStyles = document.createElement('style');
   breathingStyles.textContent = `
     @keyframes breathe {
-      0% { transform: translateY(-50%) scale(1); }
-      50% { transform: translateY(-50%) scale(1.1); }
-      100% { transform: translateY(-50%) scale(1); }
+      0% { transform: scale(1); }
+      50% { transform:  scale(1.1); }
+      100% { transform:  scale(1); }
     }
     
     .velocity-enhance-button.breathing {
@@ -1922,9 +1876,8 @@ const buttonStyles = document.createElement('style');
 buttonStyles.textContent = `
   .velocity-enhance-button {
     position: absolute !important;
-    top: 50% !important;
+    bottom: 8px !important;  // Changed from top positioning
     right: 12px !important;
-    transform: translateY(-50%) !important;
     width: 40px !important;
     height: 40px !important;
     padding: 8px !important;
@@ -1937,14 +1890,13 @@ buttonStyles.textContent = `
     align-items: center !important;
     justify-content: center !important;
     opacity: 0 !important;
-    transition: all 0.3s ease !important;
+    transition: all 0.2s ease !important;
     pointer-events: auto !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-    z-index: 999998 !important;
   }
 
   .velocity-enhance-button:hover {
-    transform: translateY(-50%) scale(1.05) !important;
+    transform: scale(1.05) !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   }
 
@@ -1961,8 +1913,8 @@ buttonStyles.textContent = `
   }
 
   @keyframes velocity-breathe {
-    0%, 100% { transform: translateY(-50%) scale(1); }
-    50% { transform: translateY(-50%) scale(1.1); }
+    0%, 100% { transform:  scale(1); }
+    50% { transform:  scale(1.1); }
   }
 
   .velocity-enhance-button.breathing {
@@ -1974,8 +1926,8 @@ buttonStyles.textContent = `
   }
 
   @keyframes velocity-spin {
-    from { transform: translateY(-50%) rotate(0deg); }
-    to { transform: translateY(-50%) rotate(360deg); }
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 `;
 
