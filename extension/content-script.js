@@ -132,6 +132,12 @@
       return 'top'; // Default position for non-Claude platforms
     }
   }
+  function notifyWelcomeMessageReady() {
+    console.log("NOTIFY");
+    chrome.runtime.sendMessage({
+      type: 'WELCOME_BUTTON_READY'
+    });
+  }
   
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     
@@ -278,19 +284,46 @@
   const PLATFORM_CONFIG = {
     chatgpt: {
       urlPattern: /^https:\/\/chatgpt\.com/,
-      selectors: '.ProseMirror[contenteditable="true"][id="prompt-textarea"]',
+      selectors: '.ProseMirror[contenteditable="true"][id="prompt-textarea"], textarea.resize-none.overflow-hidden.border-0.bg-transparent',
       name: 'GPT',
       customStyles: `
-        .velocity-wrapper .ProseMirror {
-          padding-right: 45px !important; /* Reduced padding */
-          min-height: 24px !important;
-          overflow: hidden !important;
+        .velocity-wrapper {
+          display: grid !important;
+          width: 100% !important;
+          position: relative !important;
+          min-height: 48px !important;
+          height: auto !important;
         }
-  
+    
         .velocity-wrapper textarea {
+          grid-column: 1 / -1 !important;
+          grid-row: 1 / -1 !important;
+          width: 100% !important;
+          height: 100% !important;
+          resize: none !important;
+          overflow-y: hidden !important;
           padding-right: 45px !important;
-          overflow: hidden !important;
+          margin: 0 !important;
+          border: 0 !important;
+          background: transparent !important;
+          box-sizing: border-box !important;
         }
+    
+        .velocity-wrapper .velocity-enhance-button {
+          position: absolute !important;
+          right: 12px !important;
+          bottom: 8px !important;
+          z-index: 10 !important;
+        }
+    
+        .velocity-wrapper span.invisible {
+          visibility: hidden !important;
+          white-space: pre-wrap !important;
+          grid-column: 1 / -1 !important;
+          grid-row: 1 / -1 !important;
+          padding: 0 !important;
+        }
+    
         /* Hide scrollbars */
         .velocity-wrapper *::-webkit-scrollbar {
           display: none !important;
@@ -740,187 +773,290 @@
     
   
   // Modified createWelcomeMessage function with proper initialization
-  function createWelcomeMessage() {
-    // Check if message should be shown
-    chrome.storage.local.get(['welcomeMessageShown'], function(result) {
-      if (result.welcomeMessageShown) {
-        return;
-      }
-  
-      // First ensure window.velocityState exists
-      window.velocityState = window.velocityState || {};
-  
-      // Add animation keyframes first
-      if (!document.querySelector('#velocity-welcome-styles')) {
-        const styleSheet = document.createElement('style');
-        styleSheet.id = 'velocity-welcome-styles';
-        styleSheet.textContent = `
-          @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-16px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes slideOut {
-            from { opacity: 1; transform: translateY(0); }
-            to { opacity: 0; transform: translateY(-16px); }
-          }
-          @keyframes slideInUp {
-            from { opacity: 0; transform: translate(-50%, 16px); }
-            to { opacity: 1; transform: translate(-50%, 0); }
-          }
-          @keyframes slideOutDown {
-            from { opacity: 1; transform: translate(-50%, 0); }
-            to { opacity: 0; transform: translate(-50%, 16px); }
-          }
-        `;
-        document.head.appendChild(styleSheet);
-      }
-  
-      // Remove any existing welcome messages
-      document.querySelectorAll('#velocity-welcome, #velocity-welcome-2').forEach(el => el.remove());
-  
-      // Create initial welcome message
-      const welcomeBox = document.createElement('div');
-      welcomeBox.id = 'velocity-welcome';
-      welcomeBox.style.cssText = `
-        position: fixed;
-        top: 48px;
-        right: 16px;
-        width: 220px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        padding: 12px;
-        z-index: 2147483647;
-        font-family: system-ui, -apple-system, sans-serif;
-        animation: slideIn 0.3s ease-out;
-        border: 1px solid #E5E7EB;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        opacity: 0;
-      `;
-  
-      // Add content with your existing HTML
-      welcomeBox.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-          <img src="${chrome.runtime.getURL('assets/logo.png')}" 
-               style="width: 20px; height: 20px;" alt="Velocity">
-          <span style="font-weight: 500; color: #1a1a1a;">Velocity Activated</span>
-        </div>
-        <p style="margin: 0; font-size: 12px; color: #666; line-height: 1.4;">
-          Ready to enhance your prompts on this site
-        </p>
-        <div style="display: flex; align-items: center; margin-top: 8px; gap: 4px;">
-          <span style="font-size: 12px; color: #666;">1/2</span>
-          <div style="flex-grow: 1; display: flex; gap: 4px; justify-content: flex-end;">
-            <div style="width: 8px; height: 8px; border-radius: 50%; background: #0284C7;"></div>
-            <div style="width: 8px; height: 8px; border-radius: 50%; background: #E5E7EB;"></div>
-          </div>
-        </div>
-      `;
-  
-      // Add hover effects
-      welcomeBox.addEventListener('mouseover', () => {
-        welcomeBox.style.transform = 'scale(1.02)';
-      });
-  
-      welcomeBox.addEventListener('mouseout', () => {
-        welcomeBox.style.transform = 'scale(1)';
-      });
-  
-      // Add to page
-      document.body.appendChild(welcomeBox);
-  
-      // Trigger animation after a short delay to ensure proper rendering
-      requestAnimationFrame(() => {
-        welcomeBox.style.opacity = '1';
-      });
-  
-      // Handle click to show second message
-      welcomeBox.addEventListener('click', () => {
-        welcomeBox.style.animation = 'slideOut 0.3s ease-in forwards';
-        setTimeout(() => {
-          welcomeBox.remove();
-          showSecondMessage();
-        }, 300);
-      });
-  
-      // Mark as shown
-      chrome.storage.local.set({ welcomeMessageShown: true });
-    });
-  }
-  
-  // Modified showSecondMessage function with better error handling
-  function showSecondMessage() {
-    const input = document.querySelector('textarea, [contenteditable="true"], [role="textbox"]');
-    if (!input) {
-      console.log('No input element found for second message');
-      return;
-    }
-  
-    const secondMessage = document.createElement('div');
-    secondMessage.id = 'velocity-welcome-2';
-    secondMessage.style.cssText = `
-      position: absolute;
-      bottom: calc(100% + 16px);
-      left: 50%;
-      transform: translateX(-50%);
-      width: 280px;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      padding: 16px;
-      z-index: 2147483647;
-      font-family: system-ui, -apple-system, sans-serif;
-      animation: slideInUp 0.3s ease-out;
-      border: 1px solid #E5E7EB;
-      opacity: 0;
-    `;
-  
-    // Add your existing second message HTML
-    secondMessage.innerHTML = `
-      <div style="position: relative">
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-          <span style="font-weight: 500; color: #1a1a1a;">Enhance Your Prompts</span>
-        </div>
-        <p style="margin: 0; font-size: 12px; color: #666; line-height: 1.4;">
-          Click the enhance button that appears when you type to get AI-powered prompt improvements. Try writing a prompt and look for the button on the right!
-        </p>
-        <div style="display: flex; align-items: center; margin-top: 8px; gap: 4px;">
-          <span style="font-size: 12px; color: #666;">2/2</span>
-          <div style="flex-grow: 1; display: flex; gap: 4px; justify-content: flex-end;">
-            <div style="width: 8px; height: 8px; border-radius: 50%; background: #E5E7EB;"></div>
-            <div style="width: 8px; height: 8px; border-radius: 50%; background: #0284C7;"></div>
-          </div>
-        </div>
-        <div style="position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 12px; height: 12px; background: white; border-right: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB;"></div>
-      </div>
-    `;
-      // Find or create container
-      let container = input.closest('.velocity-wrapper') || input.parentElement;
-      if (!container) {
-        container = document.createElement('div');
-        container.style.position = 'relative';
-        input.parentNode.insertBefore(container, input);
-        container.appendChild(input);
-      }
-      container.style.position = 'relative';
+  // Modify createWelcomeMessage to be more reliable
+// function createWelcomeMessage() {
+//   // Check if message should be shown
+//   chrome.storage.local.get(['welcomeMessageShown'], async function(result) {
+//     if (result.welcomeMessageShown) {
+//       return;
+//     }
+
+//     // Remove any existing welcome messages first
+//     document.querySelectorAll('#velocity-welcome').forEach(el => el.remove());
+//     const platformInfo = await detectPlatform();
     
-      // Add to page
-      container.appendChild(secondMessage);
-    
-      // Trigger animation
-      requestAnimationFrame(() => {
-        secondMessage.style.opacity = '1';
-      });
-    
-      // Auto-remove after delay
-      setTimeout(() => {
-        if (secondMessage.parentNode) {
-          secondMessage.style.animation = 'slideOutDown 0.3s ease-in forwards';
-          setTimeout(() => secondMessage.remove(), 300);
-        }
-      }, 8000);
-    }
+//     // Don't show welcome message on ThinkVelocity or unsupported platforms
+//     if (!platformInfo.isSupported || 
+//         platformInfo.platform === 'thinkvelocity' || 
+//         platformInfo.isDevelopment) {
+//       return;
+//     }
+
+//     // Create initial welcome message
+//     const welcomeBox = document.createElement('div');
+//     welcomeBox.id = 'velocity-welcome';
+//     welcomeBox.style.cssText = `
+//       position: fixed;
+//       top: 48px;
+//       right: 16px;
+//       width: 220px;
+//       background: white;
+//       border-radius: 12px;
+//       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+//       padding: 12px;
+//       z-index: 2147483647;
+//       font-family: system-ui, -apple-system, sans-serif;
+//       animation: slideIn 0.3s ease-out;
+//       border: 1px solid #E5E7EB;
+//       cursor: pointer;
+//       transition: all 0.2s ease;
+//       opacity: 0;
+//     `;
+
+//     // Add content
+//     welcomeBox.innerHTML = `
+//       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+//         <img src="${chrome.runtime.getURL('assets/logo.png')}" 
+//              style="width: 20px; height: 20px;" alt="Velocity">
+//         <span style="font-weight: 500; color: #1a1a1a;">Velocity Activated</span>
+//       </div>
+//       <p style="margin: 0; font-size: 12px; color: #666; line-height: 1.4;">
+//         Ready to enhance your prompts on this site
+//       </p>
+//       <div style="display: flex; align-items: center; margin-top: 8px; gap: 4px;">
+//         <span style="font-size: 12px; color: #666;">1/2</span>
+//         <div style="flex-grow: 1; display: flex; gap: 4px; justify-content: flex-end;">
+//           <div style="width: 8px; height: 8px; border-radius: 50%; background: #0284C7;"></div>
+//           <div style="width: 8px; height: 8px; border-radius: 50%; background: #E5E7EB;"></div>
+//         </div>
+//       </div>
+//     `;
+
+//     // Add hover effects
+//     welcomeBox.addEventListener('mouseover', () => {
+//       welcomeBox.style.transform = 'scale(1.02)';
+//     });
+
+//     welcomeBox.addEventListener('mouseout', () => {
+//       welcomeBox.style.transform = 'scale(1)';
+//     });
+
+//     // Ensure styles exist before adding the box
+//     const ensureStyles = () => {
+//       if (!document.querySelector('#velocity-welcome-styles')) {
+//         const styleSheet = document.createElement('style');
+//         styleSheet.id = 'velocity-welcome-styles';
+//         styleSheet.textContent = `
+//           @keyframes slideIn {
+//             from { opacity: 0; transform: translateY(-16px); }
+//             to { opacity: 1; transform: translateY(0); }
+//           }
+//           @keyframes slideOut {
+//             from { opacity: 1; transform: translateY(0); }
+//             to { opacity: 0; transform: translateY(-16px); }
+//           }
+//               @keyframes slideInUp {
+//     from { 
+//       opacity: 0; 
+//       transform: translate(-50%, 16px);
+//     }
+//     to { 
+//       opacity: 1; 
+//       transform: translate(-50%, 0);
+//     }
+//   }
+  
+//   @keyframes slideOutDown {
+//     from { 
+//       opacity: 1; 
+//       transform: translate(-50%, 0);
+//     }
+//     to { 
+//       opacity: 0; 
+//       transform: translate(-50%, 16px);
+//     }
+//   }
+
+//         `;
+//         document.head.appendChild(styleSheet);
+//       }
+//     };
+
+// //    Function to add the welcome box
+//     const addWelcomeBox = () => {
+//       ensureStyles();
+//       document.body.appendChild(welcomeBox);
+//       // Trigger animation after a short delay
+//       requestAnimationFrame(() => {
+//         welcomeBox.style.opacity = '1';
+//       });
+//     };
+
+//     // Try to add the welcome box immediately if document.body exists
+//     if (document.body) {
+//       addWelcomeBox();
+//     } else {
+//       // If document.body doesn't exist yet, wait for it
+//       const observer = new MutationObserver((mutations, obs) => {
+//         if (document.body) {
+//           addWelcomeBox();
+//           obs.disconnect();
+//         }
+//       });
+      
+//       observer.observe(document.documentElement, {
+//         childList: true,
+//         subtree: true
+//       });
+//     }
+
+//     // Handle click to show second message and remove first message
+//     // welcomeBox.addEventListener('click', () => {
+//     //   welcomeBox.style.animation = 'slideOut 0.3s ease-in forwards';
+//     //   setTimeout(() => {
+//     //     welcomeBox.remove();
+//     //     setTimeout(() => {
+//     //       showSecondMessage();
+//     //     }, 500); // Give time for enhance button to be injected
+//     //   }, 300);
+//     // });
+//     setTimeout(() => {
+//       if (welcomeBox && welcomeBox.parentNode) {
+//         welcomeBox.style.animation = 'slideOut 0.3s ease-in forwards';
+//         setTimeout(() => {
+//           welcomeBox.remove();
+//           // Show second message after first disappears
+//           showSecondMessage();
+//         }, 300);
+//       }
+//     }, 4000);
+
+//     // Mark as shown
+//     chrome.storage.local.set({ welcomeMessageShown: true });
+
+//     // Auto-remove after 8 seconds if not clicked
+//     // setTimeout(() => {
+//     //   if (welcomeBox && welcomeBox.parentNode) {
+//     //     welcomeBox.style.animation = 'slideOut 0.3s ease-in forwards';
+//     //     setTimeout(() => welcomeBox.remove(), 3000);
+//     //   }
+//     // }, 8000);
+//   });
+// }
+  
+//   // Modified showSecondMessage function with better error handling
+//   function showSecondMessage() {
+//     console.log("SHOW SECOND MESSASGE");
+//     let retryCount = 0;
+//     const maxRetries = 10; // Increase max retries
+//     const retryInterval = 1000; // Check every second
+  
+//     function findInputAndButton() {
+//       const inputs = document.querySelectorAll('textarea, [contenteditable="true"], [role="textbox"]');
+//       let targetInput = null;
+//       let enhanceButton = null;
+  
+//       inputs.forEach(input => {
+//         // Find the most visible input that has an enhance button
+//         if (input.offsetParent !== null) { // Check if input is visible
+//           const wrapper = input.closest('.velocity-wrapper');
+//           if (wrapper) {
+//             const button = wrapper.querySelector('.velocity-enhance-button');
+//             if (button) {
+//               targetInput = input;
+//               enhanceButton = button;
+//             }
+//           }
+//         }
+//       });
+  
+//       return { input: targetInput, button: enhanceButton };
+//     }
+  
+//     function attemptToShowMessage() {
+//       const { input, button } = findInputAndButton();
+      
+//       if (input && button) {
+//         // Remove any existing second messages
+//         document.querySelectorAll('#velocity-welcome-2').forEach(el => el.remove());
+  
+//         const secondMessage = document.createElement('div');
+//         secondMessage.id = 'velocity-welcome-2';
+//         secondMessage.style.cssText = `
+//           position: absolute;
+//           bottom: calc(100% + 16px);
+//           left: 50%;
+//           transform: translateX(-50%);
+//           width: 280px;
+//           background: white;
+//           border-radius: 12px;
+//           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+//           padding: 16px;
+//           z-index: 2147483647;
+//           font-family: system-ui, -apple-system, sans-serif;
+//           animation: slideInUp 0.3s ease-out;
+//           border: 1px solid #E5E7EB;
+//           opacity: 0;
+//           pointer-events: none;
+//         `;
+  
+//         secondMessage.innerHTML = `
+//           <div style="position: relative">
+//             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+//               <span style="font-weight: 500; color: #1a1a1a;">Enhance Your Prompts</span>
+//             </div>
+//             <p style="margin: 0; font-size: 12px; color: #666; line-height: 1.4;">
+//               Click the enhance button that appears when you type to get AI-powered prompt improvements. Try writing a prompt and look for the button on the right!
+//             </p>
+//             <div style="display: flex; align-items: center; margin-top: 8px; gap: 4px;">
+//               <span style="font-size: 12px; color: #666;">2/2</span>
+//               <div style="flex-grow: 1; display: flex; gap: 4px; justify-content: flex-end;">
+//                 <div style="width: 8px; height: 8px; border-radius: 50%; background: #E5E7EB;"></div>
+//                 <div style="width: 8px; height: 8px; border-radius: 50%; background: #0284C7;"></div>
+//               </div>
+//             </div>
+//             <div style="position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 12px; height: 12px; background: white; border-right: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB;"></div>
+//           </div>
+//         `;
+  
+//         const wrapper = input.closest('.velocity-wrapper');
+//         if (wrapper) {
+//           wrapper.style.position = 'relative';
+//           wrapper.appendChild(secondMessage);
+  
+//           // Show message with animation
+//           requestAnimationFrame(() => {
+//             secondMessage.style.opacity = '1';
+//           });
+  
+//           // Auto-remove after delay
+//           setTimeout(() => {
+//             if (secondMessage.parentNode) {
+//               secondMessage.style.animation = 'slideOutDown 0.3s ease-in forwards';
+//               setTimeout(() => secondMessage.remove(), 300);
+//             }
+//           }, 8000);
+  
+//           return true; // Successfully showed message
+//         }
+//       }
+  
+//       return false; // Failed to show message
+//     }
+  
+//     function tryShowMessage() {
+//       if (retryCount < maxRetries) {
+//         if (!attemptToShowMessage()) {
+//           retryCount++;
+//           setTimeout(tryShowMessage, retryInterval);
+//         }
+//       }
+//     }
+  
+//     // Start trying to show the message
+//     tryShowMessage();
+//   }
+  
   
     async function savePromptToHistory(promptText, aiType) {
       try {
@@ -1277,12 +1413,54 @@
       };
     }
     
+    function autoResizeTextarea(textarea) {
+      if (!textarea) return;
+      
+      // Create or get the hidden span if it doesn't exist
+      let hiddenSpan = textarea.parentElement.querySelector('span.invisible');
+      if (!hiddenSpan) {
+        hiddenSpan = document.createElement('span');
+        hiddenSpan.className = 'invisible col-start-1 col-end-2 row-start-1 row-end-2 whitespace-pre-wrap p-0';
+        textarea.parentElement.appendChild(hiddenSpan);
+      }
     
+      // Update hidden span content
+      hiddenSpan.textContent = textarea.value + ' ';
+      
+      // Update textarea height based on content
+      const computedStyle = window.getComputedStyle(hiddenSpan);
+      const height = Math.max(
+        parseInt(computedStyle.height),
+        48 // minimum height
+      );
+      
+      textarea.style.height = `${height}px`;
+      textarea.parentElement.style.height = `${height}px`;
+    }
     
     async function createEnhanceButton(inputElement) {
       const wrapper = document.createElement('div');
       wrapper.className = 'velocity-wrapper';
-
+      // if (window.velocityState.platformInfo?.platform === 'chatgpt') {
+      //   wrapper.style.display = 'grid';
+        
+      //   // Create hidden span for measuring text
+      //   const hiddenSpan = document.createElement('span');
+      //   hiddenSpan.className = 'invisible col-start-1 col-end-2 row-start-1 row-end-2 whitespace-pre-wrap p-0';
+      //   wrapper.appendChild(hiddenSpan);
+        
+      //   // Add resize observer
+      //   const resizeObserver = new ResizeObserver(() => {
+      //     autoResizeTextarea(inputElement);
+      //   });
+      //   resizeObserver.observe(inputElement);
+        
+      //   // Add input listener for content changes
+      //   inputElement.addEventListener('input', () => {
+      //     autoResizeTextarea(inputElement);
+      //   });
+      // }
+    
       const platformInfo = window.velocityState.platformInfo;
       const isClaudeInput = platformInfo?.platform === 'claude';
 
@@ -1391,9 +1569,22 @@
         popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
         popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
         popup.style.transform = 'translateX(-50%)';
-        const storage = await chrome.storage.local.get(['userName']);
-        messageEl.textContent = `Hey ${storage.userName}, I am Velocity. Your personal magician!`;
-        popup.style.opacity = '1';
+        const result = await chrome.storage.local.get(['welcomeMessageShown','userName']);
+        if (!result.welcomeMessageShown) {
+          // First time message
+          messageEl.textContent = 'Click the enhance button to optimize your prompts instantly';
+          
+          // Mark as shown after 8 seconds
+          setTimeout(() => {
+            chrome.storage.local.set({ welcomeMessageShown: true });
+            // Update to regular message
+            messageEl.textContent = `Hey ${result.userName}, I am Velocity. Your personal magician!`;
+          }, 8000);
+        } else {
+          // Regular message for returning users
+          messageEl.textContent = `Hey ${result.userName}, I am Velocity. Your personal magician!`;
+        }
+            popup.style.opacity = '1';
         popup.style.visibility = 'visible';
         popup.classList.add('show');
       }
@@ -1413,6 +1604,7 @@
       if (window.velocityState?.isEnabled) {
         button.classList.add('visible');
       }
+      notifyWelcomeMessageReady();
 
       const hoverHandler = handleButtonHover(button, popup);
       // Add token check before enabling the button
@@ -2433,7 +2625,10 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
       (input.getAttribute('role') === 'textbox' && input.classList.toString().includes('slateTextArea_'));
     const isChatGPTInput = input.matches('#prompt-textarea') || 
       (input.getAttribute('contenteditable') === 'true' && input.classList.contains('ProseMirror'));
-  
+      (input.tagName === 'TEXTAREA' && input.classList.contains('resize-none') && 
+     input.classList.contains('overflow-hidden') && input.classList.contains('border-0') && 
+     input.classList.contains('bg-transparent'));
+
     if (window.velocityState.platformInfo?.platform === 'discord' && isDiscordInput) {
       return isVisible;
     }
@@ -2447,7 +2642,13 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
     );
   }
   
-  
+  function setupInitialTextareaHeight(textarea) {
+    if (window.velocityState.platformInfo?.platform === 'chatgpt') {
+      requestAnimationFrame(() => {
+        autoResizeTextarea(textarea);
+      });
+    }
+  }
   async function findAndEnhanceInputs() {
     const platformInfo = await detectPlatform();
     if (!platformInfo.isSupported) {
@@ -2467,6 +2668,8 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
         const existingWrapper = input.closest('.velocity-wrapper');
         if (!existingWrapper) {
           createEnhanceButton(input);
+          //setupInitialTextareaHeight(input);
+
         } else {
           // Update existing button visibility
           const button = existingWrapper.querySelector('.velocity-enhance-button');
@@ -2498,7 +2701,27 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
   
 
             
-  
+  function setupEditObserver() {
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.addedNodes) {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === 1) { // Element node
+            const editTextarea = node.querySelector('textarea.resize-none.overflow-hidden.border-0.bg-transparent');
+            if (editTextarea && !editTextarea.closest('.velocity-wrapper')) {
+              createEnhanceButton(editTextarea);
+            }
+          }
+        });
+      }
+    });
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+}
   (async function init() {
     try {
       const platformInfo = await detectPlatform();
@@ -2517,8 +2740,9 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
     
       if (platformInfo.isSupported) {
         await injectStyles();
-        createWelcomeMessage(); // Add this
-        setupObservers();
+        //createWelcomeMessage(); // Add this        
+        //setupObservers();
+        //setupEditObserver();
         findAndEnhanceInputs();
       }
     } catch (error) {
