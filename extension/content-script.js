@@ -99,23 +99,38 @@
     const popupHeight = popup.offsetHeight;
     const viewportHeight = window.innerHeight;
     
-    // Calculate available space above and below
-    const spaceAbove = buttonRect.top;
-    const spaceBelow = viewportHeight - buttonRect.bottom;
-    
-    // Add some padding for better appearance
-    const MARGIN = 20;
-    
-    // Determine if popup should go above or below
-    const position = spaceAbove > spaceBelow ? 'top' : 'bottom';
-    
-    return {
-      position,
-      left: buttonRect.left + buttonRect.width/2,
-      top: position === 'top' ? 
-        buttonRect.top - MARGIN : 
-        buttonRect.bottom + MARGIN
-    };
+    // Check if we're on Claude
+    if (window.velocityState.platformInfo?.platform === 'claude') {
+      // Calculate available space above and below
+      const spaceAbove = buttonRect.top;
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      const MARGIN = 10;
+      
+      // Determine position only for Claude
+      const position = spaceBelow >= popupHeight || spaceBelow > spaceAbove ? 'bottom' : 'top';
+      
+      // Position popup based on available space
+      popup.style.position = 'fixed';
+      popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+      
+      if (position === 'bottom') {
+        popup.style.bottom = '';
+        popup.style.top = `${buttonRect.bottom + MARGIN}px`;
+        //popup.style.transform = 'translateX(-50%)';
+      } else {
+        popup.style.bottom = `${window.innerHeight - buttonRect.top + MARGIN}px`;
+        //popup.style.transform = 'translateX(-50%)';
+      }
+      
+      return position;
+    } else {
+      // For all other platforms, keep the original positioning
+      //popup.style.position = 'fixed';
+      popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+      popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+      //popup.style.transform = 'translateX(-50%)';
+      return 'top'; // Default position for non-Claude platforms
+    }
   }
   
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -266,14 +281,6 @@
       selectors: '.ProseMirror[contenteditable="true"][id="prompt-textarea"]',
       name: 'GPT',
       customStyles: `
-        .velocity-wrapper {
-          position: relative !important;
-          display: block !important;
-          width: 100% !important;
-          min-height: 24px !important;
-          overflow: hidden !important; /* Hide scrollbar */
-        }
-        
         .velocity-wrapper .ProseMirror {
           padding-right: 45px !important; /* Reduced padding */
           min-height: 24px !important;
@@ -284,18 +291,6 @@
           padding-right: 45px !important;
           overflow: hidden !important;
         }
-  
-        .velocity-enhance-button {
-          position: absolute !important;
-          top: 50% !important;
-          right: 8px !important; /* Moved closer to edge */
-          transform: translateY(-50%) !important;
-          width: 28px !important; /* Smaller button */
-          height: 28px !important;
-          padding: 4px !important;
-          z-index: 999999 !important;
-        }
-  
         /* Hide scrollbars */
         .velocity-wrapper *::-webkit-scrollbar {
           display: none !important;
@@ -309,51 +304,28 @@
       selectors: '.claude-textarea, div[contenteditable="true"]',
       name: 'Claude',
       customStyles: `
-        .velocity-wrapper {
-          position: relative !important;
-          display: block !important;
-          width: 100% !important;
-          min-height: 24px !important;
-          background: transparent !important;
-          overflow: hidden !important;
-        }
-        
-        .velocity-wrapper textarea,
-        .velocity-wrapper [contenteditable="true"] {
-          padding-right: 45px !important;
-          min-height: inherit !important;
-          overflow: hidden !important;
-          resize: none !important;
-          scrollbar-width: none !important;
-          -ms-overflow-style: none !important;
-          background: transparent !important;
-          width: 100% !important;
-          box-sizing: border-box !important;
-        }
-  
-        .velocity-enhance-button {
-          position: absolute !important;
-          top: 50% !important;
-          right: 8px !important;
-          transform: translateY(-50%) !important;
-          width: 28px !important;
-          height: 28px !important;
-          padding: 4px !important;
-          z-index: 999999 !important;
-        }
-  
-        /* Hide scrollbars */
-        .velocity-wrapper *::-webkit-scrollbar {
-          display: none !important;
-          width: 0 !important;
-          height: 0 !important;
-        }
-  
-        .velocity-wrapper textarea::-webkit-scrollbar,
-        .velocity-wrapper [contenteditable="true"]::-webkit-scrollbar {
-          display: none !important;
-        }
-      `
+      .velocity-wrapper {
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+        min-height: 24px !important;
+        background: transparent !important;
+        overflow: hidden !important;
+      }
+      
+      .velocity-wrapper textarea,
+      .velocity-wrapper [contenteditable="true"] {
+        padding-right: 45px !important;
+        min-height: inherit !important;
+        overflow: hidden !important;
+        resize: none !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+        background: transparent !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+    `  
     },
     gemini: {
       urlPattern: /^https:\/\/gemini\.google\.com/,
@@ -568,7 +540,7 @@
     position: absolute;
     right: 100%;
     top: 50%;
-    transform: translateY(-50%);
+   
     background: rgba(0, 0, 0, 0.8);
     color: white;
     padding: 8px;
@@ -597,14 +569,12 @@
   
      .velocity-enhance-button {
     position: absolute !important;
-    top: 60% !important;
+    bottom: 8px !important;  // Changed from top positioning
     right: 12px !important;
-    transform: translateY(-50%) !important;
     width: 32px !important;
     height: 32px !important;
     padding: 6px !important;
     background: transparent !important;
-    color: white !important;
     border: 1px solid #444444 !important;
     border-radius: 6px !important;
     cursor: pointer !important;
@@ -615,13 +585,13 @@
     opacity: 0 !important;
     transition: all 0.2s ease !important;
     pointer-events: none !important;
-    box-shadow: none !important;    
+    box-shadow: none !important;
   }
 
         .velocity-enhance-button:hover {
           background: black !important;
           box-shadow: 0 2px 8px rgba(0, 138, 203, 0.3) !important;
-          transform: translateY(-50%) scale(1.05) !important;
+          transform: scale(1.05) !important;
         }
         .velocity-wrapper.loaded .velocity-enhance-button.visible {
     opacity: 1 !important;
@@ -630,7 +600,7 @@
         .velocity-enhance-button:disabled.visible {
           opacity: 0.5 !important;
           cursor: not-allowed !important;
-          transform: translateY(-50%) scale(1) !important;
+          transform:  scale(1) !important;
           pointer-events: none !important;
         }
           .velocity-enhance-button img {
@@ -1220,6 +1190,37 @@
         throw error;
       }
     }  // Function to create and attach enhance button
+    function calculatePopupPosition(button, popup) {
+      const buttonRect = button.getBoundingClientRect();
+      const popupHeight = popup.offsetHeight;
+      const viewportHeight = window.innerHeight;
+      
+      // Calculate available space above and below
+      const spaceAbove = buttonRect.top;
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      
+      // Add some padding for better appearance
+      const MARGIN = 10;
+      
+      // Determine if popup should go above or below based on available space
+      const position = spaceBelow >= popupHeight || spaceBelow > spaceAbove ? 'bottom' : 'top';
+      
+      // Position popup
+      popup.style.position = 'fixed';
+      popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+      
+      if (position === 'bottom') {
+        popup.style.bottom = '';  // Clear bottom positioning
+        popup.style.top = `${buttonRect.bottom + MARGIN}px`;
+        popup.style.transform = 'translateX(-50%)';
+      } else {
+        popup.style.top = '';  // Clear top positioning
+        popup.style.bottom = `${window.innerHeight - buttonRect.top + MARGIN}px`;
+        popup.style.transform = 'translateX(-50%)';
+      }
+      
+      return position;
+    }
     
     function handleButtonHover(button, popup) {
       // Add hover related styles
@@ -1642,8 +1643,16 @@ function getSelectedText(element) {
 
       if (text.length >= CHAR_THRESHOLD_MESSAGE && !helpMessageVisible) {
         const buttonRect = button.getBoundingClientRect();
-        popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-        popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+        if (window.velocityState.platformInfo?.platform != 'claude') {
+
+          popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+          popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+        }  
+        else{
+        const position = calculatePopupPosition(button, popup);
+        popup.classList.remove('top', 'bottom');
+        popup.classList.add(position);
+        }
         if (!settingsSection.classList.contains('show')) {
           messageEl.textContent = `Hey, ${storage.userName} ,I'm here to assist! Click me once you're done typing.`;
           popup.classList.add('show');
@@ -1672,7 +1681,7 @@ function getSelectedText(element) {
     // First add the popup styles
   const popupStyles = document.createElement('style');
   popupStyles.textContent = `
-     .velocity-popup {
+      .velocity-popup {
     position: fixed !important;
     background: white !important;
     color: #1a1a1a !important;
@@ -1695,16 +1704,9 @@ function getSelectedText(element) {
     visibility: visible !important;
   }
 
-  .velocity-popup.position-top {
-    transform: translate(-50%, -100%) !important;
-    margin-top: -10px !important;
-  }
 
-  .velocity-popup.position-bottom {
-    transform: translate(-50%, 0) !important;
-    margin-top: 10px !important;
-  }
 
+  
 
   
   /* Prevent hover conflicts */
@@ -1833,9 +1835,9 @@ function getSelectedText(element) {
   const breathingStyles = document.createElement('style');
   breathingStyles.textContent = `
     @keyframes breathe {
-      0% { transform: translateY(-50%) scale(1); }
-      50% { transform: translateY(-50%) scale(1.1); }
-      100% { transform: translateY(-50%) scale(1); }
+      0% { transform: scale(1); }
+      50% { transform:  scale(1.1); }
+      100% { transform:  scale(1); }
     }
     
     .velocity-enhance-button.breathing {
@@ -1874,9 +1876,8 @@ const buttonStyles = document.createElement('style');
 buttonStyles.textContent = `
   .velocity-enhance-button {
     position: absolute !important;
-    top: 50% !important;
+    bottom: 8px !important;  // Changed from top positioning
     right: 12px !important;
-    transform: translateY(-50%) !important;
     width: 40px !important;
     height: 40px !important;
     padding: 8px !important;
@@ -1889,14 +1890,13 @@ buttonStyles.textContent = `
     align-items: center !important;
     justify-content: center !important;
     opacity: 0 !important;
-    transition: all 0.3s ease !important;
+    transition: all 0.2s ease !important;
     pointer-events: auto !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-    z-index: 999998 !important;
   }
 
   .velocity-enhance-button:hover {
-    transform: translateY(-50%) scale(1.05) !important;
+    transform: scale(1.05) !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   }
 
@@ -1913,8 +1913,8 @@ buttonStyles.textContent = `
   }
 
   @keyframes velocity-breathe {
-    0%, 100% { transform: translateY(-50%) scale(1); }
-    50% { transform: translateY(-50%) scale(1.1); }
+    0%, 100% { transform:  scale(1); }
+    50% { transform:  scale(1.1); }
   }
 
   .velocity-enhance-button.breathing {
@@ -1926,8 +1926,8 @@ buttonStyles.textContent = `
   }
 
   @keyframes velocity-spin {
-    from { transform: translateY(-50%) rotate(0deg); }
-    to { transform: translateY(-50%) rotate(360deg); }
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 `;
 
@@ -2227,10 +2227,18 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
     
     const buttonRect = button.getBoundingClientRect();
     // Position the popup relative to the button
-    popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+    if (window.velocityState.platformInfo?.platform != 'claude') {
+      popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
     popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+    }
+    else{
+    const position = calculatePopupPosition(button, popup);
+    popup.classList.remove('top', 'bottom');
+    popup.classList.add(position);
+    }
     const storage = await chrome.storage.local.get(['userName']);
-
+    
+  
     // Show appropriate message based on style selection
     messageEl.textContent = hasStyleSelected ? 
       `Hey ${storage.userName}, press the button below to enhance your prompt!` : 

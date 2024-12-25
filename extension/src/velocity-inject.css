@@ -1,13 +1,13 @@
 /* Create a new file: velocity-inject.css */
 .velocity-wrapper {
-    position: relative !important;
-    display: block !important;
-    width: 100% !important;
-    min-height: inherit !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
-
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  min-height: inherit !important;
+  height: auto !important;
+  overflow: visible !important;
+  padding-bottom: 20px !important; /* Add padding to accommodate button */
+}
 
   .velocity-wrapper textarea,
   .velocity-wrapper [contenteditable="true"],
@@ -38,9 +38,8 @@
 
   .velocity-enhance-button {
     position: absolute !important;
-    top: 50% !important;
+    bottom: 8px !important;
     right: 12px !important;
-    transform: translateY(-50%) !important;
     width: 32px !important;
     height: 32px !important;
     padding: 6px !important;
@@ -53,9 +52,13 @@
     align-items: center !important;
     justify-content: center !important;
     opacity: 0 !important;
-    transition: opacity 0.2s ease !important;
+    transition: all 0.2s ease !important;
     pointer-events: none !important;
-  }
+}
+.velocity-wrapper.loaded .velocity-enhance-button.visible {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
 
   .velocity-enhance-button.visible {
     opacity: 1 !important;
@@ -63,6 +66,7 @@
   }
 
   .velocity-enhance-button:hover {
+    transform: scale(1.05) !important;  /* Change hover transform */
     background: black !important;
     box-shadow: 0 2px 8px rgba(0, 138, 203, 0.3) !important;
   }
