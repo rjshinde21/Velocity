@@ -8,7 +8,7 @@
   let lastTokensUsed = 0;
   let isValidPlatform = false;
   let hideTimeout;
-  let CHAR_THRESHOLD_MESSAGE = 10;
+  let CHAR_THRESHOLD_MESSAGE = 25;
   let helpMessageVisible = false;
   let hasStyleSelected = false;
   let loadingInterval;
