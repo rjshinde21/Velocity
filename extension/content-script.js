@@ -1485,8 +1485,19 @@
         hoverHandler.forceHide(); // Force hide popup when loading starts
         const showLoadingMessage = () => {
           const buttonRect = button.getBoundingClientRect();
-          popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-          popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+          if (window.velocityState.platformInfo?.platform != 'claude') {
+  
+            popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+            popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+          }  
+          else{
+          const position = calculatePopupPosition(button, popup);
+          popup.classList.remove('top', 'bottom');
+          popup.classList.add(position);
+          }
+  
+          // popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+          // popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
           
           // Get random loading message
           messageEl.textContent = getRandomLoadingMessage();
