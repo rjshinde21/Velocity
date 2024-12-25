@@ -99,23 +99,39 @@
     const popupHeight = popup.offsetHeight;
     const viewportHeight = window.innerHeight;
     
-    // Calculate available space above and below
-    const spaceAbove = buttonRect.top;
-    const spaceBelow = viewportHeight - buttonRect.bottom;
-    
-    // Add some padding for better appearance
-    const MARGIN = 20;
-    
-    // Determine if popup should go above or below
-    const position = spaceAbove > spaceBelow ? 'top' : 'bottom';
-    
-    return {
-      position,
-      left: buttonRect.left + buttonRect.width/2,
-      top: position === 'top' ? 
-        buttonRect.top - MARGIN : 
-        buttonRect.bottom + MARGIN
-    };
+    // Check if we're on Claude
+    if (window.velocityState.platformInfo?.platform === 'claude') {
+      // Calculate available space above and below
+      const spaceAbove = buttonRect.top;
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      const MARGIN = 10;
+      
+      // Determine position only for Claude
+      const position = spaceBelow >= popupHeight || spaceBelow > spaceAbove ? 'bottom' : 'top';
+      
+      // Position popup based on available space
+      popup.style.position = 'fixed';
+      popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+      
+      if (position === 'bottom') {
+        popup.style.bottom = '';
+        popup.style.top = `${buttonRect.bottom + MARGIN}px`;
+        popup.style.transform = 'translateX(-50%)';
+      } else {
+        console.log
+        popup.style.bottom = `${window.innerHeight - buttonRect.top + MARGIN}px`;
+        popup.style.transform = 'translateX(-50%)';
+      }
+      
+      return position;
+    } else {
+      // For all other platforms, keep the original positioning
+      //popup.style.position = 'fixed';
+      popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+      popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+      //popup.style.transform = 'translateX(-50%)';
+      return 'top'; // Default position for non-Claude platforms
+    }
   }
   
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -1220,6 +1236,37 @@
         throw error;
       }
     }  // Function to create and attach enhance button
+    function calculatePopupPosition(button, popup) {
+      const buttonRect = button.getBoundingClientRect();
+      const popupHeight = popup.offsetHeight;
+      const viewportHeight = window.innerHeight;
+      
+      // Calculate available space above and below
+      const spaceAbove = buttonRect.top;
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      
+      // Add some padding for better appearance
+      const MARGIN = 10;
+      
+      // Determine if popup should go above or below based on available space
+      const position = spaceBelow >= popupHeight || spaceBelow > spaceAbove ? 'bottom' : 'top';
+      
+      // Position popup
+      popup.style.position = 'fixed';
+      popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+      
+      if (position === 'bottom') {
+        popup.style.bottom = '';  // Clear bottom positioning
+        popup.style.top = `${buttonRect.bottom + MARGIN}px`;
+        popup.style.transform = 'translateX(-50%)';
+      } else {
+        popup.style.top = '';  // Clear top positioning
+        popup.style.bottom = `${window.innerHeight - buttonRect.top + MARGIN}px`;
+        popup.style.transform = 'translateX(-50%)';
+      }
+      
+      return position;
+    }
     
     function handleButtonHover(button, popup) {
       // Add hover related styles
@@ -1642,8 +1689,16 @@ function getSelectedText(element) {
 
       if (text.length >= CHAR_THRESHOLD_MESSAGE && !helpMessageVisible) {
         const buttonRect = button.getBoundingClientRect();
-        popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-        popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+        if (window.velocityState.platformInfo?.platform != 'claude') {
+
+          popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+          popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+        }  
+        else{
+        const position = calculatePopupPosition(button, popup);
+        popup.classList.remove('top', 'bottom');
+        popup.classList.add(position);
+        }
         if (!settingsSection.classList.contains('show')) {
           messageEl.textContent = `Hey, ${storage.userName} ,I'm here to assist! Click me once you're done typing.`;
           popup.classList.add('show');
@@ -1672,7 +1727,7 @@ function getSelectedText(element) {
     // First add the popup styles
   const popupStyles = document.createElement('style');
   popupStyles.textContent = `
-     .velocity-popup {
+      .velocity-popup {
     position: fixed !important;
     background: white !important;
     color: #1a1a1a !important;
@@ -1695,16 +1750,9 @@ function getSelectedText(element) {
     visibility: visible !important;
   }
 
-  .velocity-popup.position-top {
-    transform: translate(-50%, -100%) !important;
-    margin-top: -10px !important;
-  }
 
-  .velocity-popup.position-bottom {
-    transform: translate(-50%, 0) !important;
-    margin-top: 10px !important;
-  }
 
+  
 
   
   /* Prevent hover conflicts */
@@ -2227,10 +2275,18 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
     
     const buttonRect = button.getBoundingClientRect();
     // Position the popup relative to the button
-    popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+    if (window.velocityState.platformInfo?.platform != 'claude') {
+      popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
     popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+    }
+    else{
+    const position = calculatePopupPosition(button, popup);
+    popup.classList.remove('top', 'bottom');
+    popup.classList.add(position);
+    }
     const storage = await chrome.storage.local.get(['userName']);
-
+    
+  
     // Show appropriate message based on style selection
     messageEl.textContent = hasStyleSelected ? 
       `Hey ${storage.userName}, press the button below to enhance your prompt!` : 
