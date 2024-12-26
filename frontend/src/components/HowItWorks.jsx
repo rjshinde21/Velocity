@@ -47,12 +47,12 @@ const HowItWorks = () => {
       />
 
       {/* Content Container */}
-      <div className="relative w-full px-4 sm:px-6 lg:px-10 py-16 sm:py-20">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:justify-between gap-10">
+      <div className="relative w-full px-4 sm:px-6 lg:px-6 py-16 sm:py-20">
+        <div className="max-w-[1440px] mx-auto flex flex-col lg:flex-row lg:justify-between gap-6">
 
 
           {/* Left Section */}
-          <div className="w-full lg:w-1/2 px-4">
+          <div className="w-full lg:w-1/2 px-4 flex flex-col justify-start">
             <h1 className="font-Amenti text-3xl sm:text-4xl font-light text-white text-center lg:text-left lg:ml-20">
               How It Works
             </h1>
@@ -62,7 +62,7 @@ const HowItWorks = () => {
               <div className="w-full max-w-2xl mx-auto pt-4">
                 <div className="relative rounded-lg overflow-hidden bg-transparent aspect-[1578/1080]">
                   <video
-                    src="https://toteminteractive.in/velosty/Extensionnew.mp4"
+                    src="https://toteminteractive.in/velosty/Demo%20Draft%209_2_prob3.mp4"
                     className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
                     autoPlay
                     loop
@@ -80,7 +80,7 @@ const HowItWorks = () => {
               {steps.map((step, index) => (
                 <div
                   key={index}
-                  className="flex flex-col w-full sm:w-4/5 lg:w-2/3 min-h-[120px] p-4 sm:p-6 rounded-2xl bg-[rgba(0,0,0,0.3)] border border-gray-800 backdrop-blur-sm transition-transform transform hover:translate-y-2"
+                  className="flex flex-col w-full sm:w-4/5 lg:w-full min-h-[120px] p-4 sm:p-6 rounded-2xl bg-[rgba(0,0,0,0.3)] border border-gray-800 backdrop-blur-sm transition-transform transform hover:translate-y-2"
                   style={{
                     backgroundImage: `url(${cardbg})`,
                     backgroundSize: "100% 100%",
@@ -103,24 +103,24 @@ const HowItWorks = () => {
           </div>
 
           {/* Desktop Video - Hidden on mobile, shows on desktop */}
-          <div className="hidden lg:flex w-full lg:w-1/2 items-center justify-center px-4">
-            <div className="w-full max-w-2xl pt-8">
-              <div className="relative rounded-lg overflow-hidden bg-transparent aspect-[1578/1080]">
-                <video
-                  src="https://toteminteractive.in/velosty/Extensionnew.mp4"
-                  className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  disablePictureInPicture
-                  controlsList="nodownload nofullscreen noremoteplayback"
-                  controls={false}
-                />
-                <div className="absolute inset-0 z-10" aria-hidden="true" />
-              </div>
-            </div>
-          </div>
+          <div className="hidden lg:flex w-full lg:w-full mb-4 items-center justify-center px-8 ">
+    <div className="w-full max-w-5xl">
+        <div className="relative rounded-lg overflow-hidden bg-transparent aspect-[1600/1080] w-full">
+            <video
+                src="https://toteminteractive.in/velosty/Demo%20Draft%209_2_prob3.mp4"
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+                autoPlay
+                loop
+                muted
+                playsInline
+                disablePictureInPicture
+                controlsList="nodownload nofullscreen noremoteplayback"
+                controls={false}
+            />
+            <div className="absolute inset-0 z-10" aria-hidden="true" />
+        </div>
+    </div>
+</div>
         </div>
       </div>
     </div>
