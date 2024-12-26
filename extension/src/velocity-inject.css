@@ -3,7 +3,7 @@
   position: relative !important;
   display: block !important;
   width: 100% !important;
-  min-height: inherit !important;
+  min-height: 48px !important; /* Enforce minimum height */
   height: auto !important;
   overflow: visible !important;
   padding-bottom: 20px !important; /* Add padding to accommodate button */

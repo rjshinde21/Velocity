@@ -24,25 +24,27 @@ const Navbar = ({
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [hasJoinedLaunchlist, setHasJoinedLaunchlist] = useState(false);
 
-  // Effect to handle auto-opening of modal
+  // Check localStorage on mount and whenever modal closes
+  const checkLaunchlistStatus = () => {
+    const hasJoined = localStorage.getItem('hasJoinedLaunchlist') === 'true';
+    setHasJoinedLaunchlist(hasJoined);
+  };
+
   useEffect(() => {
-    // Only set the timer if user hasn't interacted yet
-    if (!hasUserInteracted) {
+    checkLaunchlistStatus();
+    
+    // Only set the timer if user hasn't interacted and hasn't joined
+    if (!hasUserInteracted && !hasJoinedLaunchlist) {
       const timer = setTimeout(() => {
         setIsModalOpen(true);
-        // Analytics.track('Modal Auto Opened', {
-        //   type: 'Launchlist',
-        //   timeToOpen: '6000ms'
-        // });
-      }, 3000); // 6 seconds delay
+      }, 3000);
 
-      // Cleanup timer on component unmount
       return () => clearTimeout(timer);
     }
-  }, [hasUserInteracted]);
+  }, [hasUserInteracted, hasJoinedLaunchlist]);
 
-  // Handler for manual modal opening
   const handleManualModalOpen = () => {
     setHasUserInteracted(true);
     setIsModalOpen(true);
@@ -51,10 +53,15 @@ const Navbar = ({
     });
   };
 
-  // Handler for modal closing
   const handleModalClose = () => {
     setHasUserInteracted(true);
     setIsModalOpen(false);
+    checkLaunchlistStatus(); // Check status when modal closes
+  };
+
+  // Callback for successful registration
+  const handleSuccessfulJoin = () => {
+    setHasJoinedLaunchlist(true);
   };
 
   return (
@@ -65,22 +72,23 @@ const Navbar = ({
             <img src={velocitylogo} className="h-10 sm:h-14" alt="Velocity Logo" />
           </Link>
 
-          {/* Desktop ScrollAnchor */}
           <div className="hidden sm:flex">
             <ScrollAnchor scrollRefs={scrollRefs} />
           </div>
 
-          {/* Mobile View: Direct Buttons */}
+          {/* Mobile View */}
           <div className="sm:hidden flex items-center gap-4">
-            <button
-              className="text-primary hover:text-blue-500 transition-colors text-sm"
-              onClick={handleManualModalOpen}
-            >
-              Join Launchlist
-            </button>
+            {!hasJoinedLaunchlist && (
+              <button
+                className="text-primary hover:text-blue-500 transition-colors text-sm"
+                onClick={handleManualModalOpen}
+              >
+                Join Launchlist
+              </button>
+            )}
 
             {!isLoggedIn ? (
-              <Link to="/register">
+              <Link to="/login">
                 <button className="rounded-full bg-black text-white py-2 px-4">
                   Get Started
                 </button>
@@ -92,17 +100,19 @@ const Navbar = ({
             )}
           </div>
 
-          {/* Desktop View Buttons */}
+          {/* Desktop View */}
           <div className="hidden sm:flex items-center gap-4 sm:gap-6">
-            <button
-              className="text-primary hover:text-blue-500 transition-colors text-base sm:text-xl hidden sm:block"
-              onClick={handleManualModalOpen}
-            >
-              Join Launchlist
-            </button>
+            {!hasJoinedLaunchlist && (
+              <button
+                className="text-primary hover:text-blue-500 transition-colors text-base sm:text-xl hidden sm:block"
+                onClick={handleManualModalOpen}
+              >
+                Join Launchlist
+              </button>
+            )}
 
             {!isLoggedIn ? (
-              <Link to="/register">
+              <Link to="/login">
                 <button className="navbtn rounded-[30px] bg-[#0a0a0a] py-[10px] sm:py-[16px] flex items-center hover:shadow-[0_0_7px_rgba(255,255,255,0.7)] transition-all duration-200">
                   <div className="inner rounded-[30px]">
                     <span className="relative z-10 bg-black px-5 sm:px-9 py-[12px] sm:py-[18px] rounded-[30px] text-lg text-white whitespace-nowrap">
@@ -118,7 +128,11 @@ const Navbar = ({
             )}
           </div>
         </div>
-        <LaunchlistModal isOpen={isModalOpen} onClose={handleModalClose} />
+        <LaunchlistModal 
+          isOpen={isModalOpen} 
+          onClose={handleModalClose}
+          onSuccessfulJoin={handleSuccessfulJoin}
+        />
       </nav>
     </div>
   );

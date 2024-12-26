@@ -12,7 +12,7 @@
   let helpMessageVisible = false;
   let hasStyleSelected = false;
   let loadingInterval;
-  
+  let originalStyles;
   const HIDE_DELAY = 300; // 300ms delay
   function isDiscordPlatform() {
     const url = window.location.href;
@@ -130,6 +130,113 @@
       popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
       //popup.style.transform = 'translateX(-50%)';
       return 'top'; // Default position for non-Claude platforms
+    }
+  }
+  function setupMessageSendDetection(inputElement, button, popup, messageEl) {
+    // Track if enhance button was used
+    let enhanceButtonUsed = false;
+    function getInputContent() {
+      return inputElement.value || inputElement.textContent || '';
+    }
+  
+  
+    // Reset tracking when input changes
+    inputElement.addEventListener('input', () => {
+      enhanceButtonUsed = false;
+    });
+    
+    // Track enhance button usage
+    button.addEventListener('click', () => {
+      enhanceButtonUsed = true;
+    });
+    async function showReminder() {
+      const storage = await chrome.storage.local.get(['userName']);
+      const buttonRect = button.getBoundingClientRect();
+      
+      if (window.velocityState.platformInfo?.platform !== 'claude') {
+        popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+        popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+      } else {
+        const position = calculatePopupPosition(button, popup);
+        popup.classList.remove('top', 'bottom');
+        popup.classList.add(position);
+      }
+      
+      messageEl.textContent = "Not getting desired results? Let me enhance your prompt!";
+      popup.classList.add('show');
+      messageEl.style.display = 'block';
+      
+      setTimeout(() => {
+        popup.classList.remove('show');
+      }, 4000);
+    }
+  
+    // Handle Enter key press
+    inputElement.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        const content = getInputContent();
+        if (!enhanceButtonUsed && content.trim().length > 25) {
+          showReminder();
+        }
+      }
+    });
+
+    // Find and observe send button based on platform
+    const platformInfo = window.velocityState.platformInfo;
+    let sendButtonSelector = '';
+    
+    if (platformInfo?.platform === 'chatgpt') {
+      // ChatGPT specific observer
+      const observer = new MutationObserver((mutations, obs) => {
+        const sendButton = document.querySelector('button[data-testid="send-button"]');
+        if (sendButton && !sendButton.dataset.velocityTracking) {
+          sendButton.dataset.velocityTracking = 'true';
+          sendButton.addEventListener('click', () => {
+            const content = getInputContent();
+            if (!enhanceButtonUsed && content.trim().length > 25) {
+              showReminder();
+            }
+          });
+        }
+      });
+  
+      // Initial check for send button
+      const initialSendButton = document.querySelector('button[data-testid="send-button"]');
+      if (initialSendButton && !initialSendButton.dataset.velocityTracking) {
+        initialSendButton.dataset.velocityTracking = 'true';
+        initialSendButton.addEventListener('click', () => {
+          const content = getInputContent();
+          if (!enhanceButtonUsed && content.trim().length > 25) {
+            showReminder();
+          }
+        });
+      }
+  
+      // Observe for dynamic send button updates
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['data-testid']
+      });
+    } else if (platformInfo?.platform === 'claude') {
+      const observer = new MutationObserver((mutations, obs) => {
+        const sendButton = document.querySelector('button[aria-label="Send message"]');
+        if (sendButton && !sendButton.dataset.velocityTracking) {
+          sendButton.dataset.velocityTracking = 'true';
+          sendButton.addEventListener('click', () => {
+            const content = getInputContent();
+            if (!enhanceButtonUsed && content.trim().length > 25) {
+              showReminder();
+            }
+          });
+        }
+      });
+  
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
     }
   }
   function notifyWelcomeMessageReady() {
@@ -289,10 +396,8 @@
       customStyles: `
         .velocity-wrapper {
           display: grid !important;
-          width: 100% !important;
           position: relative !important;
           min-height: 48px !important;
-          height: auto !important;
         }
     
         .velocity-wrapper textarea {
@@ -307,13 +412,6 @@
           border: 0 !important;
           background: transparent !important;
           box-sizing: border-box !important;
-        }
-    
-        .velocity-wrapper .velocity-enhance-button {
-          position: absolute !important;
-          right: 12px !important;
-          bottom: 8px !important;
-          z-index: 10 !important;
         }
     
         .velocity-wrapper span.invisible {
@@ -1439,6 +1537,20 @@
     }
     
     async function createEnhanceButton(inputElement) {
+      const existingWrapper = inputElement.closest('.velocity-wrapper');
+      if (existingWrapper) {
+        
+        return; // Already enhanced
+      }
+    
+      // Remove any existing wrappers in the document
+      document.querySelectorAll('.velocity-wrapper').forEach(wrapper => {
+        if (wrapper !== existingWrapper) {
+          wrapper.remove();
+        }
+      });
+    
+    
       const wrapper = document.createElement('div');
       wrapper.className = 'velocity-wrapper';
       // if (window.velocityState.platformInfo?.platform === 'chatgpt') {
@@ -1459,6 +1571,29 @@
       //   inputElement.addEventListener('input', () => {
       //     autoResizeTextarea(inputElement);
       //   });
+      // }
+      // if (window.velocityState?.platformInfo?.platform === 'chatgpt') {
+      //   wrapper.style.cssText = `
+      //   position: relative !important;
+      //   display: flex !important;
+      //   align-items: center !important;  // Changed from flex-start to center
+      //   width: 100% !important;
+      //   min-height: 24px !important;
+      //   margin: 0 !important;
+      //   padding: 0 !important;
+      //   background: transparent !important;
+      //   box-sizing: border-box !important;
+      // `;
+            
+      //   inputElement.style.cssText += `
+      //     width: 100% !important;
+      //     height: 100% !important;
+      //     min-height: inherit !important;
+      //     padding-right: 50px !important;
+      //     margin: 0 !important;
+      //     box-sizing: border-box !important;
+      //     background: transparent !important;
+      //   `;
       // }
     
       const platformInfo = window.velocityState.platformInfo;
@@ -1533,7 +1668,7 @@
       height: auto !important;
     `;
   
-      const originalStyles = {
+      originalStyles = {
           width: computedStyle.width,
           height: computedStyle.height,
           margin: computedStyle.margin,
@@ -1545,10 +1680,9 @@
       };
       wrapper.style.minHeight = originalStyles.height;
       inputElement.style.cssText += `
-      width: 100% !important;
+      width: ${originalStyles.width}
       margin: 0 !important;
       box-sizing: border-box !important;
-      padding-right: ${parseInt(computedStyle.paddingRight) + 40}px !important;
   `;
   const popup = document.createElement('div');
   popup.className = 'velocity-popup';
@@ -1595,17 +1729,41 @@
   
       const button = document.createElement('button');
       button.className = 'velocity-enhance-button';
-      button.style.cssText += `
-        background: transparent !important;
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
-      `;
+      button.style.cssText = `
+  position: absolute !important;
+  bottom: 8px !important;
+  right: 12px !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 6px !important;
+  background: transparent !important;
+  border: 1px solid rgb(68, 68, 68) !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  z-index: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  backdrop-filter: none !important;
+  pointer-events: auto !important;
+`;
+
+
+
 
       if (window.velocityState?.isEnabled) {
         button.classList.add('visible');
       }
       notifyWelcomeMessageReady();
-
+      setupMessageSendDetection(inputElement, button, popup, messageEl);
+      // if (!inputElement.dataset.velocityMessageDetection) {
+      //   inputElement.dataset.velocityMessageDetection = 'true';
+      //   setupMessageSendDetection(inputElement, button, popup, messageEl);
+      // }
+      
       const hoverHandler = handleButtonHover(button, popup);
       // Add token check before enabling the button
       chrome.storage.local.get(['token', 'isAuthenticated', 'userId'], async (result) => {
@@ -1874,11 +2032,11 @@ function getSelectedText(element) {
     // Handle resizing
     const resizeObserver = new ResizeObserver(() => {
       const styles = window.getComputedStyle(inputElement);
-      //wrapper.style.width = styles.width;
-      wrapper.style.height = 'auto';
-      wrapper.style.height = `${inputElement.scrollHeight}px`;
-  
+      wrapper.style.minHeight = '48px'; // Enforce minimum height
+      wrapper.style.height = `48px`;
     });
+    
+    
     resizeObserver.observe(inputElement);
    
     // First add the popup styles
@@ -2453,8 +2611,18 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
     popup.classList.add('show');
   });
   
+  function cleanupAndReenhance() {
+  cleanupEnhanceButtons();
+  findAndEnhanceInputs();
+}
+
+
   
-  
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && window.velocityState?.platformInfo?.platform === 'chatgpt') {
+      cleanupAndReenhance();
+    }
+  });
   
   document.addEventListener('mouseover', (e) => {
     clearTimeout(hideTimeout);
@@ -2661,6 +2829,14 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
       cleanupEnhanceButtons();
       return;
     }
+    if (platformInfo.platform === 'chatgpt') {
+      const promptArea = document.querySelector('#prompt-textarea');
+      if (promptArea && !promptArea.closest('.velocity-wrapper')) {
+        createEnhanceButton(promptArea);
+      }
+      return;
+    }
+  
     const inputs = document.querySelectorAll(platformInfo.config.selectors);
     console.log(`Found ${inputs.length} matching inputs for ${platformInfo.platform}`);
     inputs.forEach(input => {
@@ -2722,6 +2898,54 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
     subtree: true
   });
 }
+function setupChatGPTObserver() {
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.addedNodes.length) {
+        mutation.addedNodes.forEach(node => {
+          if (node.nodeType === 1) {
+            const promptArea = node.matches('#prompt-textarea') ? 
+              node : node.querySelector('#prompt-textarea');
+            
+            if (promptArea && !promptArea.closest('.velocity-wrapper')) {
+              createEnhanceButton(promptArea);
+            }
+          }
+        });
+      }
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+
+  // Simpler visibility handler
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      console.log('Tab visible again');
+      console.log("original width:"+originalStyles.width);
+      // Only inject if no button exists
+      const promptArea = document.querySelector('#prompt-textarea');
+      if (promptArea) {
+        
+        promptArea.style.width = originalStyles.width;
+        promptArea.style.margin = '0px !important';
+        promptArea.style.boxSizing = 'border-box !important';
+        promptArea.style.height = '48px';
+        promptArea.style.paddingRight = 'calc(1rem + 40px) !important';
+      }
+
+      const existingWrapper = document.querySelector('.velocity-wrapper');
+      
+      if (promptArea && !existingWrapper) {
+        console.log('No existing button found, creating new one');
+        createEnhanceButton(promptArea);
+      }
+    }
+  });
+}
   (async function init() {
     try {
       const platformInfo = await detectPlatform();
@@ -2738,13 +2962,34 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
         styleType: ''
       };
     
-      if (platformInfo.isSupported) {
+      // if (platformInfo.isSupported) {
+      //   await injectStyles();
+      //   //createWelcomeMessage(); // Add this        
+      //   //setupObservers();
+      //   //setupEditObserver();
+      //   // if (platformInfo.platform === 'chatgpt') {
+      //   //   setupChatGPTObserver(); // Add specific observer for ChatGPT
+      //   // }  
+      //   findAndEnhanceInputs();
+      // }
+      if (platformInfo.platform === 'chatgpt') {
+        // Set up initial styles and observers
         await injectStyles();
-        //createWelcomeMessage(); // Add this        
-        //setupObservers();
-        //setupEditObserver();
+        setupChatGPTObserver();
+        
+        // Initial enhancement
+        // const promptArea = document.querySelector('#prompt-textarea');
+        // if (promptArea) {
+        //   createEnhanceButton(promptArea);
+        // }
+  
+        // Additional check after a short delay to catch any late DOM changes
+        //setTimeout(findAndEnhanceInputs, 1000);
+      } else if (platformInfo.isSupported) {
+        await injectStyles();
         findAndEnhanceInputs();
       }
+  
     } catch (error) {
       console.error('Initialization error:', error);
     }
