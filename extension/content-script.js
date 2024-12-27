@@ -1636,11 +1636,7 @@
 
       if (window.velocityState.platformInfo?.platform === 'discord') {
         wrapper.style.cssText = `
-            position: relative !important;
-            display: block !important;
-            width: 100% !important;
-            min-height: ${inputElement.offsetHeight}px !important;
-            margin: 0 !important;
+            height:auto
         `;
         
         // Preserve Discord's input styles
@@ -1654,19 +1650,23 @@
             overflow-wrap: break-word !important;
         `;
     }
-  
+  else{
       wrapper.style.cssText = `
           position: relative !important;
           display: inline-block !important;
           width: auto !important;
           min-width: 100% !important;
       `;
+  }
       inputElement.dataset.hasEnhanceButton = 'true';
       const computedStyle = window.getComputedStyle(inputElement);
+      if(platformInfo.platform!='discord'){
       wrapper.style.cssText = `
       min-height: ${computedStyle.height} !important;
       height: auto !important;
+      wrapper.style.minHeight = ${computedStyle.height}.height;
     `;
+      }
   
       originalStyles = {
           width: computedStyle.width,
@@ -1678,7 +1678,7 @@
           background: computedStyle.background,
           font: computedStyle.font
       };
-      wrapper.style.minHeight = originalStyles.height;
+      
       inputElement.style.cssText += `
       width: ${originalStyles.width}
       margin: 0 !important;
@@ -1729,6 +1729,7 @@
   
       const button = document.createElement('button');
       button.className = 'velocity-enhance-button';
+      if(platformInfo.platform === 'chatgpt'){
       button.style.cssText = `
   position: absolute !important;
   bottom: 8px !important;
@@ -1736,9 +1737,6 @@
   width: 32px !important;
   height: 32px !important;
   padding: 6px !important;
-  background: transparent !important;
-  border: 1px solid rgb(68, 68, 68) !important;
-  border-radius: 6px !important;
   cursor: pointer !important;
   z-index: 1 !important;
   display: flex !important;
@@ -1750,7 +1748,26 @@
   backdrop-filter: none !important;
   pointer-events: auto !important;
 `;
-
+      }
+      else if(platformInfo.platform=='gemini'){
+        button.style.cssText += `
+        bottom: 32px !important;
+      `;
+      }
+      else if(platformInfo.platform == 'discord')
+      {
+        button.style.cssText += `
+        top: 5px !important;
+      `;
+      }
+      else{
+        button.style.cssText += `
+        bottom: 8px !important;
+      `;
+      }
+      button.style.cssText += `
+      background: transparent !important;
+    `;
 
 
 
@@ -1800,8 +1817,10 @@
   
       // Position the wrapper correctly relative to the input
       const inputStyles = window.getComputedStyle(inputElement);
+      if(platformInfo.platform!='discord'){
       wrapper.style.width = inputStyles.width;
       wrapper.style.height = inputStyles.height;
+      }
       const img = document.createElement('img');
       img.src = chrome.runtime.getURL('assets/logo.png'); // Make sure to update this path
       img.alt = 'Enhance';
@@ -2032,8 +2051,10 @@ function getSelectedText(element) {
     // Handle resizing
     const resizeObserver = new ResizeObserver(() => {
       const styles = window.getComputedStyle(inputElement);
+      if(platformInfo.platform!='discord'){
       wrapper.style.minHeight = '48px'; // Enforce minimum height
       wrapper.style.height = `48px`;
+      }
     });
     
     
