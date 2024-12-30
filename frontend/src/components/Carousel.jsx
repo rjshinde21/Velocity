@@ -230,8 +230,8 @@ const Carousel = ({ speed = 30000 }) => {
 
       <div className="w-full font-[Amenti] px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <h1 className="bg-gradient-text py-4 sm:py-6 md:py-10 lg:py-20 text-lg sm:text-xl md:text-2xl lg:text-4xl mb-4 sm:mb-6 md:mb-8 lg:mb-12 text-left font-Amenti sm:ml-0 lg:ml-16">
-          At Velocity — We craft AI-driven prompts <br className="hidden sm:block" /> that engage your audience
-          with clarity <br className="hidden sm:block" /> and creativity.
+          At Velocity — We transform basic instructions into <br className="hidden sm:block" /> powerful queries
+          <br className="hidden sm:block" /> effortlessly.
         </h1>
       </div>
 
