@@ -240,7 +240,6 @@
     }
   }
   function notifyWelcomeMessageReady() {
-    console.log("NOTIFY");
     chrome.runtime.sendMessage({
       type: 'WELCOME_BUTTON_READY'
     });
@@ -1553,49 +1552,6 @@
     
       const wrapper = document.createElement('div');
       wrapper.className = 'velocity-wrapper';
-      // if (window.velocityState.platformInfo?.platform === 'chatgpt') {
-      //   wrapper.style.display = 'grid';
-        
-      //   // Create hidden span for measuring text
-      //   const hiddenSpan = document.createElement('span');
-      //   hiddenSpan.className = 'invisible col-start-1 col-end-2 row-start-1 row-end-2 whitespace-pre-wrap p-0';
-      //   wrapper.appendChild(hiddenSpan);
-        
-      //   // Add resize observer
-      //   const resizeObserver = new ResizeObserver(() => {
-      //     autoResizeTextarea(inputElement);
-      //   });
-      //   resizeObserver.observe(inputElement);
-        
-      //   // Add input listener for content changes
-      //   inputElement.addEventListener('input', () => {
-      //     autoResizeTextarea(inputElement);
-      //   });
-      // }
-      // if (window.velocityState?.platformInfo?.platform === 'chatgpt') {
-      //   wrapper.style.cssText = `
-      //   position: relative !important;
-      //   display: flex !important;
-      //   align-items: center !important;  // Changed from flex-start to center
-      //   width: 100% !important;
-      //   min-height: 24px !important;
-      //   margin: 0 !important;
-      //   padding: 0 !important;
-      //   background: transparent !important;
-      //   box-sizing: border-box !important;
-      // `;
-            
-      //   inputElement.style.cssText += `
-      //     width: 100% !important;
-      //     height: 100% !important;
-      //     min-height: inherit !important;
-      //     padding-right: 50px !important;
-      //     margin: 0 !important;
-      //     box-sizing: border-box !important;
-      //     background: transparent !important;
-      //   `;
-      // }
-    
       const platformInfo = window.velocityState.platformInfo;
       const isClaudeInput = platformInfo?.platform === 'claude';
 
@@ -1729,8 +1685,38 @@
   
       const button = document.createElement('button');
       button.className = 'velocity-enhance-button';
-      if(platformInfo.platform === 'chatgpt'){
-      button.style.cssText = `
+//       if(platformInfo.platform === 'chatgpt'){
+//       button.style.cssText = `
+//   position: absolute !important;
+//   bottom: 8px !important;
+//   right: 12px !important;
+//   width: 32px !important;
+//   height: 32px !important;
+//   padding: 6px !important;
+//   cursor: pointer !important;
+//   z-index: 1 !important;
+//   display: flex !important;
+//   align-items: center !important;
+//   justify-content: center !important;
+//   opacity: 1 !important;
+//   visibility: visible !important;
+//   transform: none !important;
+//   backdrop-filter: none !important;
+//   pointer-events: auto !important;
+// `;
+//       }
+if (window.velocityState.platformInfo?.platform === 'chatgpt') {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'velocity-wrapper';
+  wrapper.style.cssText = `
+    position: relative !important;
+    width: 100% !important;
+    min-height: 48px !important;
+    height: auto !important;
+    display: flex !important;
+    align-items: stretch !important;
+  `;
+  button.style.cssText = `
   position: absolute !important;
   bottom: 8px !important;
   right: 12px !important;
@@ -1748,7 +1734,21 @@
   backdrop-filter: none !important;
   pointer-events: auto !important;
 `;
-      }
+  inputElement.style.cssText += `
+    width: 100% !important;
+    height: auto !important;
+    min-height: 48px !important;
+    padding-right: 50px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    resize: none !important;
+    overflow-y: hidden !important;
+  `;
+
+  // Setup resize handling
+  setupTextareaResizing(inputElement);
+}
+
       else if(platformInfo.platform=='gemini'){
         button.style.cssText += `
         bottom: 32px !important;
@@ -2547,7 +2547,84 @@ const interactions = handleButtonAndPopupInteractions(
         styleButton.classList.add('active');
         window.velocityState.styleType = currentStyle;
         hasStyleSelected = true;
+        const selectedText = getSelectedText(inputElement);
+        const fullText = inputElement.value || inputElement.textContent || '';
         
+        if (!selectedText && !fullText) {
+          const storage = await chrome.storage.local.get(['userName']);
+          messageEl.textContent = `Hey ${storage.userName}, please enter some text first!`;
+          return;
+        }
+    
+        try {
+          showLoading();
+          const textToEnhance = selectedText || fullText;
+          const enhancedText = await enhancePrompt(textToEnhance);
+    
+          // Handle different input types
+          if (selectedText) {
+            if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
+              const selectionStart = inputElement.selectionStart;
+              const selectionEnd = inputElement.selectionEnd;
+              inputElement.value = fullText.substring(0, selectionStart) + 
+                               enhancedText + 
+                               fullText.substring(selectionEnd);
+              inputElement.selectionStart = selectionStart;
+              inputElement.selectionEnd = selectionStart + enhancedText.length;
+            } else {
+              const selection = window.getSelection();
+              if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                range.insertNode(document.createTextNode(enhancedText));
+              }
+            }
+          } else {
+            if (inputElement.value !== undefined) {
+              inputElement.value = enhancedText;
+            } else {
+              // Handle contenteditable
+              inputElement.textContent = enhancedText;
+            }
+          }
+    
+          // Trigger input events for all platforms
+          const inputEvent = new Event('input', { bubbles: true });
+          inputElement.dispatchEvent(inputEvent);
+          
+          // Additional events for Claude
+          if (platformInfo?.platform === 'claude') {
+            const changeEvent = new Event('change', { bubbles: true });
+            inputElement.dispatchEvent(changeEvent);
+            
+            // Trigger focus if needed
+            inputElement.focus();
+            
+            if (inputElement.getAttribute('contenteditable') === 'true') {
+              const keyEvent = new KeyboardEvent('keyup', {
+                bubbles: true,
+                key: 'Space',
+                keyCode: 32
+              });
+              inputElement.dispatchEvent(keyEvent);
+            }
+          }
+    
+          await chrome.storage.local.set({ selectedStyle: currentStyle });
+    
+        } catch (error) {
+          console.error('Enhancement failed:', error);
+          const storage = await chrome.storage.local.get(['userName']);
+          messageEl.textContent = 'Enhancement failed. Please try again.';
+          messageEl.style.color = '#ff4444';
+          setTimeout(() => {
+            messageEl.style.color = '';
+            messageEl.textContent = `Hey ${storage.userName}, select a style that best matches your needs`;
+          }, 3000);
+        } finally {
+          hideLoading();
+          updateButtonAnimations(button, inputElement);
+        }    
         const storage = await chrome.storage.local.get(['userName']);
         messageEl.textContent = `Hey ${storage.userName}, press the button below to enhance your prompt!`;
         await chrome.storage.local.set({ selectedStyle: currentStyle });
@@ -2618,16 +2695,21 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
     popup.classList.remove('top', 'bottom');
     popup.classList.add(position);
     }
-    const storage = await chrome.storage.local.get(['userName']);
+    styleButtonsContainer.querySelectorAll('.velocity-style-button').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    window.velocityState.styleType = '';
+    hasStyleSelected = false;
+    messageEl.style.display = 'none';
+
+  //   const storage = await chrome.storage.local.get(['userName']);
     
   
-    // Show appropriate message based on style selection
-    messageEl.textContent = hasStyleSelected ? 
-      `Hey ${storage.userName}, press the button below to enhance your prompt!` : 
-      `Hey ${storage.userName}, select a style that best matches your needs`;
+  //   // Show appropriate message based on style selection
+  // messageEl.textContent = `Hey ${storage.userName}, select a style that best matches your needs`;
     
-    // Show both message and settings
-    messageEl.style.display = 'block';
+  //   // Show both message and settings
+  //   messageEl.style.display = 'block';
     settingsSection.classList.add('show');
     popup.classList.add('show');
   });
@@ -2781,13 +2863,13 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
   // });
   
   // Handle toggle changes
-  toggleInput.addEventListener('change', () => {
-    window.velocityState.isEnabled = toggleInput.checked;
-    chrome.runtime.sendMessage({
-      action: 'toggleEnhanceButton',
-      enabled: toggleInput.checked
-    });
-  });
+  // toggleInput.addEventListener('change', () => {
+  //   window.velocityState.isEnabled = toggleInput.checked;
+  //   chrome.runtime.sendMessage({
+  //     action: 'toggleEnhanceButton',
+  //     enabled: toggleInput.checked
+  //   });
+  // });
   // Assemble popup structure
   
   
@@ -2846,7 +2928,6 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
       return;
     }
     if (!window.velocityState?.isEnabled) {
-      console.log('Enhancement disabled, skipping');
       cleanupEnhanceButtons();
       return;
     }
@@ -2929,7 +3010,9 @@ function setupChatGPTObserver() {
               node : node.querySelector('#prompt-textarea');
             
             if (promptArea && !promptArea.closest('.velocity-wrapper')) {
+              console.log("creating button");
               createEnhanceButton(promptArea);
+              setupTextareaResizing(promptArea);
             }
           }
         });
@@ -2937,7 +3020,7 @@ function setupChatGPTObserver() {
     }
   });
 
-  observer.observe(document.body, {
+  observer.observe(document.body, { 
     childList: true,
     subtree: true
   });
@@ -2945,8 +3028,6 @@ function setupChatGPTObserver() {
   // Simpler visibility handler
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
-      console.log('Tab visible again');
-      console.log("original width:"+originalStyles.width);
       // Only inject if no button exists
       const promptArea = document.querySelector('#prompt-textarea');
       if (promptArea) {
@@ -2954,8 +3035,8 @@ function setupChatGPTObserver() {
         promptArea.style.width = originalStyles.width;
         promptArea.style.margin = '0px !important';
         promptArea.style.boxSizing = 'border-box !important';
-        promptArea.style.height = '48px';
-        promptArea.style.paddingRight = 'calc(1rem + 40px) !important';
+        promptArea.style.height = 'auto';
+        //promptArea.style.paddingRight = 'calc(1rem + 40px) !important';
       }
 
       const existingWrapper = document.querySelector('.velocity-wrapper');
@@ -2967,6 +3048,47 @@ function setupChatGPTObserver() {
     }
   });
 }
+function setupTextareaResizing(textarea) {
+  if (!textarea) return;
+
+  const updateSize = () => {
+    // Save scroll position
+    const scrollPos = window.scrollY;
+    
+    // Reset height to auto to get correct scrollHeight
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+    
+    // Update wrapper height
+    const wrapper = textarea.closest('.velocity-wrapper');
+    if (wrapper) {
+      wrapper.style.height = textarea.style.height;
+      
+      // Ensure button stays at bottom
+      const button = wrapper.querySelector('.velocity-enhance-button');
+      if (button) {
+        button.style.bottom = '8px';
+        button.style.top = 'auto';
+      }
+    }
+    
+    // Restore scroll position
+    window.scrollTo(0, scrollPos);
+  };
+
+  // Create ResizeObserver for the textarea
+  const resizeObserver = new ResizeObserver(() => {
+    updateSize();
+  });
+  resizeObserver.observe(textarea);
+
+  // Handle input events
+  textarea.addEventListener('input', updateSize);
+
+  // Initial size update
+  updateSize();
+}
+
   (async function init() {
     try {
       const platformInfo = await detectPlatform();

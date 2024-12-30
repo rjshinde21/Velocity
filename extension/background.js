@@ -96,12 +96,21 @@ async function showWelcomeInAllTabs() {
     }
   }
 }
+chrome.runtime.setUninstallURL('https://thinkvelocity.in/profile', () => {
+  if (chrome.runtime.lastError) {
+    console.error('Error setting uninstall URL:', chrome.runtime.lastError);
+  }
+});
 
 // Listen for installation and updates
 chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install') {
     chrome.storage.local.set({ 'enhanceButtonEnabled': true }); // Enable by default
     await showWelcomeInAllTabs();
+    chrome.tabs.create({
+      url: 'https://thinkvelocity.in/login'
+    });
+
   }
 });
 
