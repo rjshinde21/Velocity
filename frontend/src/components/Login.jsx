@@ -232,6 +232,34 @@ const Login = ({setIsLoggedIn}) => {
       });
   
       const data = await response.json();
+      if (!response.ok) {
+        if (response.status === 404 || data.message?.toLowerCase().includes('not found')) {
+          setMessage(
+            <span style={{ color: 'red' }}>
+              No account found with this email. Please sign up first.
+            </span>
+          );
+        } else if (response.status === 401) {
+          setMessage(
+            <span style={{ color: 'red' }}>
+              This email is registered but not with Google. Please use email/password login.
+            </span>
+          );
+        } else {
+          setMessage(
+            <span style={{ color: 'red' }}>
+              {data.message || 'An error occurred during login. Please try again.'}
+            </span>
+          );
+        }
+        // Clean up on error
+        localStorage.clear();
+        await auth.signOut();
+        setIsLoading(false);
+        return;
+      }
+  
+  
       if (response.ok) {
         localStorage.setItem('authMethod', 'google');
         Analytics.track('User Login', {
@@ -274,7 +302,15 @@ const Login = ({setIsLoggedIn}) => {
   
     } catch (error) {
       console.error('Login error:', error);
-      setMessage(<span style={{ color: 'red' }}>Login failed. Please try again.</span>);
+      console.log("error code:"+error.code);
+      // Handle Firebase popup errors separately
+      if (error.code === 'auth/popup-closed-by-user') {
+        setMessage(<span style={{ color: 'red' }}>Login cancelled. Please try again.</span>);
+      } else if (error.code === 'auth/popup-blocked') {
+        setMessage(<span style={{ color: 'red' }}>Popup was blocked. Please allow popups and try again.</span>);
+      } else {
+        setMessage(<span style={{ color: 'red' }}>Login failed. Please try again.</span>);
+      }
       // Clean up on error
       localStorage.clear();
       await auth.signOut();

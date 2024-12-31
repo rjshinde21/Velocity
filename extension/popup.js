@@ -532,13 +532,13 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update UI for logged in state
       document.getElementById('signupButton').textContent = `${data.userName}`;
       // Enable extension features
-      console.log("enable features" + data.token);
+      //console.log("enable features" + data.token);
       userId = data.userId;
       token = data.token;
       localStorage.setItem('userId',userId);
       localStorage.setItem('token',token);
-      console.log("token:" + token);
-      console.log("user Id:" + userId);
+      // console.log("token:" + token);
+      // console.log("user Id:" + userId);
       updateCreditDisplay();
       updateHeaderUI();
       fetchCreditRates();
@@ -562,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log("on popup received message:"+message);
+  //console.log("on popup received message:"+message);
   if (message.type === 'AUTH_STATE_CHANGED') {
     // Update extension UI based on new auth state
     if (message.data.userEmail) {
@@ -2747,8 +2747,8 @@ let lastTokensUsed = 0; // To track tokens used in the last operation
 
 // Function to fetch and update credit display
 async function updateCreditDisplay() {
-  console.log("checkng user id:"+userId + `https://thinkvelocity.in/api/api/token-types/${userId}`);
-  console.log("checkng token:"+token);
+  // console.log("checkng user id:"+userId + `https://thinkvelocity.in/api/api/token-types/${userId}`);
+  // console.log("checkng token:"+token);
 
   try {
     const response = await fetch(`https://thinkvelocity.in/api/api/token-types/${userId}`, {
