@@ -108,7 +108,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     chrome.storage.local.set({ 'enhanceButtonEnabled': true }); // Enable by default
     await showWelcomeInAllTabs();
     chrome.tabs.create({
-      url: 'https://thinkvelocity.in/login'
+      url: 'https://thinkvelocity.in/register'
     });
 
   }
@@ -412,7 +412,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     }
   });
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('Received message:', message);
+    //console.log('Received message:', message);
   
     if (message.type === 'AUTH_CHANGED') {
       if (sender.tab && isDiscordUrl(sender.tab.url)) {

@@ -36,7 +36,7 @@ const Navbar = ({
     checkLaunchlistStatus();
     
     // Only set the timer if user hasn't interacted and hasn't joined
-    if (!hasUserInteracted && !hasJoinedLaunchlist) {
+    if (!hasUserInteracted && !hasJoinedLaunchlist && !isLoggedIn) {
       const timer = setTimeout(() => {
         setIsModalOpen(true);
       }, 3000);
@@ -102,7 +102,7 @@ const Navbar = ({
 
           {/* Desktop View */}
           <div className="hidden sm:flex items-center gap-4 sm:gap-6">
-            {!hasJoinedLaunchlist && (
+            {!hasJoinedLaunchlist && !isLoggedIn && (
               <button
                 className="text-primary hover:text-blue-500 transition-colors text-base sm:text-xl hidden sm:block"
                 onClick={handleManualModalOpen}
@@ -129,7 +129,7 @@ const Navbar = ({
           </div>
         </div>
         <LaunchlistModal 
-          isOpen={isModalOpen} 
+          isOpen={isModalOpen } 
           onClose={handleModalClose}
           onSuccessfulJoin={handleSuccessfulJoin}
         />

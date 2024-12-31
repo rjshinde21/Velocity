@@ -591,7 +591,7 @@
   async function detectPlatform() {
     try {
       const url = window.location.href;
-      console.log('Checking URL:', url);
+      //console.log('Checking URL:', url);
       
       // Early return if not a valid platform
       const isPlatformValid = Object.values(PLATFORM_CONFIG).some(config => 
@@ -612,7 +612,7 @@
       // Rest of your existing platform detection logic
       for (const [platform, config] of Object.entries(PLATFORM_CONFIG)) {
         if (config.urlPattern.test(url)) {
-          console.log('Platform detected:', platform);
+         // console.log('Platform detected:', platform);
           return {
             isSupported: true,
             platform: platform,
@@ -761,6 +761,7 @@
     // Helper function to update button visibility
     function updateButtonVisibility() {
       document.querySelectorAll('.velocity-enhance-button').forEach(button => {
+        console.log("already enabled:"+window.velocityState.isEnabled);
         if (window.velocityState.isEnabled) {
           button.classList.add('visible');
           if (!button.disabled) {
@@ -1660,6 +1661,11 @@
         popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
         popup.style.transform = 'translateX(-50%)';
         const result = await chrome.storage.local.get(['welcomeMessageShown','userName']);
+        let messageToBeDisplayed = `Hey ${result.userName}, I am Velocity. Your personal magician!`
+        if(result.userName==null)
+        {
+          messageToBeDisplayed = `Hey, I am Velocity. Your personal magician!`
+        }
         if (!result.welcomeMessageShown) {
           // First time message
           messageEl.textContent = 'Click the enhance button to optimize your prompts instantly';
@@ -1668,11 +1674,11 @@
           setTimeout(() => {
             chrome.storage.local.set({ welcomeMessageShown: true });
             // Update to regular message
-            messageEl.textContent = `Hey ${result.userName}, I am Velocity. Your personal magician!`;
+            messageEl.textContent = messageToBeDisplayed;
           }, 8000);
         } else {
           // Regular message for returning users
-          messageEl.textContent = `Hey ${result.userName}, I am Velocity. Your personal magician!`;
+          messageEl.textContent = messageToBeDisplayed;
         }
             popup.style.opacity = '1';
         popup.style.visibility = 'visible';
@@ -1729,7 +1735,6 @@ if (window.velocityState.platformInfo?.platform === 'chatgpt') {
   align-items: center !important;
   justify-content: center !important;
   opacity: 1 !important;
-  visibility: visible !important;
   transform: none !important;
   backdrop-filter: none !important;
   pointer-events: auto !important;
@@ -2242,8 +2247,15 @@ function getSelectedText(element) {
     console.error('Error getting username:', error);
   }
   const storage = await chrome.storage.local.get(['userName']);
+ 
   // Create message element
+  if(storage.userName == null)
+    {
+      messageEl.textContent = `Hey, I am Velocity. Your personal magician!`;
+    }
+    else{
   messageEl.textContent = `Hey ${storage.userName}, I am Velocity. Your personal magician!`;
+    }
   popup.appendChild(messageEl);
   
   // Create settings section
@@ -3010,7 +3022,7 @@ function setupChatGPTObserver() {
               node : node.querySelector('#prompt-textarea');
             
             if (promptArea && !promptArea.closest('.velocity-wrapper')) {
-              console.log("creating button");
+              //console.log("creating button");
               createEnhanceButton(promptArea);
               setupTextareaResizing(promptArea);
             }
