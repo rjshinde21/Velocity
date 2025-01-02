@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
+import traceback
 import numpy as np
 import os
 import logging
@@ -135,29 +136,189 @@ class ParameterManager:
             logger.error(f"Parameter extraction failed: {str(e)}")
             return ParameterManager.get_default_parameters()
         
-class ContextTracker:
-    def __init__(self):
-        self.context_chain = []
-        
-    def add_context(self, stage_name: str, context: Dict):
-        """Add context from a pipeline stage"""
-        self.context_chain.append({
-            "stage": stage_name,
-            "context": context,
-            "timestamp": datetime.datetime.now().isoformat()
-        })
-    
-    def get_latest_context(self) -> Dict:
-        """Get the most recent context"""
-        return self.context_chain[-1]["context"] if self.context_chain else {}
-    
-    def get_full_context(self) -> Dict:
-        """Get the accumulated context from all stages"""
-        accumulated_context = {}
-        for context_entry in self.context_chain:
-            accumulated_context[context_entry["stage"]] = context_entry["context"]
-        return accumulated_context
+# class ContextTracker:
+#     def __init__(self):
+#         self.context_stack = []
+#         self.current_context = {}
+#         self.metadata = {
+#             "creation_timestamp": datetime.datetime.now(),
+#             "total_stages_processed": 0
+#         }
 
+#     def add_context(self, stage_name: str, stage_result: Dict) -> None:
+#         """Enhanced context addition with validation"""
+#         if not isinstance(stage_result, dict):
+#             raise ValueError(f"Stage result must be a dictionary, got {type(stage_result)}")
+            
+#         context_entry = {
+#             "stage": stage_name,
+#             "result": stage_result,
+#             "timestamp": datetime.datetime.now(),
+#             "sequence_number": len(self.context_stack)
+#         }
+        
+#         # Add validation check
+#         if not self._validate_stage_result(stage_result):
+#             self.logger.warning(f"Stage {stage_name} result failed validation")
+#             stage_result = self._sanitize_stage_result(stage_result)
+            
+#         self.current_context = self._merge_context(self.current_context, stage_result)
+#         self.context_stack.append(context_entry)
+#         self.metadata["total_stages_processed"] += 1
+
+#     def _validate_stage_result(self, result: Dict) -> bool:
+#         """Validate stage result structure"""
+#         required_fields = ['status', 'content']
+#         return all(field in result for field in required_fields)
+
+#     def _sanitize_stage_result(self, result: Dict) -> Dict:
+#         """Sanitize invalid stage results"""
+#         return {
+#             "status": "sanitized",
+#             "content": str(result),
+#             "original_result": result,
+#             "sanitized_at": datetime.datetime.now().isoformat()
+#         }
+
+#     def get_latest_context(self) -> Dict:
+#         """Get most recent context state"""
+#         return self.current_context
+    
+#     def _merge_context(self, old_context: Dict, new_context: Dict) -> Dict:
+#         """Smart context merging with priority to new data"""
+#         merged = old_context.copy()
+        
+#         for key, value in new_context.items():
+#             if isinstance(value, dict) and key in merged:
+#                 merged[key] = self._merge_context(merged[key], value)
+#             else:
+#                 merged[key] = value
+                
+#         return merged
+
+#     def _extract_insights(self, stage_result: Dict) -> Dict:
+#         """
+#         Extract meaningful insights from stage results.
+#         Enables intelligent context propagation.
+#         """
+#         insights = {}
+        
+#         # Generic insight extraction strategy
+#         for key, value in stage_result.items():
+#             if isinstance(value, (str, list, dict)) and value:
+#                 insights[key] = {
+#                     "type": type(value).__name__,
+#                     "length": len(value) if hasattr(value, '__len__') else None,
+#                     "non_empty": bool(value)
+#                 }
+        
+#         return insights
+
+#     def get_context(self, last_n_stages: int = None) -> List[Dict]:
+#         """Get context history with optional filtering"""
+#         if last_n_stages is not None:
+#             return self.context_stack[-last_n_stages:]
+#         return self.context_stack
+
+#     def get_cumulative_context(self) -> Dict:
+#         """Get accumulated context state"""
+#         return {
+#             "current_state": self.current_context,
+#             "history": self.context_stack,
+#             "metadata": self.metadata
+#         }
+
+class ContextTracker:
+    def __init__(self, logger: Logger):
+        self.logger = logger
+        self.context_stack = []
+        self.current_context = {}
+        self.metadata = {
+            "creation_timestamp": datetime.datetime.now(),
+            "total_stages_processed": 0,
+            "context_updates": []
+        }
+
+    def add_context(self, stage_name: str, stage_result: Dict) -> None:
+        """Enhanced context addition with validation and error handling"""
+        try:
+            if not isinstance(stage_result, dict):
+                raise ValueError(f"Stage result must be a dictionary, got {type(stage_result)}")
+            
+            # Create timestamped context entry
+            context_entry = {
+                "stage": stage_name,
+                "result": stage_result,
+                "timestamp": datetime.datetime.now(),
+                "sequence_number": len(self.context_stack)
+            }
+            
+            # Validate and merge context
+            validated_result = self._validate_stage_result(stage_result)
+            self.current_context = self._merge_context(self.current_context, validated_result)
+            
+            # Update tracking
+            self.context_stack.append(context_entry)
+            self.metadata["total_stages_processed"] += 1
+            self.metadata["context_updates"].append({
+                "stage": stage_name,
+                "timestamp": datetime.datetime.now().isoformat()
+            })
+            
+            self.logger.debug(f"Context updated for stage {stage_name}")
+            
+        except Exception as e:
+            self.logger.error(f"Error adding context for stage {stage_name}: {str(e)}")
+            # Create sanitized fallback context
+            self._handle_context_error(stage_name, stage_result, str(e))
+
+    def _validate_stage_result(self, result: Dict) -> Dict:
+        """Validate and sanitize stage results"""
+        required_fields = {"status", "content"}
+        
+        # Ensure minimum required fields
+        if not all(field in result for field in required_fields):
+            self.logger.warning("Missing required fields in stage result")
+            result = {
+                "status": result.get("status", "unknown"),
+                "content": result.get("content", str(result)),
+                "validation_status": "incomplete"
+            }
+        
+        return result
+
+    def _merge_context(self, old_context: Dict, new_context: Dict) -> Dict:
+        """Smart context merging with conflict resolution"""
+        merged = old_context.copy()
+        
+        for key, value in new_context.items():
+            if isinstance(value, dict) and key in merged:
+                merged[key] = self._merge_context(merged[key], value)
+            else:
+                # Keep track of overwrites
+                if key in merged:
+                    self.logger.debug(f"Overwriting context key: {key}")
+                merged[key] = value
+        
+        return merged
+
+    def _handle_context_error(self, stage_name: str, result: Any, error: str):
+        """Handle context errors gracefully"""
+        fallback_context = {
+            "status": "error",
+            "stage": stage_name,
+            "original_result": str(result),
+            "error": error,
+            "timestamp": datetime.datetime.now().isoformat()
+        }
+        
+        self.context_stack.append({
+            "stage": stage_name,
+            "result": fallback_context,
+            "timestamp": datetime.datetime.now(),
+            "sequence_number": len(self.context_stack),
+            "is_fallback": True
+        })
 
 class APIHandler:
     def __init__(self, logger: Logger):
@@ -798,53 +959,104 @@ class ResponseValidator:
     """Validate and process API responses"""
     
     @staticmethod
-    def validate_response(response: Dict, expected_fields: List[str]) -> Tuple[bool, str]:
-        """Validate API response structure"""
-        try:
-            if not isinstance(response, dict):
-                return False, "Response is not a dictionary"
-
-            # Check for error indicators
-            if response.get("is_error"):
-                return False, f"Response contains error: {response.get('error', 'Unknown error')}"
-
-            # Validate required fields
-            missing_fields = [field for field in expected_fields if field not in response]
-            if missing_fields:
-                return False, f"Missing required fields: {missing_fields}"
-
-            return True, "Response validation successful"
-            
-        except Exception as e:
-            return False, f"Validation error: {str(e)}"
-
-    @staticmethod
-    def clean_response(response: Dict) -> Dict:
-        """Clean and normalize API response"""
-        cleaned = {}
+    def validate_response(response: Dict, expected_structure: Dict) -> Tuple[bool, Dict]:
+        """
+        Comprehensive response validation with structured error reporting.
         
-        # Handle nested structures
-        for key, value in response.items():
-            if isinstance(value, dict):
-                cleaned[key] = ResponseValidator.clean_response(value)
-            elif isinstance(value, list):
-                cleaned[key] = [
-                    ResponseValidator.clean_response(item) if isinstance(item, dict) else item
-                    for item in value
-                ]
-            else:
-                # Convert None to empty string/list/dict based on context
-                if value is None:
-                    if key.endswith(('list', 'array', 'items')):
-                        cleaned[key] = []
-                    elif key.endswith(('dict', 'map')):
-                        cleaned[key] = {}
-                    else:
-                        cleaned[key] = ""
-                else:
-                    cleaned[key] = value
+        Args:
+            response (Dict): Raw API response
+            expected_structure (Dict): Expected response schema
+        
+        Returns:
+            Tuple of (validation_status, processed_response/error_details)
+        """
+        try:
+            # Deep structural validation
+            def validate_structure(response, structure):
+                errors = []
+                for key, expected_type in structure.items():
+                    if key not in response:
+                        errors.append(f"Missing required key: {key}")
+                        continue
                     
-        return cleaned
+                    if isinstance(expected_type, type):
+                        if not isinstance(response[key], expected_type):
+                            errors.append(f"Invalid type for {key}: Expected {expected_type}, Got {type(response[key])}")
+                    
+                    elif isinstance(expected_type, dict):
+                        sub_errors = validate_structure(response[key], expected_type)
+                        errors.extend([f"{key}.{err}" for err in sub_errors])
+                
+                return errors
+
+            validation_errors = validate_structure(response, expected_structure)
+            
+            if validation_errors:
+                return False, {
+                    "status": "validation_error",
+                    "errors": validation_errors,
+                    "original_response": response
+                }
+            
+            # Additional sanitization and processing
+            sanitized_response = ResponseValidator.sanitize_response(response)
+            
+            return True, sanitized_response
+        
+        except Exception as e:
+            return False, {
+                "status": "processing_error",
+                "error": str(e),
+                "original_response": response
+            }
+    
+    @staticmethod
+    def sanitize_response(response: Dict) -> Dict:
+        """
+        Clean and normalize response, handling potential inconsistencies.
+        """
+        sanitized = {}
+        for key, value in response.items():
+            # Remove None values
+            if value is not None:
+                # Handle nested dictionaries recursively
+                if isinstance(value, dict):
+                    sanitized[key] = ResponseValidator.sanitize_response(value)
+                # Convert lists, ensuring no None elements
+                elif isinstance(value, list):
+                    sanitized[key] = [item for item in value if item is not None]
+                else:
+                    sanitized[key] = value
+        
+        return sanitized
+
+    # @staticmethod
+    # def clean_response(response: Dict) -> Dict:
+    #     """Clean and normalize API response"""
+    #     cleaned = {}
+        
+    #     # Handle nested structures
+    #     for key, value in response.items():
+    #         if isinstance(value, dict):
+    #             cleaned[key] = ResponseValidator.clean_response(value)
+    #         elif isinstance(value, list):
+    #             cleaned[key] = [
+    #                 ResponseValidator.clean_response(item) if isinstance(item, dict) else item
+    #                 for item in value
+    #             ]
+    #         else:
+    #             # Convert None to empty string/list/dict based on context
+    #             if value is None:
+    #                 if key.endswith(('list', 'array', 'items')):
+    #                     cleaned[key] = []
+    #                 elif key.endswith(('dict', 'map')):
+    #                     cleaned[key] = {}
+    #                 else:
+    #                     cleaned[key] = ""
+    #             else:
+    #                 cleaned[key] = value
+                    
+    #     return cleaned
 
 
 
@@ -904,196 +1116,145 @@ Technical context: {context}"""
             context=json.dumps(context, indent=2)
         )
 
-class ResponseManager:
-    """
-    Manages response data throughout the pipeline, ensuring consistency and proper formatting.
-    Acts as a central point for data transformation and validation.
-    """
-    def __init__(self, logger: Logger):
-        self.logger = logger
-        self.preprocessing_data = {}
-        self.stage_results = {}
 
-    def _create_fallback_result(self, stage_name: str) -> Dict:
-        """Create fallback result when stage processing fails"""
+
+class PipelineStage:
+    """Base class for pipeline stages with common functionality"""
+    def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
+        self.logger = logger
+        self.api_handler = api_handler
+        self.context_tracker = context_tracker
+
+    def execute(self, prompt: str, ai_type: str, style: str) -> Dict:
+        """Abstract base method that all pipeline stages must implement"""
+        raise NotImplementedError(
+            f"Stage {self.__class__.__name__} must implement execute() method"
+        )
+
+    def _enrich_context(self, current_stage_result: Dict, previous_context: Dict) -> Dict:
+        """
+        Intelligently merge current stage result with previous context.
+        
+        Key Improvements:
+        - Preserves important information from previous stages
+        - Allows controlled context evolution
+        """
+        enriched_context = previous_context.copy()
+        
+        # Merge strategy: prioritize current stage's information
+        for key, value in current_stage_result.items():
+            if value:  # Only add non-empty values
+                enriched_context[key] = value
+        
+        return enriched_context
+
+    def _convert_raw_response(self, response: Dict, stage_name: str) -> Dict:
+        """Convert raw API response to normalized format"""
+        try:
+            if "raw_response" in response:
+                converted = {
+                    "content": response["raw_response"],
+                    "metadata": {
+                        "stage": stage_name,
+                        "conversion_timestamp": datetime.datetime.now().isoformat()
+                    }
+                }
+                return converted
+            return response
+        except Exception as e:
+            self.logger.error(f"Error converting raw response: {str(e)}")
+            return {
+                "error": str(e),
+                "stage": stage_name,
+                "timestamp": datetime.datetime.now().isoformat()
+            }
+
+    def _create_fallback_result(self, stage_name: str, error_details: str = None) -> Dict:
+        """Create fallback result with better error context"""
         return {
             "status": "fallback",
-            "stage": stage_name,
+            "stage": stage_name or self.__class__.__name__,
+            "error": error_details,
             "timestamp": datetime.datetime.now().isoformat(),
             "content": f"Fallback response for {stage_name}"
         }
-        
-    def update_stage_result(self, stage_name: str, result: Dict):
-        """
-        Updates results for a specific pipeline stage while maintaining data integrity.
-        """
+    def _preserve_context(self, stage_name: str, result: Dict) -> Dict:
+        """Enhanced context preservation"""
         try:
-            # Validate and normalize the result
-            normalized_result = self._normalize_result(result, stage_name)
-            
-            # Store preprocessing data separately
-            if stage_name == "preprocessing":
-                self.preprocessing_data = normalized_result
-            
-            # Store stage result
-            self.stage_results[stage_name] = normalized_result
-            
-        except Exception as e:
-            self.logger.error(f"Error updating {stage_name} result: {str(e)}")
-            self.stage_results[stage_name] = self._create_fallback_result(stage_name)
-    
-    def get_final_response(self) -> Dict:
-        """
-        Creates the final response with all accumulated data.
-        Ensures all required fields are present with proper formatting.
-        """
-        try:
-            return {
-                "status": "success",
-                "metadata": {
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "version": "2.0.0"
-                },
-                "preprocessing": self.preprocessing_data,
-                "stages": {
-                    stage: self._ensure_required_fields(stage, result)
-                    for stage, result in self.stage_results.items()
-                },
-                "summary": self._generate_summary()
+            # Add metadata
+            result["_stage_metadata"] = {
+                "stage_name": stage_name,
+                "execution_timestamp": datetime.datetime.now().isoformat(),
+                "previous_context": self.context_tracker.get_latest_context()
             }
+            
+            # Update context tracker
+            self.context_tracker.add_context(stage_name, result)
+            
+            return result
+            
         except Exception as e:
-            self.logger.error(f"Error creating final response: {str(e)}")
-            return self._create_error_response(str(e))
-
-    def _normalize_result(self, result: Dict, stage_name: str) -> Dict:
-        """
-        Normalizes results to ensure consistent structure.
-        """
-        if not isinstance(result, dict):
-            return {"content": str(result)}
-            
-        if "raw_response" in result:
-            return self._convert_raw_response(result, stage_name)
-            
-        return result
-
-    def _ensure_required_fields(self, stage_name: str, result: Dict) -> Dict:
-        """
-        Ensures all required fields are present for each stage.
-        """
-        required_fields = {
-            "preprocessing": {
-                "linguistic": {"complexity_metrics": {}, "discourse_analysis": {}, "semantic_analysis": {}},
-                "content_analysis": {"named_entities": [], "keywords": [], "topics": [], "sentiment": {}}
-            },
-            "analysis": {
-                "intent": {}, 
-                "requirements": [], 
-                "context": {}
-            },
-            # Add required fields for other stages...
-        }
+            self.logger.error(f"Context preservation failed in {stage_name}: {str(e)}")
+            return result
         
-        stage_fields = required_fields.get(stage_name, {})
-        return {**stage_fields, **result}
+    def execute_with_context(self, pipeline_context: Dict) -> Dict:
 
-    def _generate_summary(self) -> Dict:
-        """
-        Generates a summary of the pipeline results.
-        """
-        return {
-            "stages_completed": list(self.stage_results.keys()),
-            "preprocessing_success": bool(self.preprocessing_data),
-            "total_stages": len(self.stage_results)
-        }
-   
+        """Enhanced execution with robust context handling"""
+        try:
+            stage_name = self.__class__.__name__
+            self.logger.debug(f"Executing stage {stage_name}")
+            
+            # Validate context requirements
+            self._validate_context_requirements(pipeline_context)
+            
+            # Get current context state
+            current_context = self.context_tracker.get_latest_context()
+            
+            # Execute stage with full context
+            result = self.execute(
+                prompt=pipeline_context['original_prompt'],
+                ai_type=pipeline_context['ai_type'],
+                style=pipeline_context['style'],
+                context=current_context
+            )
+            
+            # Validate and enrich result
+            enriched_result = self._enrich_result(result, current_context)
+            
+            # Update context tracker
+            self.context_tracker.add_context(stage_name, enriched_result)
+            
+            return enriched_result
+            
+        except Exception as e:
+            self.logger.error(f"Stage execution failed: {str(e)}")
+            self.logger.error(traceback.format_exc())
+            return self._create_fallback_result(self.__class__.__name__, str(e))
 
-# class PipelineStage:
-#     """Base class for pipeline stages with common functionality"""
-#     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
-#         self.logger = logger
-#         self.api_handler = api_handler
-#         self.context_tracker = context_tracker
-#         self.normalizer = ResponseNormalizer()
-#         self.validator = StageResultValidator(logger)
-
-#     def execute_with_context(self, pipeline_context: PipelineContext) -> Dict:
-#         try:
-#             # Get stage-specific context
-#             stage_context = pipeline_context.get_stage_context(self.__class__.__name__)
+    def _validate_context_requirements(self, context: Dict):
+        """Validate required context fields"""
+        required = {'original_prompt', 'ai_type', 'style'}
+        missing = required - set(context.keys())
+        if missing:
+            raise ValueError(f"Missing required context fields: {missing}")
+        
+    def _enrich_result(self, result: Dict, current_context: Dict) -> Dict:
+        """Enrich stage result with context metadata"""
+        if not isinstance(result, dict):
+            result = {"content": str(result)}
             
-#             # Execute stage with context
-#             result = self.execute(pipeline_context)
-            
-#             # Normalize response
-#             normalized = self.normalizer.normalize_response(result, self.__class__.__name__)
-            
-#             # Validate result
-#             valid, message = self.validator.validate_stage_result(
-#                 normalized, 
-#                 self.__class__.__name__
-#             )
-            
-#             if not valid:
-#                 self.logger.error(f"Stage validation failed: {message}")
-#                 return self._create_fallback_result()
-                
-#             # Update context
-#             pipeline_context.update_stage_context(self.__class__.__name__, normalized)
-            
-#             return normalized
-            
-#         except Exception as e:
-#             self.logger.error(f"Stage execution failed: {str(e)}")
-#             return self._create_fallback_result()
-
-
-#     def _convert_raw_response(self, response: Dict, stage_name: str) -> Dict:
-#         """Convert raw API response to normalized format"""
-#         try:
-#             if "raw_response" in response:
-#                 converted = {
-#                     "content": response["raw_response"],
-#                     "metadata": {
-#                         "stage": stage_name,
-#                         "conversion_timestamp": datetime.datetime.now().isoformat()
-#                     }
-#                 }
-#                 return converted
-#             return response
-#         except Exception as e:
-#             self.logger.error(f"Error converting raw response: {str(e)}")
-#             return {
-#                 "error": str(e),
-#                 "stage": stage_name,
-#                 "timestamp": datetime.datetime.now().isoformat()
-#             }
-
-#     def _create_fallback_result(self, stage_name: str) -> Dict:
-#         """Create fallback result when stage processing fails"""
-#         return {
-#             "status": "fallback",
-#             "stage": stage_name,
-#             "timestamp": datetime.datetime.now().isoformat(),
-#             "content": f"Fallback response for {stage_name}"
-#         }
-
-#     def _preserve_context(self, stage_name: str, result: Dict):
-#         """Preserve context from stage execution"""
-#         try:
-#             result["_stage_metadata"] = {
-#                 "stage_name": stage_name,
-#                 "execution_timestamp": datetime.datetime.now().isoformat(),
-#                 "previous_context": self.context_tracker.get_latest_context()
-#             }
-            
-#             self.context_tracker.add_context(stage_name, result)
-#             return result
-            
-#         except Exception as e:
-#             self.logger.error(f"Context preservation failed in {stage_name}: {str(e)}")
-#             return result
-
+        result.update({
+            "metadata": {
+                "stage": self.__class__.__name__,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "context_snapshot": {
+                    key: current_context.get(key)
+                    for key in ['ai_type', 'style']
+                }
+            }
+        })
+        
+        return result    
 
 class PipelineContext:
     def __init__(self, original_prompt: str, ai_type: str, style: str):
@@ -1105,27 +1266,10 @@ class PipelineContext:
             "execution_context": {
                 "stage_results": {},
                 "errors": [],
-                "warnings": [],
-                "metadata": {}  # Add metadata tracking
+                "warnings": []
             },
-            "parameters": self._get_default_parameters(),
-            "stage_context": {}  # Add per-stage context tracking
+            "parameters": self._get_default_parameters()
         }
-    def validate_context(self) -> bool:
-        required_fields = ["original_prompt", "ai_type", "style"]
-        missing = [field for field in required_fields if field not in self.context]
-        
-        if missing:
-            raise ValueError(f"Missing required context fields: {missing}")
-        return True
-
-    def update_stage_context(self, stage_name: str, context_data: Dict):
-        if "stage_context" not in self.context:
-            self.context["stage_context"] = {}
-        self.context["stage_context"][stage_name] = context_data
-
-    def get_stage_context(self, stage_name: str) -> Dict:
-        return self.context.get("stage_context", {}).get(stage_name, {})
 
     def _get_default_parameters(self) -> Dict:
         return {
@@ -1224,116 +1368,12 @@ class PipelineContext:
     "status": "error",
     "timestamp": "2024-12-31T20:03:36.748451"
 }
-    
-class PipelineStage:
-        """Base class for pipeline stages with common functionality"""
-        def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
-            self.logger = logger
-            self.api_handler = api_handler
-            self.context_tracker = context_tracker
-            self.normalizer = ResponseNormalizer()
-            self.validator = StageResultValidator(logger)
-
-        def execute_with_context(self, pipeline_context: PipelineContext) -> Dict:
-            try:
-                # Extract required information from context
-                prompt = pipeline_context.context["original_prompt"]
-                ai_type = pipeline_context.context["ai_type"]
-                style = pipeline_context.context["style"]
-                
-                # Execute stage with correct parameters
-                result = self.execute(prompt=prompt, ai_type=ai_type, style=style)
-                
-                # Normalize and validate
-                normalized = self.normalizer.normalize_response(result, self.__class__.__name__)
-                valid, message = self.validator.validate_stage_result(normalized, self.__class__.__name__)
-                
-                if not valid:
-                    self.logger.error(f"Stage validation failed: {message}")
-                    return self._create_fallback_result()
-                
-                pipeline_context.update_stage_context(self.__class__.__name__, normalized)
-                return normalized
-                
-            except Exception as e:
-                self.logger.error(f"Stage execution failed: {str(e)}")
-                return self._create_fallback_result()
-    
-class ResponseNormalizer:
-
-    def _create_error_response(self, error_msg: str) -> Dict:
-        return {
-            "status": "error",
-            "error": error_msg,
-            "timestamp": datetime.datetime.now().isoformat(),
-            "context": self.context if hasattr(self, 'context') else {},
-            "metadata": {
-                "error_type": type(error_msg).__name__,
-                "stage": "pipeline_execution"
-            }
-        }
-    def normalize_response(self, response: Dict, stage_name: str) -> Dict:
-        try:
-            if not isinstance(response, dict):
-                response = {"content": str(response)}
-            
-            normalized = {
-                "stage": stage_name,
-                "timestamp": datetime.datetime.now().isoformat(),
-                "content": response,
-                "metadata": {
-                    "normalized": True,
-                    "original_type": str(type(response))
-                }
-            }
-            
-            # Clean null values
-            normalized = self._clean_null_values(normalized)
-            
-            # Ensure consistent structure
-            normalized = self._ensure_required_fields(normalized, stage_name)
-            
-            return normalized
-        except Exception as e:
-            return self._create_error_response(str(e), stage_name)
-
-    def _clean_null_values(self, data: Dict) -> Dict:
-        if isinstance(data, dict):
-            return {k: self._clean_null_values(v) for k, v in data.items() if v is not None}
-        return data
-    
-class StageResultValidator:
-    def __init__(self, logger: Logger):
-        self.logger = logger
-        self.required_fields = {
-            "analysis": ["intent", "requirements", "context"],
-            "feedback": ["feedback", "improvements", "suggestions"],
-            "guidelines": ["guidelines", "parameters", "implementation_notes"],
-            "enhancement": ["prompts"]
-        }
-
-    def validate_stage_result(self, result: Dict, stage_name: str) -> Tuple[bool, str]:
-        try:
-            if not isinstance(result, dict):
-                return False, f"Result for stage {stage_name} is not a dictionary"
-
-            required = self.required_fields.get(stage_name, [])
-            missing = [field for field in required if field not in result]
-            
-            if missing:
-                return False, f"Missing required fields for {stage_name}: {missing}"
-                
-            return True, "Validation successful"
-            
-        except Exception as e:
-            return False, f"Validation error: {str(e)}"
 
 # First, let's enhance the Analysis Stage to better handle context and AI-style requirements
 class AnalysisStage(PipelineStage):
 
     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
-        super().__init__(logger, api_handler, context_tracker)
-        self.required_fields = ["intent", "requirements", "context"]
+        super().__init__(logger, api_handler, context_tracker)  # Properly initialize parent
 
     def execute(self, prompt: str, ai_type: str, style: str) -> Dict:
         """Enhanced analysis stage with deeper context understanding"""
@@ -1469,19 +1509,21 @@ class FeedbackStage(PipelineStage):
             }
         }
 
-    def execute(self, analysis: Dict, pipeline_context: Dict) -> Dict:
-        """Enhanced feedback stage with comparative analysis"""
+    def execute(self, prompt: str, ai_type: str, style: str) -> Dict:
+        """Modified to match base class signature"""
         try:
+            # Get required analysis from context tracker
+            context = self.context_tracker.get_latest_context()
+            analysis_result = context.get('analysis', {})
 
-            context = pipeline_context.copy()
             system_message = """You are a prompt evaluation specialist.
             Compare the initial analysis with the original request to ensure alignment and completeness."""
             
             feedback_prompt = f"""
             Perform a comparative analysis:
             
-            Original Request: {context.get('original_prompt', '')}
-            Initial Analysis: {json.dumps(analysis, indent=2)}
+            Original Request: {prompt}
+            Initial Analysis: {json.dumps(analysis_result, indent=2)}
             
             Evaluate the following aspects:
             1. Intent Alignment
@@ -1490,35 +1532,19 @@ class FeedbackStage(PipelineStage):
             
             2. Technical Completeness
                 - Are all technical requirements identified?
-                - Is the {context.get('ai_type')} context properly considered?
+                - Is the {ai_type} context properly considered?
             
             3. Style Adherence
-                - Does it maintain {context.get('style')} style requirements?
+                - Does it maintain {style} style requirements?
                 - Are there style-specific gaps?
             
             4. Implementation Viability
                 - Are the identified approaches feasible?
-                - What potential challenges are missing?
-            
-            Provide structured feedback in JSON format:
-            {{
-                "alignment_analysis": {{
-                    "matches": [],
-                    "gaps": [],
-                    "recommendations": []
-                }},
-                "completeness_check": {{
-                    "covered_aspects": [],
-                    "missing_elements": [],
-                    "suggestions": []
-                }},
-                "improvement_areas": []
-            }}"""
-            
+                - What potential challenges are missing?"""
+
             response = self.api_handler.make_api_call(
                 system_message=system_message,
                 prompt=feedback_prompt,
-                context=context,
                 temperature=0.4
             )
             
@@ -1526,7 +1552,7 @@ class FeedbackStage(PipelineStage):
             
         except Exception as e:
             self.logger.error(f"Feedback stage failed: {str(e)}")
-            return self._create_fallback_feedback(pipeline_context)
+            return self._create_fallback_result("feedback")
 
 class GuidelinesStage(PipelineStage):
     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
@@ -1580,67 +1606,34 @@ class GuidelinesStage(PipelineStage):
             }
         }
 
-    def execute(self, pipeline_context: Dict) -> Dict:
-        """Generate comprehensive guidelines"""
+    def execute(self, prompt: str, ai_type: str, style: str) -> Dict:
+        """Modified to match base class signature"""
         try:
-            # Extract relevant information from the context dictionary
-            original_prompt = pipeline_context.get("original_prompt", "")
-            ai_type = pipeline_context.get("ai_type", "general")
-            style = pipeline_context.get("style", "professional")
-            
-            # Get stage results
-            stage_results = pipeline_context.get("execution_context", {}).get("stage_results", {})
-            analysis_result = stage_results.get("analysis", {})
-            feedback_result = stage_results.get("feedback", {})
-            
-            # Create system message
+            # Get context from previous stages
+            context = self.context_tracker.get_latest_context()
+            analysis_result = context.get('analysis', {})
+            feedback_result = context.get('feedback', {})
+
             system_message = f"""You are a guidelines generation expert for {ai_type} systems.
             Create comprehensive, actionable guidelines that address the user's needs.
             Consider the {style} style and previous analysis insights."""
 
-            # Create guidelines prompt
             guidelines_prompt = f"""Generate comprehensive guidelines based on:
-
-Original Request: {original_prompt}
-AI Type: {ai_type}
-Style: {style}
-
-Previous Analysis:
-{json.dumps(analysis_result, indent=2)}
-
-Feedback Insights:
-{json.dumps(feedback_result, indent=2)}
-
-Required Output Structure:
-1. Detailed Guidelines (Markdown format)
-2. Suggested Parameters
-3. Implementation Notes
-4. Critical Considerations
-5. Success Criteria"""
-
-            # Make API call with clean context
-            api_context = {
-                "original_prompt": original_prompt,
-                "ai_type": ai_type,
-                "style": style,
-                "analysis": analysis_result,
-                "feedback": feedback_result
-            }
+            Original Request: {prompt}
+            Analysis Results: {json.dumps(analysis_result, indent=2)}
+            Feedback: {json.dumps(feedback_result, indent=2)}"""
 
             response = self.api_handler.make_api_call(
                 system_message=system_message,
                 prompt=guidelines_prompt,
-                context=api_context,
                 temperature=0.4
             )
 
-            # Process and return response
-            processed_response = self._preserve_context("guidelines", response)
-            return processed_response
+            return self._preserve_context("guidelines", response)
 
         except Exception as e:
             self.logger.error(f"Guidelines stage failed: {str(e)}")
-            return self._create_fallback_guidelines(pipeline_context)
+            return self._create_fallback_result("guidelines")
 
     def _create_system_message(self) -> str:
         return """Generate detailed implementation guidelines based on analysis and feedback."""
@@ -1730,57 +1723,26 @@ class EnhancementStage(PipelineStage):
             ]
         }
 
-    def execute(self, pipeline_context: Dict) -> Dict:
+    def execute(self, prompt: str, ai_type: str, style: str) -> Dict:
+        """Modified to match base class signature"""
         try:
-            # Extract context information
-            original_prompt = pipeline_context.get("original_prompt", "")
-            ai_type = pipeline_context.get("ai_type", "general")
-            style = pipeline_context.get("style", "professional")
+            # Get context from previous stages
+            context = self.context_tracker.get_latest_context()
+            guidelines = context.get('guidelines', {})
             
-            # Get stage results
-            stage_results = pipeline_context.get("execution_context", {}).get("stage_results", {})
-            analysis_result = stage_results.get("analysis", {})
-            feedback_result = stage_results.get("feedback", {})
-            guidelines_result = stage_results.get("guidelines", {})
-
-            system_message = f"""You are a prompt enhancement expert specializing in {ai_type} systems.
+            system_message = f"""You are a prompt enhancement expert for {ai_type} systems.
             Generate multiple enhanced versions of the original prompt that:
             - Maintain the core intent
             - Provide different perspectives
-            - Align with {style} communication style
-            - Offer unique insights"""
+            - Align with {style} communication style"""
 
-            enhancement_prompt = f"""Generate three distinct, enhanced versions of the original prompt:
-
-Original Request: {original_prompt}
-AI Type: {ai_type}
-Style: {style}
-
-Previous Analysis:
-{json.dumps(analysis_result, indent=2)}
-
-Feedback Insights:
-{json.dumps(feedback_result, indent=2)}
-
-Guidelines:
-{json.dumps(guidelines_result, indent=2)}"""
-
-            # Make API call with clean context
-            api_context = {
-                "original_prompt": original_prompt,
-                "ai_type": ai_type,
-                "style": style,
-                "stage_results": {
-                    "analysis": analysis_result,
-                    "feedback": feedback_result,
-                    "guidelines": guidelines_result
-                }
-            }
+            prompt_template = f"""Generate three variations of this prompt:
+            Original: {prompt}
+            Guidelines: {json.dumps(guidelines, indent=2)}"""
 
             response = self.api_handler.make_api_call(
                 system_message=system_message,
-                prompt=enhancement_prompt,
-                context=api_context,
+                prompt=prompt_template,
                 temperature=0.7
             )
 
@@ -1788,7 +1750,7 @@ Guidelines:
 
         except Exception as e:
             self.logger.error(f"Enhancement stage failed: {str(e)}")
-            return self._create_fallback_enhanced_prompts(pipeline_context)
+            return self._create_fallback_result("enhancement")
 
 
 
@@ -1799,33 +1761,153 @@ class EnhancedPromptPipeline:
         self.response_manager = ResponseManager(logger)
         self.preprocessor = PromptPreprocessor()
         
-        # Create context tracker first
-        self.context_tracker = ContextTracker()
+        # Initialize context tracker with logger
+        self.context_tracker = ContextTracker(logger)
         
-        # Initialize stages with all required arguments
-        self.analysis_stage = AnalysisStage(
-            logger=logger,
-            api_handler=self.api_handler,
-            context_tracker=self.context_tracker
-        )
+        # Initialize stages
+        self.analysis_stage = AnalysisStage(logger, self.api_handler, self.context_tracker)
+        self.feedback_stage = FeedbackStage(logger, self.api_handler, self.context_tracker)
+        self.guidelines_stage = GuidelinesStage(logger, self.api_handler, self.context_tracker) 
+        self.enhancement_stage = EnhancementStage(logger, self.api_handler, self.context_tracker)
+
+    def _execute_preprocessing(self, prompt: str) -> Dict:
+        """Execute preprocessing stage and validate results"""
+        try:
+            self.logger.debug(f"Starting preprocessing for prompt: {prompt}")
+            preprocessing_result = self.preprocessor.analyze_prompt(prompt)
+            
+            if not preprocessing_result:
+                raise ValueError("Preprocessing returned empty result")
+                
+            # Validate preprocessing result structure
+            required_fields = ['content_analysis', 'linguistic_features']
+            if not all(field in preprocessing_result for field in required_fields):
+                raise ValueError(f"Preprocessing result missing required fields: {required_fields}")
+                
+            self.context_tracker.add_context("preprocessing", preprocessing_result)
+            return preprocessing_result
+            
+        except Exception as e:
+            self.logger.error(f"Preprocessing failed: {str(e)}")
+            return {
+                "status": "error",
+                "stage": "preprocessing",
+                "error": str(e),
+                "timestamp": datetime.datetime.now().isoformat()
+            }
         
-        self.feedback_stage = FeedbackStage(
-            logger=logger,
-            api_handler=self.api_handler,
-            context_tracker=self.context_tracker
-        )
+    def _initialize_pipeline_context(self, prompt: str, ai_type: str, style: str) -> Dict:
+        """Initialize and validate pipeline context"""
+        context = {
+            "original_prompt": prompt,
+            "ai_type": ai_type,
+            "style": style,
+            "timestamp": datetime.datetime.now().isoformat(),
+            "execution_context": {
+                "stage_results": {},
+                "errors": [],
+                "warnings": []
+            }
+        }
         
-        self.guidelines_stage = GuidelinesStage(
-            logger=logger,
-            api_handler=self.api_handler,
-            context_tracker=self.context_tracker
-        )
+        # Validate required fields
+        if not all(field in context for field in ['original_prompt', 'ai_type', 'style']):
+            raise ValueError("Missing required fields in pipeline context")
+            
+        self.logger.debug(f"Initialized pipeline context: {context}")
+        return context
+    
+    def _validate_stage_result(self, result: Dict, stage_name: str) -> bool:
+        """Validate stage result against expected structure"""
+        try:
+            if not isinstance(result, dict):
+                self.logger.error(f"Stage {stage_name} returned non-dict result: {type(result)}")
+                return False
+                
+            # Get expected structure for stage
+            expected_structure = self._get_stage_structure(stage_name)
+            
+            # Validate against expected structure
+            for field, expected_type in expected_structure.items():
+                if field not in result:
+                    self.logger.error(f"Missing required field '{field}' in {stage_name} result")
+                    return False
+                    
+                if isinstance(expected_type, dict) and not isinstance(result[field], dict):
+                    self.logger.error(f"Field '{field}' in {stage_name} should be dict")
+                    return False
+                    
+                if isinstance(expected_type, list) and not isinstance(result[field], list):
+                    self.logger.error(f"Field '{field}' in {stage_name} should be list")
+                    return False
+                    
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error validating {stage_name} result: {str(e)}")
+            return False
         
-        self.enhancement_stage = EnhancementStage(
-            logger=logger,
-            api_handler=self.api_handler,
-            context_tracker=self.context_tracker
-        )
+    def _create_pipeline_response(self, execution_state: Dict) -> Dict:
+        """Create final pipeline response with execution results"""
+        try:
+            response = {
+                "status": "error" if execution_state["errors"] else "success",
+                "metadata": {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "stages_executed": execution_state["stages_executed"],
+                    "total_stages": len(execution_state["stages_executed"])
+                },
+                "results": execution_state["stage_results"],
+                "context": self.context_tracker.get_cumulative_context()
+            }
+            
+            # Add errors if any occurred
+            if execution_state["errors"]:
+                response["errors"] = execution_state["errors"]
+                
+            # Add warnings if any occurred
+            if execution_state["warnings"]:
+                response["warnings"] = execution_state["warnings"]
+                
+            return response
+            
+        except Exception as e:
+            self.logger.error(f"Error creating pipeline response: {str(e)}")
+            return self._create_error_response(
+                str(e),
+                context=execution_state.get("stage_results", {})
+            )
+
+    def _enrich_context(self, current_stage_result: Dict, previous_context: Dict) -> Dict:
+        """
+        Intelligently merge current stage result with previous context.
+        
+        Args:
+            current_stage_result (Dict): Result from the current pipeline stage
+            previous_context (Dict): Accumulated context from previous stages
+        
+        Returns:
+            Dict: Enriched context with merged information
+        """
+        enriched_context = previous_context.copy()
+        
+        # Define keys to prioritize for context enrichment
+        priority_keys = [
+            'intent', 'requirements', 'context', 
+            'feedback', 'guidelines', 'prompts'
+        ]
+        
+        for key in priority_keys:
+            if key in current_stage_result and current_stage_result[key]:
+                enriched_context[key] = current_stage_result[key]
+        
+        # Add metadata about context evolution
+        enriched_context['_metadata'] = {
+            'last_updated_stage': current_stage_result.get('_stage_metadata', {}).get('stage_name'),
+            'updated_at': datetime.datetime.now().isoformat()
+        }
+        
+        return enriched_context
 
     def _execute_analysis_stage(self, prompt: str, ai_type: str, style: str) -> Dict:
         """Execute the analysis stage of the pipeline"""
@@ -1834,43 +1916,152 @@ class EnhancedPromptPipeline:
         except Exception as e:
             self.logger.error(f"Analysis stage failed: {str(e)}")
             return self.analysis_stage._create_fallback_analysis(prompt, ai_type, style)
+
+
+    def _create_fallback_result(self, stage_name: str, error_details: str = None, original_context: Dict = None) -> Dict:
+        """Create enriched fallback result with error context"""
+        fallback = self._generate_fallback_result(stage_name)
         
-    
-
-
-    def execute_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict[str, Any]:
+        # Add error context
+        fallback.update({
+            "status": "fallback",
+            "stage": stage_name,
+            "error_details": error_details,
+            "original_context": original_context,
+            "timestamp": datetime.datetime.now().isoformat()
+        })
+        
+        return fallback
+    def execute_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
+        """Improved pipeline execution with robust error handling and context preservation"""
         try:
-            # Initialize pipeline context
-            pipeline_context = PipelineContext(prompt, ai_type, style)
+            # Initialize context tracker with logger
+            self.context_tracker = ContextTracker(self.logger)
             
-            # Store stage results in context
-            stages_executed = []
+            # Initialize execution state
+            execution_state = {
+                "stages_executed": [],
+                "stage_results": {},
+                "errors": [],
+                "warnings": []
+            }
+            
+            # Create and validate initial context
+            pipeline_context = {
+                "original_prompt": prompt,
+                "ai_type": ai_type,
+                "style": style,
+                "timestamp": datetime.datetime.now().isoformat()
+            }
             
             # Execute preprocessing
-            preprocessing_result = self.preprocessor.analyze_prompt(prompt)
-            pipeline_context.update_stage_result("preprocessing", preprocessing_result)
-            stages_executed.append("preprocessing")
+            preprocessing_result = self._execute_preprocessing(prompt)
+            execution_state["stage_results"]["preprocessing"] = preprocessing_result
+            execution_state["stages_executed"].append("preprocessing")
             
-            # Execute main stages
-            for stage in (self.analysis_stage, self.feedback_stage, 
-                         self.guidelines_stage, self.enhancement_stage):
-                result = stage.execute_with_context(pipeline_context)
-                pipeline_context.update_stage_result(stage.__class__.__name__, result)
-                stages_executed.append(stage.__class__.__name__)
+            # Execute main stages with context preservation
+            stages = [
+                (self.analysis_stage, "analysis"),
+                (self.feedback_stage, "feedback"),
+                (self.guidelines_stage, "guidelines"),
+                (self.enhancement_stage, "enhancement")
+            ]
             
-            return {
-                "status": "success",
+            for stage, name in stages:
+                try:
+                    # Get current context state
+                    current_context = self.context_tracker.get_latest_context()
+                    pipeline_context.update(current_context)
+                    
+                    self.logger.debug(f"Executing {name} with context: {pipeline_context}")
+                    result = stage.execute_with_context(pipeline_context)
+                    
+                    execution_state["stage_results"][name] = result
+                    execution_state["stages_executed"].append(name)
+                    
+                except Exception as e:
+                    self.logger.error(f"{name} stage failed: {str(e)}")
+                    execution_state["errors"].append({
+                        "stage": name,
+                        "error": str(e),
+                        "timestamp": datetime.datetime.now().isoformat()
+                    })
+                    # Continue pipeline execution with fallback
+                    fallback = stage._create_fallback_result(
+                        stage_name=name,
+                        error_details=str(e)
+                    )
+                    execution_state["stage_results"][name] = fallback
+            
+            # Create final response with complete context
+            response = {
+                "status": "error" if execution_state["errors"] else "success",
                 "metadata": {
                     "timestamp": datetime.datetime.now().isoformat(),
-                    "stages_executed": stages_executed
+                    "stages_executed": execution_state["stages_executed"]
                 },
-                "context": pipeline_context.get_context(),
-                "results": pipeline_context.context["execution_context"]["stage_results"]
+                "context": self.context_tracker.get_cumulative_context(),
+                "results": execution_state["stage_results"]
             }
+            
+            if execution_state["errors"]:
+                response["errors"] = execution_state["errors"]
+            
+            return response
             
         except Exception as e:
             self.logger.error(f"Pipeline execution failed: {str(e)}")
-            return self._create_error_response(str(e))
+            return self._create_error_response(str(e), pipeline_context)
+        
+        
+
+    def _get_stage_structure(self, stage_name: str) -> Dict:
+        """Define expected structure for each stage"""
+        stage_structures = {
+            'analysis_stage.execute': {
+                "intent": {},
+                "requirements": [],
+                "context": {}
+            },
+            'feedback_stage.execute': {
+                "feedback": {},
+                "improvements": [],
+                "suggestions": {}
+            },
+            'guidelines_stage.execute': {
+                "guidelines": "",
+                "parameters": {},
+                "implementation_notes": {}
+            },
+            'enhancement_stage.execute': {
+                "prompts": []
+            }
+        }
+        return stage_structures.get(stage_name, {})
+
+    def _generate_fallback_result(self, stage_name: str) -> Dict:
+        """Generate a fallback result for a specific stage"""
+        fallback_results = {
+            'analysis_stage.execute': {
+                "intent": {"primary_objective": "Default analysis"},
+                "requirements": ["Generic requirement"],
+                "context": {"default": "Fallback context"}
+            },
+            'feedback_stage.execute': {
+                "feedback": {"status": "Unable to provide detailed feedback"},
+                "improvements": ["Generic improvement"],
+                "suggestions": {"content": []}
+            },
+            'guidelines_stage.execute': {
+                "guidelines": "Generic guidelines for implementation",
+                "parameters": {"temperature": 0.7},
+                "implementation_notes": {"default": "Fallback implementation"}
+            },
+            'enhancement_stage.execute': {
+                "prompts": [{"prompt": "Fallback enhanced prompt"}]
+            }
+        }
+        return fallback_results.get(stage_name, {})
 
     def _transform_user_request(self, prompt: str, ai_type: str, style: str) -> Dict:
         
@@ -2256,6 +2447,28 @@ class ResponseHandler:
                 "original_response": response
             }
         }
+    
+    def standardize_response(self, pipeline_result: Dict) -> Dict:
+        """
+        Create a consistent, flexible response structure
+        that can handle partial or complete pipeline processing.
+        """
+        standard_response = {
+            "metadata": {
+                "timestamp": datetime.now().isoformat(),
+                "processing_status": pipeline_result.get('status', 'unknown'),
+                "ai_configuration": {
+                    "type": pipeline_result.get('ai_type', 'generic'),
+                    "style": pipeline_result.get('style', 'default')
+                }
+            },
+            "results": {
+                stage: result for stage, result in pipeline_result.get('stages', {}).items()
+            },
+            "errors": pipeline_result.get('errors', [])
+        }
+        
+        return standard_response
 
     def _create_fallback_preprocessing(self) -> Dict:
         """Create fallback preprocessing response"""
@@ -2908,7 +3121,100 @@ Automated Analysis for: {prompt}
 
 
 
- 
+class ResponseManager:
+    """
+    Manages response data throughout the pipeline, ensuring consistency and proper formatting.
+    Acts as a central point for data transformation and validation.
+    """
+    def __init__(self, logger: Logger):
+        self.logger = logger
+        self.preprocessing_data = {}
+        self.stage_results = {}
+        
+    def update_stage_result(self, stage_name: str, result: Dict):
+        """
+        Updates results for a specific pipeline stage while maintaining data integrity.
+        """
+        try:
+            # Validate and normalize the result
+            normalized_result = self._normalize_result(result, stage_name)
+            
+            # Store preprocessing data separately
+            if stage_name == "preprocessing":
+                self.preprocessing_data = normalized_result
+            
+            # Store stage result
+            self.stage_results[stage_name] = normalized_result
+            
+        except Exception as e:
+            self.logger.error(f"Error updating {stage_name} result: {str(e)}")
+            self.stage_results[stage_name] = self._create_fallback_result(stage_name)
+    
+    def get_final_response(self) -> Dict:
+        """
+        Creates the final response with all accumulated data.
+        Ensures all required fields are present with proper formatting.
+        """
+        try:
+            return {
+                "status": "success",
+                "metadata": {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "version": "2.0.0"
+                },
+                "preprocessing": self.preprocessing_data,
+                "stages": {
+                    stage: self._ensure_required_fields(stage, result)
+                    for stage, result in self.stage_results.items()
+                },
+                "summary": self._generate_summary()
+            }
+        except Exception as e:
+            self.logger.error(f"Error creating final response: {str(e)}")
+            return self._create_error_response(str(e))
+
+    def _normalize_result(self, result: Dict, stage_name: str) -> Dict:
+        """
+        Normalizes results to ensure consistent structure.
+        """
+        if not isinstance(result, dict):
+            return {"content": str(result)}
+            
+        if "raw_response" in result:
+            return self._convert_raw_response(result, stage_name)
+            
+        return result
+
+    def _ensure_required_fields(self, stage_name: str, result: Dict) -> Dict:
+        """
+        Ensures all required fields are present for each stage.
+        """
+        required_fields = {
+            "preprocessing": {
+                "linguistic": {"complexity_metrics": {}, "discourse_analysis": {}, "semantic_analysis": {}},
+                "content_analysis": {"named_entities": [], "keywords": [], "topics": [], "sentiment": {}}
+            },
+            "analysis": {
+                "intent": {}, 
+                "requirements": [], 
+                "context": {}
+            },
+            # Add required fields for other stages...
+        }
+        
+        stage_fields = required_fields.get(stage_name, {})
+        return {**stage_fields, **result}
+
+    def _generate_summary(self) -> Dict:
+        """
+        Generates a summary of the pipeline results.
+        """
+        return {
+            "stages_completed": list(self.stage_results.keys()),
+            "preprocessing_success": bool(self.preprocessing_data),
+            "total_stages": len(self.stage_results)
+        }
+    
 model_manager = None
 try:
     model_manager = ModelManager()
