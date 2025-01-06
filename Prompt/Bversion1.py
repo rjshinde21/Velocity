@@ -5,7 +5,7 @@ import json
 import numpy as np
 import os
 import logging
-from typing import Dict, Any, List, Tuple, Union, Optional
+from typing import Dict, Any, List, Tuple, Union
 from logging import Logger
 from llamaapi import LlamaAPI
 import re
@@ -145,35 +145,7 @@ class ContextTracker:
             "total_stages_processed": 0
         }
 
-    def _enrich_context(self, current_stage_result: Dict, previous_context: Dict) -> Dict:
-        """Intelligently merge current stage result with previous context"""
-        enriched_context = previous_context.copy()
-        
-        # Define stage-specific enrichment rules
-        enrichment_mapping = {
-            'analysis': ['intent', 'requirements', 'context'],
-            'feedback': ['alignment_analysis', 'completeness_check', 'improvement_areas'],
-            'guidelines': ['guidelines', 'parameters', 'implementation_notes'],
-            'enhancement': ['prompts']
-        }
-        
-        # Determine stage and apply appropriate enrichment
-        stage_name = current_stage_result.get('_stage_metadata', {}).get('stage_name')
-        if stage_name in enrichment_mapping:
-            for key in enrichment_mapping[stage_name]:
-                if key in current_stage_result:
-                    enriched_context[key] = current_stage_result[key]
-        
-        # Add stage completion metadata
-        enriched_context['_metadata'] = {
-            'last_updated_stage': stage_name,
-            'updated_at': datetime.datetime.now().isoformat(),
-            'stage_sequence': len(enriched_context.get('_metadata', {}).get('completed_stages', [])) + 1
-        }
-        
-        return enriched_context
-
-    def add_stage_result(self, stage_name: str, result: Dict, metadata: Dict = None):
+    def add_stage_result(self, stage_name: str, result: Dict, metadata: Dict = None) -> None:
         """Enhanced stage result addition with metadata tracking"""
         stage_entry = {
             "stage": stage_name,
@@ -287,17 +259,14 @@ class ContextTracker:
             "metadata": self.metadata
         }
     
-    def add_stage_result(self, stage_name: str, result: Dict, metadata: Dict = None):
-        """Enhanced stage result addition with metadata tracking"""
-        stage_entry = {
+    def add_stage_result(self, stage_name: str, result: Dict) -> None:
+        stage_context = {
             "stage": stage_name,
             "result": result,
             "timestamp": datetime.datetime.now().isoformat(),
-            "sequence": len(self.context_chain),
-            "metadata": metadata or {},
-            "dependencies": self._extract_dependencies(result)
+            "sequence": len(self.context_chain)
         }
-        self.context_chain.append(stage_entry)
+        self.context_chain.append(stage_context)
         self.metadata["total_stages_processed"] += 1
 
     def get_previous_stage_results(self, current_stage: str) -> List[Dict]:
@@ -710,8 +679,7 @@ class APIHandler:
 
 
 class PromptPreprocessor:
-    def __init__(self, logger: Optional[Logger] = None):
-        self.logger = logger or logging.getLogger(__name__)
+    def __init__(self):
         self.model_manager = ModelManager()
         self.nlp = self.model_manager.models['nlp']
         self.sentiment_analyzer = self.model_manager.models['sentiment_analyzer']
@@ -786,14 +754,9 @@ class PromptPreprocessor:
             'primary_discourse_type': max(structure.items(), key=lambda x: len(x[1]))[0]
         }
 
-    def analyze_prompt(self, prompt_input: Union[str, Dict]) -> Dict:
+    def analyze_prompt(self, prompt: str) -> Dict:
         """Comprehensive prompt analysis with improved field population"""
         try:
-            # Extract prompt string if input is dict
-            prompt = prompt_input['original_prompt'] if isinstance(prompt_input, dict) else prompt_input
-            
-            if not isinstance(prompt, str):
-                raise ValueError(f"Invalid prompt type: {type(prompt)}")
             doc = self.nlp(prompt)
             
             # Enhanced entity extraction
@@ -1186,30 +1149,19 @@ class PipelineStage:
         self.context_tracker = context_tracker
 
     def _enrich_context(self, current_stage_result: Dict, previous_context: Dict) -> Dict:
-        """Intelligently merge current stage result with previous context"""
+        """
+        Intelligently merge current stage result with previous context.
+        
+        Key Improvements:
+        - Preserves important information from previous stages
+        - Allows controlled context evolution
+        """
         enriched_context = previous_context.copy()
         
-        # Define stage-specific enrichment rules
-        enrichment_mapping = {
-            'analysis': ['intent', 'requirements', 'context'],
-            'feedback': ['alignment_analysis', 'completeness_check', 'improvement_areas'],
-            'guidelines': ['guidelines', 'parameters', 'implementation_notes'],
-            'enhancement': ['prompts']
-        }
-        
-        # Determine stage and apply appropriate enrichment
-        stage_name = current_stage_result.get('_stage_metadata', {}).get('stage_name')
-        if stage_name in enrichment_mapping:
-            for key in enrichment_mapping[stage_name]:
-                if key in current_stage_result:
-                    enriched_context[key] = current_stage_result[key]
-        
-        # Add stage completion metadata
-        enriched_context['_metadata'] = {
-            'last_updated_stage': stage_name,
-            'updated_at': datetime.datetime.now().isoformat(),
-            'stage_sequence': len(enriched_context.get('_metadata', {}).get('completed_stages', [])) + 1
-        }
+        # Merge strategy: prioritize current stage's information
+        for key, value in current_stage_result.items():
+            if value:  # Only add non-empty values
+                enriched_context[key] = value
         
         return enriched_context
 
@@ -1269,19 +1221,15 @@ class PipelineStage:
     def execute(self, stage_input: Dict) -> Dict:
         try:
             # Extract core components
-            prompt = stage_input["original_prompt"]
+            prompt = stage_input["prompt"]
             ai_type = stage_input["ai_type"]
             style = stage_input["style"]
-            previous_context = stage_input.get("previous_context", {})
             
             # Create stage-specific system message
             system_message = self._create_system_message(ai_type, style)
             
-            # Generate stage-specific prompt with context
-            user_message = self._create_user_message({
-                **stage_input,
-                "previous_context": previous_context
-            })
+            # Generate stage-specific prompt
+            user_message = self._create_user_message(stage_input)
             
             # Make API call with context
             response = self.api_handler.make_api_call(
@@ -1291,10 +1239,7 @@ class PipelineStage:
                 **self._get_stage_parameters(stage_input)
             )
             
-            processed_response = self._process_stage_response(response)
-            
-            # Add stage metadata
-            return self._add_stage_metadata(processed_response)
+            return self._process_stage_response(response)
             
         except Exception as e:
             return self._create_fallback_response(stage_input)
@@ -1647,39 +1592,8 @@ class AnalysisStage(PipelineStage):
             }
 
     def _create_system_message(self, ai_type: str, style: str) -> str:
-        return f"""You are an expert analysis specialist for {ai_type} systems.
-        Your task is to perform a deep analysis of the user's request, considering:
-        - Primary intent and underlying goals
-        - Explicit and implicit requirements
-        - Technical considerations specific to {ai_type}
-        - Style requirements for {style} output
-        
-        Return your analysis in this exact JSON structure:
-        {{
-            "intent": {{
-                "primary_objective": "Clear statement of main goal",
-                "implicit_requirements": [
-                    "List of unstated but necessary requirements"
-                ],
-                "success_criteria": [
-                    "Measurable outcomes for success"
-                ]
-            }},
-            "requirements": [
-                "Detailed technical and functional requirements"
-            ],
-            "context": {{
-                "constraints": [
-                    "Technical and practical limitations"
-                ],
-                "considerations": [
-                    "Important factors to consider"
-                ],
-                "style_guidelines": [
-                    "Specific style requirements and adaptations"
-                ]
-            }}
-        }}"""
+        return f"""You are an AI-focused analysis expert specializing in {ai_type} systems. 
+        Analyze the request with {style} style formatting."""
 
     def _create_user_message(self, pipeline_context: Dict) -> str:
         return f"""Analyze this request:
@@ -1786,26 +1700,6 @@ class FeedbackStage(PipelineStage):
     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
         super().__init__(logger, api_handler, context_tracker)
         self.required_fields = ["feedback", "improvements", "suggestions"]
-
-    def _create_user_message(self, pipeline_context: Dict) -> str:
-        analysis_result = pipeline_context.get("stage_results", {}).get("analysis", {})
-        return f"""
-        Analyze the alignment between the original request and its analysis:
-        
-        Original Request: {pipeline_context.get('original_prompt')}
-        AI Type: {pipeline_context.get('ai_type')}
-        Style: {pipeline_context.get('style')}
-        
-        Analysis Results:
-        {json.dumps(analysis_result, indent=2)}
-        
-        Evaluate:
-        1. Content Coverage
-        2. Technical Accuracy
-        3. Style Alignment
-        4. Completeness
-        
-        Provide specific examples and recommendations for improvements."""
 
     def _create_fallback_feedback(self, pipeline_context: Dict) -> Dict:
         return {
@@ -2000,26 +1894,8 @@ Required Output Structure:
             self.logger.error(f"Guidelines stage failed: {str(e)}")
             return self._create_fallback_guidelines(pipeline_context)
 
-    def _create_system_message(self, ai_type: str, style: str) -> str:
-        return f"""You are a guidelines expert for {ai_type} systems.
-        Generate comprehensive guidelines and return JSON in this exact structure:
-        {{
-            "guidelines": {{
-                "implementation_approach": "string",
-                "key_considerations": ["string"],
-                "best_practices": ["string"]
-            }},
-            "parameters": {{
-                "temperature": {{"value": 0.7, "reasoning": "string"}},
-                "top_p": {{"value": 0.9, "reasoning": "string"}},
-                "presence_penalty": {{"value": 0.0, "reasoning": "string"}},
-                "frequency_penalty": {{"value": 0.0, "reasoning": "string"}}
-            }},
-            "implementation_notes": {{
-                "critical_considerations": ["string"],
-                "success_criteria": ["string"]
-            }}
-        }}"""
+    def _create_system_message(self) -> str:
+        return """Generate detailed implementation guidelines based on analysis and feedback."""
         
     def _create_guidelines_prompt(self, pipeline_context: Dict) -> str:
         guidelines_template = {
@@ -2165,70 +2041,43 @@ Guidelines:
         except Exception as e:
             self.logger.error(f"Enhancement stage failed: {str(e)}")
             return self._create_fallback_enhanced_prompts(pipeline_context)
-        
-    def _process_stage_response(self, response: Dict) -> Dict:
-        """Process and structure the enhancement stage output"""
-        try:
-            content = response.get('content', '')
-            # Extract versions from content
-            versions = re.findall(r'\*\*Version \d:\*\*\s*"([^"]+)"', content)
-            
-            structured_prompts = []
-            for i, version in enumerate(versions[:3]):
-                structured_prompts.append({
-                    "prompt": version.strip(),
-                    "focus": f"Version {i+1}",
-                    "perspective": self._determine_perspective(version)
-                })
-                
-            return {
-                "prompts": structured_prompts,
-                "_metadata": {
-                    "format_version": "2.0",
-                    "processing_stage": "enhancement"
-                }
-            }
-        except Exception as e:
-            self.logger.error(f"Enhancement processing failed: {str(e)}")
-            return self._create_fallback_enhanced_prompts()
-        
-    def _create_system_message(self, ai_type: str, style: str) -> str:
-        return f"""You are a prompt enhancement expert for {ai_type} systems.
-        Generate three enhanced versions and return JSON in this exact structure:
-        {{
-            "prompts": [
-                {{
-                    "prompt": "string",
-                    "focus": "string",
-                    "perspective": "string"
-                }},
-                {{
-                    "prompt": "string",
-                    "focus": "string",
-                    "perspective": "string"
-                }},
-                {{
-                    "prompt": "string",
-                    "focus": "string",
-                    "perspective": "string"
-                }}
-            ]
-        }}"""
 
 
 
 class EnhancedPromptPipeline:
     def __init__(self, logger: Logger):
-        self.logger = logger 
+        self.logger = logger
         self.api_handler = APIHandler(logger)
         self.response_manager = ResponseManager(logger)
-        self.preprocessor = PromptPreprocessor(logger) 
+        self.preprocessor = PromptPreprocessor()
+        
+        # Create context tracker first
         self.context_tracker = ContextTracker()
         
-        self.analysis_stage = AnalysisStage(logger, self.api_handler, self.context_tracker)
-        self.feedback_stage = FeedbackStage(logger, self.api_handler, self.context_tracker)
-        self.guidelines_stage = GuidelinesStage(logger, self.api_handler, self.context_tracker)
-        self.enhancement_stage = EnhancementStage(logger, self.api_handler, self.context_tracker)
+        # Initialize stages with all required arguments
+        self.analysis_stage = AnalysisStage(
+            logger=logger,
+            api_handler=self.api_handler,
+            context_tracker=self.context_tracker
+        )
+        
+        self.feedback_stage = FeedbackStage(
+            logger=logger,
+            api_handler=self.api_handler,
+            context_tracker=self.context_tracker
+        )
+        
+        self.guidelines_stage = GuidelinesStage(
+            logger=logger,
+            api_handler=self.api_handler,
+            context_tracker=self.context_tracker
+        )
+        
+        self.enhancement_stage = EnhancementStage(
+            logger=logger,
+            api_handler=self.api_handler,
+            context_tracker=self.context_tracker
+        )
 
     def _enrich_context(self, current_stage_result: Dict, previous_context: Dict) -> Dict:
         """
@@ -2346,6 +2195,7 @@ class EnhancedPromptPipeline:
 
     def execute_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
         try:
+            # Create unified context object
             context = {
                 "request_id": str(uuid.uuid4()),
                 "original_prompt": prompt,
@@ -2353,39 +2203,33 @@ class EnhancedPromptPipeline:
                 "style": style,
                 "timestamp": datetime.datetime.now().isoformat(),
                 "stage_results": {},
-                "context_chain": [],
-                "accumulated_context": {}
+                "context_chain": []
             }
 
-            # Fix preprocessing call - pass the prompt string directly 
-            preprocessing_result = self.preprocessor.analyze_prompt(prompt)  # Pass string instead of dict
-            context["stage_results"]["preprocessing"] = preprocessing_result
-            
-            # Modified stage execution
-            stages = [
+            # Add logging to track pipeline progression
+            self.logger.info(f"Starting pipeline execution for request {context['request_id']}")
+
+            # Execute stages with error recovery
+            for stage_name, stage in [
+                ("preprocessing", lambda: self.preprocessor.analyze_prompt(prompt)),
                 ("analysis", lambda: self.analysis_stage.execute(context)),
                 ("feedback", lambda: self.feedback_stage.execute(context)),
                 ("guidelines", lambda: self.guidelines_stage.execute(context)),
                 ("enhancement", lambda: self.enhancement_stage.execute(context))
-            ]
-
-            for stage_name, stage_func in stages:
+            ]:
                 try:
                     self.logger.info(f"Executing {stage_name} stage")
-                    result = stage_func()
-                    context["accumulated_context"] = self._enrich_context(
-                        result, 
-                        context["accumulated_context"]
-                    )
+                    result = stage()
                     context["stage_results"][stage_name] = result
                     self._add_to_context_chain(context, stage_name, result)
-                    
+                    self.logger.info(f"Completed {stage_name} stage successfully")
                 except Exception as e:
                     self.logger.error(f"Error in {stage_name} stage: {str(e)}")
                     fallback = self._create_stage_fallback(stage_name)
                     context["stage_results"][stage_name] = fallback
                     self._add_to_context_chain(context, stage_name, fallback)
 
+            # Format final response
             return self._format_final_response(context)
 
         except Exception as e:
