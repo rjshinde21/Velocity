@@ -1,3 +1,4 @@
+
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -144,6 +145,38 @@ class ContextTracker:
             "creation_timestamp": datetime.datetime.now(),
             "total_stages_processed": 0
         }
+
+    def _propagate_style_requirements(self, context_entry: Dict) -> Dict:
+        """Ensure style requirements are propagated through context chain"""
+        base_style = self.get_stage_context("base_configuration")
+        if base_style:
+            context_entry["inherited_style"] = {
+                "style_type": base_style.get("style"),
+                "ai_system": base_style.get("ai_type"),
+                "style_metadata": base_style.get("style_metadata", {})
+            }
+        return context_entry
+
+    def add_context(self, stage_name: str, context: Dict) -> None:
+        """Enhanced context addition with style preservation"""
+        try:
+            context_entry = {
+                "stage": stage_name,
+                "data": context,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "sequence": len(self.context_chain)
+            }
+            
+            # Propagate style requirements
+            context_entry = self._propagate_style_requirements(context_entry)
+            
+            self.context_chain.append(context_entry)
+            self.last_context = context
+            self.metadata["total_stages_processed"] += 1
+            
+        except Exception as e:
+            self.logger.error(f"Failed to add context for stage {stage_name}: {str(e)}")
+            self.last_context = {"error": str(e), "stage": stage_name}
 
     def _enrich_context(self, current_stage_result: Dict, previous_context: Dict) -> Dict:
         """Intelligently merge current stage result with previous context"""
@@ -317,14 +350,20 @@ class APIHandler:
         self.base_delay = 1
 
     def make_api_call(self, system_message: str, prompt: str, context: Dict = None, **params) -> Dict:
+        """Updated API call with style preservation"""
+        style = context.get("metadata", {}).get("style_requirements", {}).get("type", "professional")
+        ai_type = context.get("metadata", {}).get("style_requirements", {}).get("ai_system", "general")
+        
+        enhanced_system_message = self._enhance_system_message(system_message, style, ai_type)
+        
         messages = [
-            {"role": "system", "content": system_message}
+            {"role": "system", "content": enhanced_system_message}
         ]
         
         if context:
             messages.append({
                 "role": "system",
-                "content": f"Context: {json.dumps(context, indent=2)}"
+                "content": f"Style and Context Information:\n{json.dumps(context, indent=2)}"
             })
         
         messages.append({"role": "user", "content": prompt})
@@ -477,6 +516,15 @@ class APIHandler:
             self.logger.error(f"Response processing failed: {str(e)}")
             return self._create_error_response(str(e))
         
+    def _enhance_system_message(self, system_message: str, style: str, ai_type: str) -> str:
+        """Enhance system message with style and AI type requirements"""
+        style_prefix = f"""You are an expert in {ai_type} systems, specializing in {style} communication.
+        All responses must maintain:
+        - {style} style consistently throughout
+        - Appropriate tone for {ai_type} systems
+        - Technical accuracy while maintaining style
+        """
+        return f"{style_prefix}\n\n{system_message}"
     def _validate_and_structure_json(self, content: Dict) -> Dict:
         """Ensure response follows required JSON structure"""
         if not isinstance(content, dict):
@@ -1185,33 +1233,211 @@ class PipelineStage:
         self.api_handler = api_handler
         self.context_tracker = context_tracker
 
+    def _preserve_stage_context(self, current_stage: str, result: Dict, previous_context: Dict) -> Dict:
+        """Enhanced context preservation between stages"""
+        try:
+            # Extract core style and AI type information
+            style_info = previous_context.get("metadata", {}).get("style_requirements", {})
+            
+            # Create stage-specific context
+            stage_context = {
+                "stage_name": current_stage,
+                "execution_timestamp": datetime.datetime.now().isoformat(),
+                "style_requirements": style_info,
+                "context_chain_position": len(previous_context.get("context_chain", [])),
+                "inherited_context": self._extract_relevant_previous_context(previous_context)
+            }
+
+            # Merge with result
+            result["_stage_metadata"] = stage_context
+            result["_context_preservation"] = {
+                "inherited_style": style_info.get("type"),
+                "inherited_ai_system": style_info.get("ai_system"),
+                "context_depth": stage_context["context_chain_position"]
+            }
+
+            return result
+        except Exception as e:
+            self.logger.error(f"Context preservation failed: {str(e)}")
+            return result
+
+    def _summarize_stage_result(self, stage_result: Dict) -> Dict:
+        """
+        Creates a concise summary of stage results by extracting key information.
+        This reduces context bloat while preserving essential data.
+        
+        Args:
+            stage_result: Complete stage result dictionary
+            
+        Returns:
+            Dict containing summarized stage information
+        """
+        try:
+            # Extract stage type and core information
+            stage_type = stage_result.get('_stage_metadata', {}).get('stage_name', 'unknown')
+            
+            # Define summarization strategies for different stage types
+            summarization_mapping = {
+                'analysis': self._summarize_analysis_stage,
+                'feedback': self._summarize_feedback_stage,
+                'guidelines': self._summarize_guidelines_stage,
+                'enhancement': self._summarize_enhancement_stage
+            }
+            
+            # Get appropriate summarization function or use default
+            summarize_func = summarization_mapping.get(stage_type, self._default_summarization)
+            summary = summarize_func(stage_result)
+            
+            # Add common metadata
+            summary['_summary_metadata'] = {
+                'original_stage': stage_type,
+                'summarized_at': datetime.datetime.now().isoformat(),
+                'summary_version': '1.0'
+            }
+            
+            return summary
+            
+        except Exception as e:
+            self.logger.error(f"Stage summarization failed: {str(e)}")
+            return {
+                'error': str(e),
+                'stage_type': stage_type,
+                'timestamp': datetime.datetime.now().isoformat()
+            }
+
+    def _extract_relevant_context(self, previous_context: Dict) -> Dict:
+        """
+        Extracts only the relevant information from previous context needed for 
+        current stage execution. This prevents context bloat across stages.
+        
+        Args:
+            previous_context: Complete previous context dictionary
+            
+        Returns:
+            Dict containing only relevant context information
+        """
+        try:
+            # Define essential fields to preserve
+            essential_fields = {
+                'intent': self._extract_intent_info,
+                'requirements': self._extract_requirements_info,
+                'context_parameters': self._extract_parameters_info,
+                'key_insights': self._extract_insights
+            }
+            
+            relevant_context = {}
+            
+            # Extract only necessary information using specific extractors
+            for field, extractor in essential_fields.items():
+                if field_data := extractor(previous_context):
+                    relevant_context[field] = field_data
+                    
+            return relevant_context
+            
+        except Exception as e:
+            self.logger.error(f"Context extraction failed: {str(e)}")
+            return {'error': str(e)}
+
+    # Helper functions for stage-specific summarization
+    def _summarize_analysis_stage(self, stage_result: Dict) -> Dict:
+        """Creates concise summary of analysis stage results"""
+        return {
+            'primary_intent': stage_result.get('intent', {}).get('primary_objective'),
+            'key_requirements': stage_result.get('requirements', [])[:3],  # Top 3 requirements
+            'context_summary': {
+                'constraints': stage_result.get('context', {}).get('constraints', []),
+                'considerations': stage_result.get('context', {}).get('considerations', [])[:2]
+            }
+        }
+
+    def _summarize_feedback_stage(self, stage_result: Dict) -> Dict:
+        """Creates concise summary of feedback stage results"""
+        return {
+            'key_gaps': stage_result.get('alignment_analysis', {}).get('gaps', [])[:2],
+            'primary_recommendations': stage_result.get('alignment_analysis', {}).get('recommendations', [])[:2],
+            'improvement_areas': stage_result.get('improvement_areas', [])[:3]
+        }
+
+    def _summarize_guidelines_stage(self, stage_result: Dict) -> Dict:
+        """Creates concise summary of guidelines stage results"""
+        content = stage_result.get('structured_content', {})
+        return {
+            'critical_considerations': content.get('critical_considerations', [])[:3],
+            'key_guidelines': content.get('guidelines_for_chatgpt', [])[:3],
+            'implementation_notes': content.get('implementation_notes', [])[:2]
+        }
+
+    def _summarize_enhancement_stage(self, stage_result: Dict) -> Dict:
+        """Creates concise summary of enhancement stage results"""
+        return {
+            'enhanced_prompts': [
+                {'prompt': p.get('prompt'), 'focus': p.get('focus')}
+                for p in stage_result.get('prompts', [])[:2]  # Only top 2 prompts
+            ]
+        }
+
+    # Helper functions for context extraction
+    def _extract_intent_info(self, context: Dict) -> Dict:
+        """Extracts essential intent information"""
+        intent_data = context.get('intent', {})
+        return {
+            'primary_objective': intent_data.get('primary_objective'),
+            'key_requirements': intent_data.get('implicit_requirements', [])[:3]
+        }
+
+    def _extract_requirements_info(self, context: Dict) -> List:
+        """Extracts key requirements information"""
+        return context.get('requirements', [])[:5]  # Top 5 requirements
+
+    def _extract_parameters_info(self, context: Dict) -> Dict:
+        """Extracts essential parameters information"""
+        return {
+            k: v for k, v in context.get('parameters', {}).items()
+            if k in ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty']
+        }
+
+    def _extract_insights(self, context: Dict) -> List:
+        """Extracts key insights from context"""
+        insights = []
+        if 'feedback' in context:
+            insights.extend(context['feedback'].get('improvement_areas', [])[:2])
+        if 'guidelines' in context:
+            insights.extend(context.get('guidelines', {}).get('critical_considerations', [])[:2])
+        return insights
+
     def _enrich_context(self, current_stage_result: Dict, previous_context: Dict) -> Dict:
-        """Intelligently merge current stage result with previous context"""
-        enriched_context = previous_context.copy()
+        """
+        Creates enriched context with efficient summarization and relevant data extraction.
         
-        # Define stage-specific enrichment rules
-        enrichment_mapping = {
-            'analysis': ['intent', 'requirements', 'context'],
-            'feedback': ['alignment_analysis', 'completeness_check', 'improvement_areas'],
-            'guidelines': ['guidelines', 'parameters', 'implementation_notes'],
-            'enhancement': ['prompts']
-        }
-        
-        # Determine stage and apply appropriate enrichment
-        stage_name = current_stage_result.get('_stage_metadata', {}).get('stage_name')
-        if stage_name in enrichment_mapping:
-            for key in enrichment_mapping[stage_name]:
-                if key in current_stage_result:
-                    enriched_context[key] = current_stage_result[key]
-        
-        # Add stage completion metadata
-        enriched_context['_metadata'] = {
-            'last_updated_stage': stage_name,
-            'updated_at': datetime.datetime.now().isoformat(),
-            'stage_sequence': len(enriched_context.get('_metadata', {}).get('completed_stages', [])) + 1
-        }
-        
-        return enriched_context
+        Args:
+            current_stage_result: Result from current stage
+            previous_context: Context from previous stages
+            
+        Returns:
+            Dict: Enriched context with summarized information
+        """
+        try:
+            enriched_context = {
+                'stage_summary': self._summarize_stage_result(current_stage_result),
+                'relevant_context': self._extract_relevant_context(previous_context),
+                'metadata': {
+                    'stage_name': current_stage_result.get('_stage_metadata', {}).get('stage_name'),
+                    'timestamp': datetime.datetime.now().isoformat()
+                }
+            }
+            
+            # Add execution metadata
+            enriched_context['_metadata'] = {
+                'last_updated_stage': current_stage_result.get('_stage_metadata', {}).get('stage_name'),
+                'updated_at': datetime.datetime.now().isoformat(),
+                'stage_sequence': len(previous_context.get('_metadata', {}).get('completed_stages', [])) + 1
+            }
+            
+            return enriched_context
+            
+        except Exception as e:
+            self.logger.error(f"Context enrichment failed: {str(e)}")
+            return self._create_fallback_context(current_stage_result, previous_context)
 
     def _convert_raw_response(self, response: Dict, stage_name: str) -> Dict:
         """Convert raw API response to normalized format"""
@@ -1826,40 +2052,36 @@ class FeedbackStage(PipelineStage):
     def execute(self, pipeline_context: Dict) -> Dict:
         """Enhanced feedback stage with comparative analysis"""
         try:
-            analysis_result = pipeline_context.get("stage_results", {}).get("analysis", {})
+            # Safely get analysis result with fallback
+            stage_results = pipeline_context.get("stage_results", {})
+            analysis_result = stage_results.get("analysis", {})
+            
+            if not analysis_result:
+                self.logger.warning("No analysis results found, using fallback")
+                return self._create_fallback_feedback(pipeline_context)
 
-            context = pipeline_context.copy()
-            system_message = """You are a prompt evaluation specialist.
-            Compare the initial analysis with the original request to ensure alignment and completeness."""
+            system_message = f"""You are a prompt evaluation specialist.
+            Analyze the alignment between the original request and its analysis,
+            considering the {pipeline_context.get('style')} style requirements.
+            """
             
             feedback_prompt = f"""
             Perform a comparative analysis:
             
-            Original Request: {context.get('original_prompt', '')}
-            Analyze:
             Original Request: {pipeline_context.get('original_prompt', '')}
-            Initial Analysis: {json.dumps(analysis_result, indent=2)}
-            AI Type: {pipeline_context.get('ai_type')}
-            Style: {pipeline_context.get('style')}
+            Style Requirements: {pipeline_context.get('style', 'professional')}
+            AI Type: {pipeline_context.get('ai_type', 'general')}
             
-            Evaluate the following aspects:
+            Analysis Results:
+            {json.dumps(analysis_result, indent=2)}
+            
+            Provide a comprehensive evaluation with these aspects:
             1. Intent Alignment
-                - Does the analysis capture the true intent?
-                - Are there missing aspects?
+            2. Style Adherence
+            3. Technical Accuracy
+            4. Completeness
             
-            2. Technical Completeness
-                - Are all technical requirements identified?
-                - Is the {context.get('ai_type')} context properly considered?
-            
-            3. Style Adherence
-                - Does it maintain {context.get('style')} style requirements?
-                - Are there style-specific gaps?
-            
-            4. Implementation Viability
-                - Are the identified approaches feasible?
-                - What potential challenges are missing?
-            
-            Provide structured feedback in JSON format:
+            Return in JSON format with these exact fields:
             {{
                 "alignment_analysis": {{
                     "matches": [],
@@ -1873,13 +2095,17 @@ class FeedbackStage(PipelineStage):
                 }},
                 "improvement_areas": []
             }}"""
-            
+
             response = self.api_handler.make_api_call(
                 system_message=system_message,
                 prompt=feedback_prompt,
+                context=pipeline_context,
                 temperature=0.4
             )
-            
+
+            if not response:
+                return self._create_fallback_feedback(pipeline_context)
+
             return self._preserve_context("feedback", response)
             
         except Exception as e:
@@ -2108,63 +2334,234 @@ class EnhancementStage(PipelineStage):
 
     def execute(self, pipeline_context: Dict) -> Dict:
         try:
-            # Extract context information
-            original_prompt = pipeline_context.get("original_prompt", "")
-            ai_type = pipeline_context.get("ai_type", "general")
+            # Extract style and AI type from context
             style = pipeline_context.get("style", "professional")
+            ai_type = pipeline_context.get("ai_type", "general")
+            original_prompt = pipeline_context.get("original_prompt", "")
+
+            # Get required stage results with proper fallbacks
+            analysis_result = pipeline_context.get("stage_results", {}).get("analysis", {}) or {}
+            guidelines_result = pipeline_context.get("stage_results", {}).get("guidelines", {}).get("structured_content", {})
+
+            # Extract key requirements
+            requirements = analysis_result.get("requirements", [])
+            intent = analysis_result.get("intent", {}).get("primary_objective", "")
             
-            # Get stage results
-            stage_results = pipeline_context.get("execution_context", {}).get("stage_results", {})
-            analysis_result = stage_results.get("analysis", {})
-            feedback_result = stage_results.get("feedback", {})
-            guidelines_result = stage_results.get("guidelines", {})
+            system_message = f"""You are a prompt enhancement expert for {ai_type} systems.
+            Your task is to create three distinct variations of the original prompt:
+            1. Each variation must strictly follow the {style} style
+            2. Each must be optimized for {ai_type} interactions
+            3. Each must maintain the core intent: {intent}
+            4. Each must address these requirements: {', '.join(requirements)}
 
-            system_message = f"""You are a prompt enhancement expert specializing in {ai_type} systems.
-            Generate multiple enhanced versions of the original prompt that:
-            - Maintain the core intent
-            - Provide different perspectives
-            - Align with {style} communication style
-            - Offer unique insights"""
+            For {style} style, ensure:
+            - Brief, clear statements
+            - Direct language
+            - Essential information only
+            - No unnecessary words
+            - Professional tone
+            
+            For {ai_type} interaction, maintain:
+            - Appropriate technical depth
+            - System-specific terminology
+            - Clear input/output expectations
+            """
 
-            enhancement_prompt = f"""Generate three distinct, enhanced versions of the original prompt:
+            enhancement_prompt = f"""Create three distinct versions of: "{original_prompt}"
 
-Original Request: {original_prompt}
-AI Type: {ai_type}
-Style: {style}
+            Original Intent: {intent}
+            Style Required: {style}
+            AI System: {ai_type}
+            Key Requirements: {json.dumps(requirements, indent=2)}
 
-Previous Analysis:
-{json.dumps(analysis_result, indent=2)}
+            Return strictly in this JSON format:
+            {{
+                "prompts": [
+                    {{
+                        "prompt": "First enhanced version",
+                        "focus": "Specific aspect being emphasized",
+                        "style_adherence": "How this version maintains {style} style"
+                    }},
+                    ... (two more similar entries)
+                ]
+            }}
 
-Feedback Insights:
-{json.dumps(feedback_result, indent=2)}
-
-Guidelines:
-{json.dumps(guidelines_result, indent=2)}"""
-
-            # Make API call with clean context
-            api_context = {
-                "original_prompt": original_prompt,
-                "ai_type": ai_type,
-                "style": style,
-                "stage_results": {
-                    "analysis": analysis_result,
-                    "feedback": feedback_result,
-                    "guidelines": guidelines_result
-                }
-            }
+            Each prompt MUST:
+            1. Be a complete, actionable request
+            2. Strictly follow {style} style guidelines
+            3. Be appropriate for {ai_type} processing
+            4. Address the core requirements
+            5. Offer a unique perspective"""
 
             response = self.api_handler.make_api_call(
                 system_message=system_message,
                 prompt=enhancement_prompt,
-                context=api_context,
+                context={
+                    "style": style,
+                    "ai_type": ai_type,
+                    "original_prompt": original_prompt,
+                    "analysis": analysis_result,
+                    "guidelines": guidelines_result
+                },
                 temperature=0.7
             )
 
-            return self._preserve_context("enhancement", response)
+            # Validate and process the response
+            processed_response = self._process_enhancement_response(response, style, ai_type)
+            return self._preserve_context("enhancement", processed_response)
 
         except Exception as e:
             self.logger.error(f"Enhancement stage failed: {str(e)}")
             return self._create_fallback_enhanced_prompts(pipeline_context)
+
+    def _process_enhancement_response(self, response: Dict, style: str, ai_type: str) -> Dict:
+        """Process and validate enhancement response"""
+        try:
+            if not isinstance(response.get("prompts"), list):
+                raise ValueError("Invalid prompts structure")
+
+            processed_prompts = []
+            for idx, prompt_data in enumerate(response.get("prompts", [])):
+                # Ensure each prompt follows style guidelines
+                enhanced_prompt = self._apply_style_rules(
+                    prompt_data.get("prompt", ""),
+                    style,
+                    ai_type
+                )
+                
+                processed_prompts.append({
+                    "prompt": enhanced_prompt,
+                    "focus": prompt_data.get("focus", f"Variation {idx + 1}"),
+                    "style_adherence": self._validate_style_adherence(enhanced_prompt, style)
+                })
+
+            return {
+                "prompts": processed_prompts,
+                "_metadata": {
+                    "style": style,
+                    "ai_type": ai_type,
+                    "timestamp": datetime.datetime.now().isoformat()
+                }
+            }
+
+        except Exception as e:
+            self.logger.error(f"Enhancement processing failed: {str(e)}")
+            return self._create_fallback_enhanced_prompts(original_prompt, style, ai_type)
+
+    def _apply_style_rules(self, prompt: str, style: str, ai_type: str) -> str:
+        """Apply style-specific rules to prompt"""
+        style_rules = {
+            "concise": lambda p: self._make_concise(p),
+            "professional": lambda p: self._make_professional(p),
+            "technical": lambda p: self._make_technical(p, ai_type),
+            "conversational": lambda p: self._make_conversational(p)
+        }
+        
+        style_func = style_rules.get(style.lower(), lambda p: p)
+        return style_func(prompt)
+
+    def _make_concise(self, prompt: str) -> str:
+        """Make prompt concise"""
+        # Remove unnecessary words
+        filters = [
+            (r'\b(please|kindly|would you|could you)\b\s*', ''),
+            (r'\b(I think|I believe|In my opinion)\b\s*', ''),
+            (r'\b(very|really|quite|basically)\b\s*', '')
+        ]
+        
+        result = prompt
+        for pattern, replacement in filters:
+            result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
+            
+        # Ensure it ends with clear instruction
+        if not result.strip().endswith(('.', '?')):
+            result = result.strip() + '.'
+            
+        return result.strip()
+
+    def _make_professional(self, prompt: str) -> str:
+        """Make prompt professional"""
+        # Add professional markers
+        if not any(word in prompt.lower() for word in ['please', 'kindly', 'would']):
+            prompt = f"Please {prompt}"
+            
+        return prompt.strip()
+
+    def _make_technical(self, prompt: str, ai_type: str) -> str:
+        """Make prompt technical"""
+        technical_terms = {
+            "ChatGPT": ["generate", "process", "analyze"],
+            "descriptive": ["describe", "detail", "elaborate"],
+            "analytical": ["analyze", "evaluate", "assess"]
+        }
+        
+        terms = technical_terms.get(ai_type, ["process"])
+        if not any(term in prompt.lower() for term in terms):
+            prompt = f"{terms[0]} the following: {prompt}"
+            
+        return prompt.strip()
+
+    def _make_conversational(self, prompt: str) -> str:
+        """Make prompt conversational"""
+        if not prompt.endswith('?'):
+            prompt = f"Could you {prompt}?"
+        return prompt.strip()
+
+    def _validate_style_adherence(self, prompt: str, style: str) -> str:
+        """Validate and describe style adherence"""
+        style_checks = {
+            "concise": lambda p: len(p.split()) < 15,
+            "professional": lambda p: any(w in p.lower() for w in ['please', 'kindly', 'would']),
+            "technical": lambda p: any(w in p.lower() for w in ['analyze', 'evaluate', 'process']),
+            "conversational": lambda p: p.endswith('?')
+        }
+        
+        check_func = style_checks.get(style.lower(), lambda _: True)
+        adherence = "Fully compliant" if check_func(prompt) else "Partially compliant"
+        return f"{style} style: {adherence}"
+
+    def _validate_style_adherence(self, response: Dict, style: str) -> Dict:
+        """Ensures all prompts adhere to the specified style"""
+        try:
+            if "prompts" not in response:
+                return response
+                
+            for prompt in response["prompts"]:
+                if not self._check_style_compliance(prompt.get("prompt", ""), style):
+                    prompt["prompt"] = self._enforce_style(prompt["prompt"], style)
+                    
+            return response
+        except Exception as e:
+            self.logger.error(f"Style validation failed: {str(e)}")
+            return response
+
+    def _check_style_compliance(self, prompt: str, style: str) -> bool:
+        """Checks if a prompt complies with the given style"""
+        style_markers = {
+            "concise": lambda p: len(p.split()) < 30 and ";" not in p,
+            "professional": lambda p: any(term in p.lower() for term in ["please", "kindly", "would"]),
+            "technical": lambda p: any(term in p.lower() for term in ["implement", "develop", "structure"]),
+            "conversational": lambda p: "?" in p or "!" in p or "..." in p
+        }
+        
+        checker = style_markers.get(style.lower(), lambda _: True)
+        return checker(prompt)
+
+    def _enforce_style(self, prompt: str, style: str) -> str:
+        """Enforces the specified style on a prompt"""
+        style_templates = {
+            "concise": "{verb} {objective} {constraints}",
+            "professional": "Please {verb} {objective} following {constraints}",
+            "technical": "Implement {objective} with {constraints}",
+            "conversational": "Could you help me {verb} {objective}? {constraints}"
+        }
+        
+        # Extract components from prompt
+        components = self._extract_prompt_components(prompt)
+        
+        # Apply style template
+        template = style_templates.get(style.lower(), "{prompt}")
+        return template.format(**components)
         
     def _process_stage_response(self, response: Dict) -> Dict:
         """Process and structure the enhancement stage output"""
@@ -2346,51 +2743,215 @@ class EnhancedPromptPipeline:
 
     def execute_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
         try:
-            context = {
-                "request_id": str(uuid.uuid4()),
-                "original_prompt": prompt,
-                "ai_type": ai_type, 
-                "style": style,
-                "timestamp": datetime.datetime.now().isoformat(),
-                "stage_results": {},
-                "context_chain": [],
-                "accumulated_context": {}
-            }
+            base_context = {
+            "request_id": str(uuid.uuid4()),
+            "original_prompt": prompt,
+            "ai_type": ai_type, 
+            "style": style,
+            "timestamp": datetime.datetime.now().isoformat(),
+            "metadata": {
+                "style_requirements": {
+                    "type": style,
+                    "ai_system": ai_type,
+                    "consistency_markers": ["tone", "format", "approach"]
+                }
+            },
+            "stage_results": {},
+            "context_chain": [],
+            "accumulated_context": {}
+        }
 
-            # Fix preprocessing call - pass the prompt string directly 
-            preprocessing_result = self.preprocessor.analyze_prompt(prompt)  # Pass string instead of dict
-            context["stage_results"]["preprocessing"] = preprocessing_result
+            # Add style and AI type to context tracker
+            self.context_tracker.add_context("base_configuration", {
+                "style": style,
+                "ai_type": ai_type,
+                "style_metadata": self._generate_style_metadata(style, ai_type)
+            })
+
+            # Execute pipeline with enhanced context handling
+            preprocessing_result = self.preprocessor.analyze_prompt(prompt)
+            preprocessing_result["style_context"] = {
+                "target_style": style,
+                "ai_system": ai_type
+            }
+            base_context["stage_results"]["preprocessing"] = preprocessing_result
             
             # Modified stage execution
             stages = [
-                ("analysis", lambda: self.analysis_stage.execute(context)),
-                ("feedback", lambda: self.feedback_stage.execute(context)),
-                ("guidelines", lambda: self.guidelines_stage.execute(context)),
-                ("enhancement", lambda: self.enhancement_stage.execute(context))
+                ("analysis", lambda: self.analysis_stage.execute(base_context)),
+                ("feedback", lambda: self.feedback_stage.execute(base_context)),
+                ("guidelines", lambda: self.guidelines_stage.execute(base_context)),
+                ("enhancement", lambda: self.enhancement_stage.execute(base_context))
             ]
 
             for stage_name, stage_func in stages:
                 try:
                     self.logger.info(f"Executing {stage_name} stage")
                     result = stage_func()
-                    context["accumulated_context"] = self._enrich_context(
+                    base_context["accumulated_context"] = self._enrich_context(
                         result, 
-                        context["accumulated_context"]
+                        base_context["accumulated_context"]
                     )
-                    context["stage_results"][stage_name] = result
-                    self._add_to_context_chain(context, stage_name, result)
+                    base_context["stage_results"][stage_name] = result
+                    self._add_to_context_chain(base_context, stage_name, result)
                     
                 except Exception as e:
                     self.logger.error(f"Error in {stage_name} stage: {str(e)}")
                     fallback = self._create_stage_fallback(stage_name)
-                    context["stage_results"][stage_name] = fallback
-                    self._add_to_context_chain(context, stage_name, fallback)
+                    base_context["stage_results"][stage_name] = fallback
+                    self._add_to_context_chain(base_context, stage_name, fallback)
 
-            return self._format_final_response(context)
+            return self._format_final_response(base_context)
 
         except Exception as e:
             self.logger.error(f"Pipeline execution failed: {str(e)}")
             return self._create_error_response(str(e))
+
+    def _generate_style_metadata(self, style: str, ai_type: str) -> Dict:
+        """
+        Generates comprehensive metadata about style and AI type requirements.
+        This helps maintain consistent tone and approach across pipeline stages.
+        
+        Args:
+            style (str): The requested style (e.g., 'professional', 'concise', etc.)
+            ai_type (str): The type of AI system being used
+            
+        Returns:
+            Dict: Structured metadata about style requirements and characteristics
+        """
+        try:
+            # Define base style characteristics
+            style_mapping = {
+                "professional": {
+                    "tone": "formal",
+                    "structure": "well-organized",
+                    "vocabulary_level": "business-appropriate",
+                    "formatting": "structured",
+                    "key_characteristics": [
+                        "clear and direct communication",
+                        "industry-standard terminology",
+                        "formal discourse markers"
+                    ]
+                },
+                "concise": {
+                    "tone": "direct",
+                    "structure": "compact",
+                    "vocabulary_level": "precise",
+                    "formatting": "minimal",
+                    "key_characteristics": [
+                        "brief and focused content",
+                        "essential information only",
+                        "clear topic sentences"
+                    ]
+                },
+                "conversational": {
+                    "tone": "informal",
+                    "structure": "natural flow",
+                    "vocabulary_level": "everyday",
+                    "formatting": "flexible",
+                    "key_characteristics": [
+                        "natural dialogue patterns",
+                        "relatable examples",
+                        "engaging tone"
+                    ]
+                },
+                "technical": {
+                    "tone": "precise",
+                    "structure": "systematic",
+                    "vocabulary_level": "technical",
+                    "formatting": "detailed",
+                    "key_characteristics": [
+                        "technical accuracy",
+                        "detailed explanations",
+                        "domain-specific terminology"
+                    ]
+                }
+            }
+
+            # Define AI type characteristics
+            ai_type_requirements = {
+                "ChatGPT": {
+                    "response_format": "conversational",
+                    "interaction_style": "dialogue-based",
+                    "special_features": ["context awareness", "natural language understanding"],
+                    "formatting_preferences": ["clear paragraph breaks", "natural transitions"]
+                },
+                "descriptive": {
+                    "response_format": "detailed",
+                    "interaction_style": "explanatory",
+                    "special_features": ["rich descriptions", "structured explanations"],
+                    "formatting_preferences": ["organized sections", "clear hierarchies"]
+                },
+                "analytical": {
+                    "response_format": "structured",
+                    "interaction_style": "analytical",
+                    "special_features": ["data interpretation", "logical flow"],
+                    "formatting_preferences": ["clear sections", "evidence-based arguments"]
+                }
+            }
+
+            # Get base style characteristics or create generic ones if style not found
+            style_characteristics = style_mapping.get(style.lower(), {
+                "tone": "balanced",
+                "structure": "standard",
+                "vocabulary_level": "general",
+                "formatting": "default",
+                "key_characteristics": ["clear communication", "appropriate tone"]
+            })
+
+            # Get AI type requirements or use generic ones if type not found
+            ai_characteristics = ai_type_requirements.get(ai_type, {
+                "response_format": "standard",
+                "interaction_style": "general",
+                "special_features": ["basic interaction"],
+                "formatting_preferences": ["clear structure"]
+            })
+
+            # Combine into comprehensive metadata
+            return {
+                "style_configuration": {
+                    "type": style,
+                    "characteristics": style_characteristics,
+                    "application_rules": {
+                        "tone_consistency": True,
+                        "vocabulary_constraints": style_characteristics["vocabulary_level"],
+                        "formatting_requirements": style_characteristics["formatting"]
+                    }
+                },
+                "ai_configuration": {
+                    "type": ai_type,
+                    "characteristics": ai_characteristics,
+                    "requirements": {
+                        "response_format": ai_characteristics["response_format"],
+                        "interaction_patterns": ai_characteristics["interaction_style"]
+                    }
+                },
+                "combined_requirements": {
+                    "primary_tone": style_characteristics["tone"],
+                    "structural_approach": style_characteristics["structure"],
+                    "key_features": list(set(
+                        style_characteristics["key_characteristics"] +
+                        ai_characteristics["special_features"]
+                    ))
+                },
+                "metadata": {
+                    "generated_at": datetime.datetime.now().isoformat(),
+                    "version": "1.0",
+                    "validation_status": "active"
+                }
+            }
+        except Exception as e:
+            self.logger.error(f"Error generating style metadata: {str(e)}")
+            # Return minimal valid metadata on error
+            return {
+                "style_configuration": {"type": style, "characteristics": {}},
+                "ai_configuration": {"type": ai_type, "characteristics": {}},
+                "combined_requirements": {"primary_tone": "standard", "structural_approach": "default"},
+                "metadata": {
+                    "generated_at": datetime.datetime.now().isoformat(),
+                    "error": str(e)
+                }
+            }
         
     def _extract_parameters(self, guidelines: Dict) -> Dict:
         params = guidelines.get("parameters", {})
