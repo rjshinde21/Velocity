@@ -2638,6 +2638,229 @@ class FeedbackStage(PipelineStage):
 #             "frequency_penalty": {"value": 0.0, "reasoning": "Default"}
 #         }
 
+# class GuidelinesStage(PipelineStage):
+#     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
+#         super().__init__(logger, api_handler, context_tracker)
+#         self.required_fields = ["guidelines", "parameters", "implementation_notes"]
+    
+
+
+#     def execute(self, pipeline_context: Dict) -> Dict:
+#         try:
+#             # Enhanced context extraction
+#             analysis = pipeline_context.get("stage_results", {}).get("analysis", {}).get("analysis_results", {})
+#             guidelines = pipeline_context.get("stage_results", {}).get("guidelines", {}).get("content", "")
+#             analysis_content = analysis.get("content", "")
+#             original_prompt = analysis.get("original_prompt", "")
+#             ai_type = analysis.get("ai_type", "")
+#             style = analysis.get("style", "professional")
+#             self.logger.debug(f"Full pipeline context: {json.dumps(pipeline_context.get('stage_results', {}), indent=2)}")
+#             self.logger.debug(f"Analysis structure: {json.dumps(analysis, indent=2)}")
+#             self.logger.debug(f"Guidelines structure: {json.dumps(guidelines, indent=2)}")
+#             # Log critical components for prompt enhancement
+#             self.logger.debug("Critical components:")
+#             self.logger.debug(f"1. Analysis content: {analysis.get('content', '')[:200]}...")
+#             self.logger.debug(f"2. Style requirements: {style}")
+#             self.logger.debug(f"3. AI Type specifics: {ai_type}")
+#             # Ultra-Precise System Message
+#             system_message = """You are a prompt enhancement specialist.
+#         CRITICAL REQUIREMENTS:
+#         1. Response MUST be pure JSON with NO explanatory text or markdown
+#         2. Response MUST contain EXACTLY three complete prompts
+#         3. Response format MUST be:
+#         {
+#             "prompts": [
+#                 {"prompt": "enhanced version 1"},
+#                 {"prompt": "enhanced version 2"},
+#                 {"prompt": "enhanced version 3"}
+#             ]
+#         }
+#         4. No other fields or formatting allowed
+#         5. Each prompt must reflect the specified style and AI type requirements"""
+
+#             # Hyper-Detailed User Message
+#             user_message = f"""ADVANCED PROMPT ENGINEERING DEEP DIVE:
+
+# SPECIFIC CONTEXT: "{original_prompt}"
+# COMPREHENSIVE DOMAIN ANALYSIS: {analysis_content}
+
+# GENERATE AN EXHAUSTIVE PROMPT ENGINEERING MASTERCLASS GUIDELINE COVERING:
+
+# I. DOMAIN-SPECIFIC PROMPT ARCHITECTURE
+#    A. Comprehensive Subject Decomposition
+#    B. Analytical Approach Mapping
+#    C. Requirement Extraction Techniques
+
+# II. {ai_type.upper()} OPTIMIZATION FRAMEWORK
+#     A. System-Specific Interaction Strategies
+#     B. Computational Methodology Alignment
+#     C. Response Quality Maximization Techniques
+#     D. Any specific pointers to be included in terms of {ai_type} capabilities, if applicable
+
+# III. {style.upper()} COMMUNICATION PROTOCOL
+#      A. Linguistic Precision Techniques
+#      B. Structural Clarity Requirements
+#      C. Nuanced Expression Strategies
+
+# IV. TECHNICAL COMPLEXITY MANAGEMENT
+#     A. Complex Subject Deconstruction
+#     B. Maximum Analytical Insight Extraction
+#     C. Precision Maintenance Strategies
+
+# V. COMPREHENSIVE PROMPT CONSTRUCTION CHECKLIST
+#    A. Detailed Step-by-Step Guidelines
+#    B. Error Prevention Mechanisms
+#    C. Continuous Optimization Strategies
+
+# ABSOLUTE CRITICAL CONSTRAINTS:
+# - COMPLETE and UNABRIDGED response
+# - EXTREME TECHNICAL PRECISION
+# - ACTIONABLE, IMPLEMENTABLE INSIGHTS
+# - {ai_type}-LEVEL ANALYTICAL COMPREHENSIVENESS
+
+# MANDATORY OUTPUT FORMAT:
+# - Each section MUST be thoroughly explained
+# - Provide concrete, real-world examples
+# - Include potential implementation challenges
+# - Discuss mitigation strategies
+# - Demonstrate deep domain understanding"""
+
+#             # Enhanced API Call with More Generous Creativity Parameters
+#             response = self.api_handler.make_api_call(
+#                 system_message=system_message,
+#                 prompt=user_message,
+#                 temperature=0.7,  # Higher creativity
+#                 top_p=0.9,        # More diverse sampling
+#                 max_tokens=4000,  # Increased token limit
+#                 presence_penalty=0.2  # Slightly more diverse vocabulary
+#             )
+            
+#             # Advanced Response Processing
+#             formatted_response = {
+#                 "content": response.get("content", ""),
+#                 "context": {
+#                     "prompt": original_prompt,
+#                     "ai_type": ai_type,
+#                     "style": style,
+#                     "analysis_depth": len(analysis_content),
+#                     "generation_timestamp": datetime.datetime.now().isoformat()
+#                 }
+#             }
+            
+#             return self._preserve_context("guidelines", formatted_response)
+
+#         except Exception as e:
+#             self.logger.error(f"Guidelines generation failed: {str(e)}", exc_info=True)
+#             return self._create_fallback_guidelines(pipeline_context)
+
+#     def _create_fallback_guidelines(self, pipeline_context: Dict) -> Dict:
+#         """Create a robust fallback with structured, adaptable guidelines"""
+#         original_prompt = pipeline_context.get("original_prompt", "Generic Prompt")
+#         ai_type = pipeline_context.get("ai_type", "Generic AI")
+#         style = pipeline_context.get("style", "Professional")
+
+#         return {
+#             "content": f"""UNIVERSAL PROMPT ENGINEERING FRAMEWORK
+
+# 1. CONTEXTUAL MASTERY
+#    - Dissect {original_prompt} with surgical precision
+#    - Understand underlying conceptual frameworks
+#    - Anticipate analytical requirements
+
+# 2. {ai_type.upper()} OPTIMIZATION STRATEGIES
+#    - Leverage system-specific analytical capabilities
+#    - Construct prompts that maximize {ai_type}'s potential
+#    - Align with core computational methodologies
+
+# 3. {style.upper()} COMMUNICATION PROTOCOL
+#    - Maintain impeccable structural integrity
+#    - Demonstrate clarity without sacrificing depth
+#    - Balance technical accuracy with elegant expression
+
+# 4. PROMPT ARCHITECTURE
+#    - Introduction: Contextual framing
+#    - Body: Detailed, structured inquiry
+#    - Conclusion: Clear objective statement
+
+# 5. ERROR MITIGATION TECHNIQUES
+#    - Anticipate potential misinterpretations
+#    - Provide explicit constraints
+#    - Create self-correcting prompt mechanisms""",
+#             "context": {
+#                 "prompt": original_prompt,
+#                 "ai_type": ai_type,
+#                 "style": style
+#             }
+#         }
+
+#     def _extract_parameters(self, params: Dict) -> Dict:
+#         default_params = {
+#             'temperature': 0.7,
+#             'top_p': 0.9,
+#             'presence_penalty': 0.0,
+#             'frequency_penalty': 0.0
+#         }
+        
+#         if not params or not isinstance(params, dict):
+#             return default_params
+            
+#         clean_params = {}
+#         for key, default in default_params.items():
+#             try:
+#                 param = params.get(key, {})
+#                 if isinstance(param, dict) and 'value' in param:
+#                     clean_params[key] = float(param['value'])
+#                 else:
+#                     clean_params[key] = float(param) if param is not None else default
+#             except (TypeError, ValueError):
+#                 clean_params[key] = default
+                
+#         return clean_params
+
+#     def _create_system_message(self, ai_type: str, style: str) -> str:
+#         return f"""You are a guidelines expert for {ai_type} systems.
+#         Generate comprehensive guidelines and return JSON in this exact structure:
+#         {{
+#             "guidelines": {{
+#                 "implementation_approach": "string",
+#                 "key_considerations": ["string"],
+#                 "best_practices": ["string"]
+#             }},
+#             "parameters": {{
+#                 "temperature": {{"value": 0.7, "reasoning": "string"}},
+#                 "top_p": {{"value": 0.9, "reasoning": "string"}},
+#                 "presence_penalty": {{"value": 0.0, "reasoning": "string"}},
+#                 "frequency_penalty": {{"value": 0.0, "reasoning": "string"}}
+#             }},
+#             "implementation_notes": {{
+#                 "critical_considerations": ["string"],
+#                 "success_criteria": ["string"]
+#             }}
+#         }}"""
+        
+#     def _create_guidelines_prompt(self, pipeline_context: Dict) -> str:
+#         guidelines_template = {
+#             "guidelines": {
+#                 "implementation_approach": "",
+#                 "platform_requirements": [],
+#                 "style_guidelines": []
+#             },
+#             "parameters": self._get_default_parameters(),
+#             "implementation_notes": {
+#                 "critical_considerations": [],
+#                 "success_criteria": []
+#             }
+#         }
+#         return f"Generate guidelines based on:\n{json.dumps(pipeline_context, indent=2)}\n\nUse format:\n{json.dumps(guidelines_template, indent=2)}"
+
+#     def _get_default_parameters(self) -> Dict:
+#         return {
+#             "temperature": {"value": 0.7, "reasoning": "Default"},
+#             "top_p": {"value": 0.9, "reasoning": "Default"},
+#             "presence_penalty": {"value": 0.0, "reasoning": "Default"},
+#             "frequency_penalty": {"value": 0.0, "reasoning": "Default"}
+#         }
+
 class GuidelinesStage(PipelineStage):
     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
         super().__init__(logger, api_handler, context_tracker)
@@ -2855,8 +3078,6 @@ MANDATORY OUTPUT FORMAT:
             "presence_penalty": {"value": 0.0, "reasoning": "Default"},
             "frequency_penalty": {"value": 0.0, "reasoning": "Default"}
         }
-
-
 class EnhancementStage(PipelineStage):
     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
         super().__init__(logger, api_handler, context_tracker)
@@ -2970,7 +3191,6 @@ class EnhancementStage(PipelineStage):
             self.logger.info("Starting enhancement stage execution")
             
             # Extract and log context
-            self.logger.info("Extracting context from pipeline")
             analysis = pipeline_context.get("stage_results", {}).get("analysis", {}).get("analysis_results", {})
             guidelines = pipeline_context.get("stage_results", {}).get("guidelines", {}).get("content", "")
             
@@ -2978,106 +3198,98 @@ class EnhancementStage(PipelineStage):
             ai_type = analysis.get("ai_type", "")
             style = analysis.get("style", "")
             
+            # Log context details - keeping for debugging
             self.logger.debug(f"Original Prompt: {original_prompt}")
             self.logger.debug(f"AI Type: {ai_type}")
             self.logger.debug(f"Style: {style}")
             self.logger.debug(f"Analysis Content Length: {len(analysis.get('content', ''))}")
-            self.logger.debug(f"Guidelines Length: {len(guidelines)}")
+            self.logger.debug(f"guidelines generated: {guidelines}")
 
-            # Create system message
-            self.logger.info("Creating system message")
-            system_message = """You are an expert prompt enhancer.
-CRITICAL: Generate EXACTLY THREE enhanced versions of the original prompt.
-Your response MUST be a JSON object with ONLY "prompts" array containing EXACTLY 3 prompts.
-Each prompt object MUST have ONLY a "prompt" field with the enhanced text.
-DO NOT include any other text, explanations, or fields."""
+            # Enhanced system message with strict JSON requirements
+            system_message = """CRITICAL INSTRUCTION - READ CAREFULLY:
+    1. Return ONLY pure JSON object
+    2. Format MUST be EXACTLY:
+    {
+        "prompts": [
+            {"prompt": "enhanced version 1"},
+            {"prompt": "enhanced version 2"},
+            {"prompt": "enhanced version 3"}
+        ]
+    }
+    3. NO markdown, NO explanations, NO other text
+    4. Each prompt MUST be complete - no truncation
+    5. Prompts MUST follow specified style and AI type requirements"""
 
-            self.logger.debug(f"System Message Length: {len(system_message)}")
+            # Create focused user message
+            user_message = f"""Input:
+    Prompt: {original_prompt}
+    Style: {style}
+    AI Type: {ai_type}
 
-            # Create user message
-            self.logger.info("Creating user message with context")
-            user_message = f"""Original Prompt: "{original_prompt}"
-AI Type: {ai_type}
-Style: {style}
+    Context:
+    {analysis.get('content', '')}
 
-Analysis Context:
-{analysis.get('content', '')}
+    Guidelines:
+    {guidelines}
 
-Implementation Guidelines:
-{guidelines}
+    GENERATE EXACTLY THREE (3) ENHANCED PROMPTS:
+    1. Each must maintain {style} style
+    2. Each must be optimized for {ai_type}
+    3. Each must be complete and unique
+    4. Return as pure JSON with no extra text"""
 
-GENERATE EXACTLY 3 ENHANCED PROMPTS MAINTAINING:
-1. {style} communication style
-2. Core intent of original prompt
-3. Specific requirements for {ai_type}
-
-REQUIRED RESPONSE FORMAT - NOTHING ELSE:
-{{
-    "prompts": [
-        {{"prompt": "first enhanced version"}},
-        {{"prompt": "second enhanced version"}},
-        {{"prompt": "third enhanced version"}}
-    ]
-}}"""
-
-            self.logger.debug(f"User Message Length: {len(user_message)}")
-
-            # Make API call
-            self.logger.info("Making API call for prompt enhancement")
+            # Make API call with increased token limit
             response = self.api_handler.make_api_call(
                 system_message=system_message,
                 prompt=user_message,
                 temperature=0.7,
                 top_p=0.9,
                 presence_penalty=0.2,
-                frequency_penalty=0.0
+                frequency_penalty=0.0,
+                max_tokens=4000  # Increased to prevent truncation
             )
 
-            # Process response
-            self.logger.info("Processing API response")
+            # Enhanced response processing
             try:
+                # Extract content and clean any non-JSON text
                 content = response.get("content", "")
-                self.logger.debug(f"Raw API Response Content: {content}")
+                self.logger.debug(f"Raw response content: {content}")
                 
-                # Extract JSON
-                self.logger.info("Extracting JSON from response")
-                start = content.find('{')
-                end = content.rfind('}') + 1
+                # Find JSON boundaries
+                json_start = content.find('{')
+                json_end = content.rfind('}') + 1
                 
-                if start != -1 and end > start:
-                    json_str = content[start:end]
-                    self.logger.debug(f"Extracted JSON string: {json_str}")
+                if json_start != -1 and json_end > json_start:
+                    json_str = content[json_start:json_end]
                     
-                    self.logger.info("Parsing JSON response")
+                    # Parse and validate JSON structure
                     parsed = json.loads(json_str)
                     
-                    # Validate structure
-                    self.logger.info("Validating response structure")
-                    if "prompts" in parsed and isinstance(parsed["prompts"], list):
-                        prompts = parsed["prompts"][:3]
-                        self.logger.info(f"Successfully extracted {len(prompts)} prompts")
+                    # Validate prompts array
+                    if "prompts" not in parsed or not isinstance(parsed["prompts"], list):
+                        raise ValueError("Invalid response structure - missing prompts array")
+                    
+                    # Ensure exactly three prompts
+                    prompts = parsed["prompts"][:3]
+                    while len(prompts) < 3:
+                        prompts.append({"prompt": f"Additional enhanced version of: {original_prompt}"})
                         
-                        formatted_response = {
-                            "result": {
-                                "prompts": [
-                                    {"prompt": p.get("prompt", "")} for p in prompts
-                                ][:3]
-                            }
+                    # Create final response
+                    formatted_response = {
+                        "result": {
+                            "prompts": prompts
                         }
-                        
-                        self.logger.debug(f"Final formatted response: {formatted_response}")
-                        return formatted_response
-                
-                self.logger.error("Invalid response structure detected")
-                raise ValueError("Invalid response structure")
-                
-            except json.JSONDecodeError as je:
-                self.logger.error(f"JSON parsing error: {str(je)}")
+                    }
+                    
+                    self.logger.debug(f"Formatted response: {formatted_response}")
+                    return formatted_response
+
+                else:
+                    raise ValueError("No valid JSON found in response")
+                    
+            except (json.JSONDecodeError, ValueError) as e:
+                self.logger.error(f"Response processing failed: {str(e)}")
                 self.logger.debug(f"Failed content: {content}")
-                return self._create_fallback_enhanced_prompts(original_prompt, style, ai_type)
-                
-            except Exception as e:
-                self.logger.error(f"Failed to parse enhanced prompts: {str(e)}")
                 return self._create_fallback_enhanced_prompts(original_prompt, style, ai_type)
 
         except Exception as e:
