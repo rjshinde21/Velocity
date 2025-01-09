@@ -1228,34 +1228,6 @@ class ResponseValidator:
         
         return sanitized
 
-    # @staticmethod
-    # def clean_response(response: Dict) -> Dict:
-    #     """Clean and normalize API response"""
-    #     cleaned = {}
-        
-    #     # Handle nested structures
-    #     for key, value in response.items():
-    #         if isinstance(value, dict):
-    #             cleaned[key] = ResponseValidator.clean_response(value)
-    #         elif isinstance(value, list):
-    #             cleaned[key] = [
-    #                 ResponseValidator.clean_response(item) if isinstance(item, dict) else item
-    #                 for item in value
-    #             ]
-    #         else:
-    #             # Convert None to empty string/list/dict based on context
-    #             if value is None:
-    #                 if key.endswith(('list', 'array', 'items')):
-    #                     cleaned[key] = []
-    #                 elif key.endswith(('dict', 'map')):
-    #                     cleaned[key] = {}
-    #                 else:
-    #                     cleaned[key] = ""
-    #             else:
-    #                 cleaned[key] = value
-                    
-    #     return cleaned
-
 
 
 
@@ -1820,384 +1792,7 @@ class PipelineStage:
         return []
 
 
-# class PipelineContext:
-#     def __init__(self, original_prompt: str, ai_type: str, style: str):
-#         self.context = {
-#             "original_prompt": original_prompt,
-#             "ai_type": ai_type,
-#             "style": style,
-#             "timestamp": datetime.datetime.now().isoformat(),
-#             "execution_context": {
-#                 "stage_results": {},
-#                 "errors": [],
-#                 "warnings": []
-#             },
-#             "parameters": self._get_default_parameters()
-#         }
 
-#     def _get_default_parameters(self) -> Dict:
-#         return {
-#             "temperature": {"value": 0.7, "reasoning": "Default balanced temperature"},
-#             "top_p": {"value": 0.9, "reasoning": "Default sampling diversity"},
-#             "presence_penalty": {"value": 0.0, "reasoning": "Default presence penalty"},
-#             "frequency_penalty": {"value": 0.0, "reasoning": "Default frequency penalty"}
-#         }
-    
-#     def get_context(self) -> Dict:
-#         """Get complete pipeline context"""
-#         return self.context
-
-#     def update_stage_result(self, stage_name: str, result: Dict):
-#         """Update results for a specific stage"""
-#         if "stage_results" not in self.context["execution_context"]:
-#             self.context["execution_context"]["stage_results"] = {}
-#         self.context["execution_context"]["stage_results"][stage_name] = result
-
-#     def get_stage_result(self, stage_name: str) -> Dict:
-#         """Get results for a specific stage"""
-#         return self.context["execution_context"]["stage_results"].get(stage_name, {})
-
-#     def update_parameters(self, parameters: Dict):
-#         """Validate and update parameters with bounds checking"""
-#         param_bounds = {
-#             "temperature": (0.1, 1.0),
-#             "top_p": (0.1, 1.0), 
-#             "presence_penalty": (-2.0, 2.0),
-#             "frequency_penalty": (-2.0, 2.0)
-#         }
-
-#         validated_params = {}
-#         for param_name, bounds in param_bounds.items():
-#             try:
-#                 param_data = parameters.get(param_name, {})
-#                 if isinstance(param_data, dict):
-#                     value = float(param_data.get('value', self._get_default_parameters()[param_name]['value']))
-#                 else:
-#                     value = float(param_data)
-
-#                 min_val, max_val = bounds
-#                 clamped_value = max(min_val, min(max_val, value))
-                
-#                 if clamped_value != value:
-#                     self.add_warning("parameters", 
-#                         f"Parameter {param_name} adjusted from {value} to {clamped_value}")
-
-#                 validated_params[param_name] = {
-#                     "value": clamped_value,
-#                     "reasoning": param_data.get('reasoning', "Automatically adjusted")
-#                 }
-
-#             except (TypeError, ValueError) as e:
-#                 self.add_error("parameters", f"Invalid {param_name} value: {str(e)}")
-#                 validated_params[param_name] = self._get_default_parameters()[param_name]
-
-#         self.context["parameters"] = validated_params
-
-#     def get_api_parameters(self) -> Dict:
-#         """Extract clean parameters for API calls"""
-#         return {
-#             name: data["value"] 
-#             for name, data in self.context["parameters"].items()
-#         }
-    
-#     def add_error(self, stage_name: str, error: str):
-#         """Add error information"""
-#         if "errors" not in self.context["execution_context"]:
-#             self.context["execution_context"]["errors"] = []
-            
-#         self.context["execution_context"]["errors"].append({
-#             "stage": stage_name,
-#             "error": error,
-#             "timestamp": datetime.datetime.now().isoformat()
-#         })
-
-#     def add_warning(self, stage_name: str, warning: str):
-#         """Add warning information"""
-#         if "warnings" not in self.context["execution_context"]:
-#             self.context["execution_context"]["warnings"] = []
-            
-#         self.context["execution_context"]["warnings"].append({
-#             "stage": stage_name,
-#             "warning": warning,
-#             "timestamp": datetime.datetime.now().isoformat()
-#         })
-
-#     {
-#     "context": {
-#         "ai_type": "ChatGPT",
-#         "original_prompt": "make plan for 31st new year, i am lonely. my friends have plans and they are not inviting me. Also my budget is 250 rupees. i am in india. and it is 11:45pm i only have 14 minutes",
-#         "style": "Concise"
-#     },
-#     "error": "'dict' object has no attribute 'context'",
-#     "status": "error",
-#     "timestamp": "2024-12-31T20:03:36.748451"
-# }
-
-# First, let's enhance the Analysis Stage to better handle context and AI-style requirements
-# class AnalysisStage(PipelineStage):
-
-#     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
-#         super().__init__(logger, api_handler, context_tracker)
-#         self.required_fields = ["intent", "requirements", "context"]
-
-#     def execute(self, pipeline_context: Dict) -> Dict:
-#         try:
-#             self.logger.info("Starting analysis stage")
-#             prompt = pipeline_context.get("original_prompt")
-#             ai_type = pipeline_context.get("ai_type")
-#             style = pipeline_context.get("style")
-            
-#             system_message = f"""RETURN ONLY VALID JSON IN THIS EXACT FORMAT, NO OTHER TEXT:
-#             {{
-#                 "intent": {{
-#                     "primary_objective": "Main goal analysis",
-#                     "requirements": ["Key requirements identified"],
-#                     "success_criteria": ["Measurable outcomes"]
-#                 }},
-#                 "context": {{
-#                     "constraints": ["Limiting factors"],
-#                     "considerations": ["Important aspects"]
-#                 }},
-#                 "analysis": {{
-#                     "key_points": ["Core findings"],
-#                     "technical_requirements": ["Technical needs"]
-#                 }}
-#             }}"""
-
-#             user_message = f"""Analyze this request's requirements, constraints, and objectives:
-
-#     Primary request: {prompt}
-#     System type: {ai_type}
-#     Style needs: {style}
-
-#     Consider:
-#     1. Core objectives and success metrics
-#     2. Technical and functional requirements
-#     3. Implementation constraints
-#     4. Key considerations for {ai_type} integration
-#     5. Critical success factors"""
-
-#             response = self.api_handler.make_api_call(
-#                 system_message=system_message,
-#                 prompt=user_message,
-#                 temperature=0.3
-#             )
-#             self.logger.debug(f"Raw API response: {response}")
-
-#             validated_response = self._validate_and_structure_response(response, pipeline_context)
-#             return self._preserve_context("analysis", validated_response)
-
-#         except Exception as e:
-#             self.logger.error(f"Analysis failed: {str(e)}", exc_info=True)
-#             return self._create_fallback_analysis(pipeline_context)
-        
-#     def _validate_and_structure_response(self, response: Dict, pipeline_context: Dict) -> Dict:
-#         try:
-#             content = response.get("content", "{}")
-#             self.logger.debug(f"Processing content: {content}")
-
-#             # Handle string content
-#             if isinstance(content, str):
-#                 # Remove markdown formatting
-#                 content = re.sub(r'\*\*.*?\*\*', '', content)
-                
-#                 # Try to find JSON structure
-#                 json_pattern = r'\{[\s\S]*\}'
-#                 json_match = re.search(json_pattern, content)
-                
-#                 if json_match:
-#                     try:
-#                         content = json.loads(json_match.group())
-#                     except json.JSONDecodeError:
-#                         self.logger.error("Failed to parse JSON match")
-#                         return self._create_fallback_analysis(pipeline_context)
-#                 else:
-#                     self.logger.error("No JSON structure found")
-#                     return self._create_fallback_analysis(pipeline_context)
-
-#             # Ensure required structure
-#             structured_response = self._ensure_structure(content)
-#             self.logger.debug(f"Structured response: {structured_response}")
-#             return structured_response
-
-#         except Exception as e:
-#             self.logger.error(f"Response validation failed: {str(e)}", exc_info=True)
-#             return self._create_fallback_analysis(pipeline_context)
-        
-#     def _ensure_structure(self, content: Dict) -> Dict:
-#         required_structure = {
-#             "intent": {
-#                 "primary_objective": "",
-#                 "requirements": [],
-#                 "success_criteria": []
-#             },
-#             "context": {
-#                 "constraints": [],
-#                 "considerations": []
-#             },
-#             "analysis": {
-#                 "key_points": [],
-#                 "technical_requirements": []
-#             }
-#         }
-
-#         # Ensure all required fields exist
-#         for key, structure in required_structure.items():
-#             if key not in content:
-#                 content[key] = structure
-#             elif isinstance(structure, dict):
-#                 for sub_key, sub_value in structure.items():
-#                     if sub_key not in content[key]:
-#                         content[key][sub_key] = sub_value
-
-#         return content
-        
-#     def _create_fallback_analysis(self, pipeline_context: Dict) -> Dict:
-#         """Single fallback method with consistent signature"""
-#         self.logger.info("Creating fallback analysis")
-#         prompt = pipeline_context.get("original_prompt", "")
-#         ai_type = pipeline_context.get("ai_type", "general")
-#         style = pipeline_context.get("style", "standard")
-
-#         return {
-#             "intent": {
-#                 "primary_objective": f"Process {prompt} effectively",
-#                 "requirements": ["Structured analysis", "Clear organization"],
-#                 "success_criteria": ["Complete coverage", "Proper format"]
-#             },
-#             "context": {
-#                 "constraints": ["Time constraints", f"{ai_type} capabilities"],
-#                 "considerations": [f"{style} style requirements", "Technical feasibility"]
-#             },
-#             "analysis": {
-#                 "key_points": ["Structure needed", "Clear organization required"],
-#                 "technical_requirements": ["Core functionality", "Essential features"]
-#             }
-#         }
-
-#     def _create_system_message(self, ai_type: str, style: str) -> str:
-#         return f"""You are an expert analysis specialist for {ai_type} systems.
-#         Your task is to perform a COMPLETE analysis of the user's request.
-        
-#         CRITICAL REQUIREMENTS:
-#         1. Return a FULLY COMPLETE, VALID JSON
-#         2. ENSURE all fields are populated
-#         3. DO NOT truncate or leave any fields incomplete
-#         4. Use clear, concise language
-        
-#         JSON Structure MUST Include:
-#         {{
-#             "intent": {{
-#                 "primary_objective": "Complete objective statement",
-#                 "implicit_requirements": ["Full list of requirements"],
-#                 "success_criteria": ["Complete list of success criteria"]
-#             }},
-#             "requirements": ["Comprehensive list of requirements"],
-#             "context": {{
-#                 "constraints": ["All constraints"],
-#                 "considerations": ["All considerations"]
-#             }}
-#         }}"""
-
-#     def _create_user_message(self, pipeline_context: Dict) -> str:
-#         return f"""Analyze this request:
-#         Original Request: {pipeline_context.get('original_prompt')}
-#         Return in JSON format with intent, requirements, and context fields."""
-        
-#     def _create_analysis_prompt(self, prompt: str, ai_type: str, style: str, preprocessing: Dict) -> str:
-#         """Create detailed analysis prompt with preprocessing insights"""
-#         return f"""
-#         Perform a comprehensive analysis of this request:
-        
-#         Original Request: {prompt}
-#         Target AI System: {ai_type}
-#         Required Style: {style}
-        
-#         Preprocessing Insights:
-#         - Sentiment: {preprocessing.get('content_analysis', {}).get('sentiment', {})}
-#         - Keywords: {preprocessing.get('content_analysis', {}).get('keywords', [])}
-#         - Complexity: {preprocessing.get('linguistic_features', {}).get('complexity_metrics', {})}
-        
-#         Provide structured analysis including:
-#         1. Core Intent Analysis:
-#             - Primary objective
-#             - Implicit requirements
-#             - Success criteria
-        
-#         2. AI Relevance Analysis:
-#             - {ai_type}-specific considerations
-#             - Technical requirements
-#             - Implementation challenges
-        
-#         Return analysis in JSON format with these fields:
-#         {{
-#             "intent": {{
-#                 "primary_objective": "string",
-#                 "implicit_requirements": ["string"],
-#                 "success_criteria": ["string"]
-#             }},
-#             "requirements": ["string"],
-#             "context": {{
-#                 "time_aspects": ["string"],
-#                 "task_aspects": ["string"],
-#                 "user_expectations": ["string"]
-#             }}
-#         }}"""
-    
-#     def _create_fallback_analysis(self, pipeline_context: Dict) -> Dict:
-#         """Create fallback analysis with context awareness"""
-#         return {
-#             "status": "fallback",
-#             "stage": "analysis",
-#             "timestamp": datetime.datetime.now().isoformat(),
-#             "intent": {
-#                 "primary_objective": "Process and analyze the given content",
-#                 "implicit_requirements": [
-#                     "Clear organization",
-#                     "Proper structure",
-#                     "Relevant content"
-#                 ],
-#                 "success_criteria": [
-#                     "Well-structured output",
-#                     "Complete coverage",
-#                     "Clear presentation"
-#                 ]
-#             },
-#             "context": {
-#                 "original_prompt": pipeline_context.get("original_prompt", ""),
-#                 "ai_type": pipeline_context.get("ai_type", "general"),
-#                 "style": pipeline_context.get("style", "standard")
-#             }
-#         }
-        
-#     def _create_fallback_analysis(self, prompt: str, ai_type: str, style: str) -> Dict:
-#         """Create a fallback analysis when the main analysis process fails."""
-#         return {
-#             "intent": {
-#                 "primary_objective": "Organize and manage tasks effectively",
-#                 "implicit_requirements": [
-#                     "Clear task prioritization",
-#                     "Efficient time allocation",
-#                     "Progress tracking"
-#                 ],
-#                 "success_criteria": [
-#                     "Tasks are well-organized",
-#                     "Time is efficiently allocated",
-#                     "Goals are achievable"
-#                 ]
-#             },
-#             "requirements": [
-#                 "Task list creation",
-#                 "Time estimation",
-#                 "Priority setting",
-#                 "Schedule management"
-#             ],
-#             "context": {
-#                 "time_aspects": ["Duration estimation", "Scheduling"],
-#                 "task_aspects": ["Organization", "Prioritization"],
-#                 "user_expectations": ["Clear guidance", "Practical steps"]
-#             }
-#         }
 
 class AnalysisStage(PipelineStage):
     def execute(self, pipeline_context: Dict) -> Dict:
@@ -2208,17 +1803,38 @@ class AnalysisStage(PipelineStage):
             style = pipeline_context.get("style")
             
             system_message = f"""You are a prompt analysis expert specializing in {ai_type} systems.
-            Your  task is to perform a COMPLETE analysis of the user's request. You have to analyze what the user exactly needs and requires, basically expand the context of the user's request.   Analyze the request concisely but completely. Focus on:
-            1. Core intent
-            2. Key requirements
-            3. Essential context
+            Your  task is to perform a COMPLETE analysis of the user's request to communicate it to the {ai_type} LLM in the best possible way.
+              Your analysis is supposed to provide the llm a high grade understanding of the user's request so that it understands the user's request to 
+              generate precise and optimized response catering to the user's exact contextual requirement.
+              Your generated analysis will be used in creating super effective prompts.
+            1. Key requirements
+            2. Essential context
+            3. Do not hallucinate.
+            4. Key constraints specific to {ai_type}'s capabilities
+NO speculation or assumptions. NO general guidance.
+
+            CRITICAL - 
+            ONLY BUILD UPON WHAT THE USER HAS PROVIDED AND DO NOT ASSUME ANYTHING.
+            
+            THE RESPONSE SHOULD NOT BE MORE THAN 500 WORDS.
            """
 
             user_message = f"""Analyze: "{prompt}"
             System: {ai_type}
             Style: {style}
-            
-            Include key requirements and context needed for prompt enhancement."""
+            Your task is to create a concise analysis of the user's requirement in his written prompt,
+              understand what the user needs, create pointers that can explain ths user's intent even more clearly.
+            Include key requirements and context needed for prompt enhancement.
+            Return ONLY:
+1. Core intent
+You should breakdown and understand the domain which the user is targeting , and have a deep understanding of 
+all the tools relevant to the domain that are present.
+2. Essential requirements
+3. Critical context needed for {ai_type}
+CRITICAL - 
+DO NOT GENERATE ANYTHIN WITHOUT CONFIRMING THE UNDERSTANDING OF MY REQUEST, IF THERE IS ANY CLARITY MISSING , 
+ASK ME FOLLOW UP QUESTIONS BEFORE GENERATING AND ONLY THEN GENERATE.
+Keep analysis focused and factual."""
 
             # Adjust API call parameters
             response = self.api_handler.make_api_call(
@@ -2294,572 +1910,9 @@ class AnalysisStage(PipelineStage):
             }
         }
 
-# class FeedbackStage(PipelineStage):
-
-#     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
-#         super().__init__(logger, api_handler, context_tracker)
-#         self.required_fields = ["feedback", "improvements", "suggestions"]
-
-#     def _create_user_message(self, pipeline_context: Dict) -> str:
-#         analysis_result = pipeline_context.get("stage_results", {}).get("analysis", {})
-#         return f"""
-#         Analyze the alignment between the original request and its analysis:
-        
-#         Original Request: {pipeline_context.get('original_prompt')}
-#         AI Type: {pipeline_context.get('ai_type')}
-#         Style: {pipeline_context.get('style')}
-        
-#         Analysis Results:
-#         {json.dumps(analysis_result, indent=2)}
-        
-#         Evaluate:
-#         1. Content Coverage
-#         2. Technical Accuracy
-#         3. Style Alignment
-#         4. Completeness
-        
-#         Provide specific examples and recommendations for improvements."""
-
-#     def _create_fallback_feedback(self, pipeline_context: Dict) -> Dict:
-#         return {
-#             "feedback": {
-#                 "accuracy_assessment": "Unable to assess",
-#                 "completeness_review": "Unable to review",
-#                 "platform_alignment": "Unable to evaluate",
-#                 "style_evaluation": "Unable to evaluate"
-#             },
-#             "improvements": ["Default improvement suggestion"],
-#             "suggestions": {
-#                 "content": [],
-#                 "structure": [],
-#                 "style": []
-#             }
-#         }
-
-#     def execute(self, pipeline_context: Dict) -> Dict:
-#         try:
-#             stage_results = pipeline_context.get("stage_results", {})
-#             analysis_result = stage_results.get("analysis", {})
-            
-#             # Extract parameters based on analysis results
-#             dynamic_params = self._generate_dynamic_parameters(analysis_result)
-            
-#             system_message = f"""You are a prompt evaluation specialist.
-#             Analyze the alignment between the original request and its analysis,
-#             considering the {pipeline_context.get('style')} style requirements.
-#             Generate specific parameter recommendations based on the analysis.
-#             """
-            
-#             feedback_prompt = f"""
-#             Analyze and provide feedback:
-#             Original Request: {pipeline_context.get('original_prompt', '')}
-#             Style: {pipeline_context.get('style', 'professional')}
-#             AI Type: {pipeline_context.get('ai_type', 'general')}
-#             Analysis Results: {json.dumps(analysis_result, indent=2)}
-            
-#             Return in JSON format with these exact fields:
-#             {{
-#                 "alignment_analysis": {{
-#                     "matches": [],
-#                     "gaps": [],
-#                     "recommendations": []
-#                 }},
-#                 "completeness_check": {{
-#                     "covered_aspects": [],
-#                     "missing_elements": [],
-#                     "suggestions": []
-#                 }},
-#                 "parameters": {{
-#                     "temperature": {{ "value": float, "reasoning": string }},
-#                     "top_p": {{ "value": float, "reasoning": string }},
-#                     "presence_penalty": {{ "value": float, "reasoning": string }},
-#                     "frequency_penalty": {{ "value": float, "reasoning": string }}
-#                 }},
-#                 "improvement_areas": []
-#             }}"""
-
-#             response = self.api_handler.make_api_call(
-#                 system_message=system_message,
-#                 prompt=feedback_prompt,
-#                 context=pipeline_context,
-#                 **dynamic_params  # Use dynamically generated parameters
-#             )
-
-#             return self._preserve_context("feedback", response)
-#         except Exception as e:
-#             self.logger.error(f"Feedback stage failed: {str(e)}")
-#             return self._create_fallback_feedback(pipeline_context)
-
-#     def _generate_dynamic_parameters(self, analysis_result: Dict) -> Dict:
-#         """Generate parameters based on analysis results"""
-#         try:
-#             complexity = analysis_result.get("technical_assessment", {}).get("complexity_level", "medium")
-#             requirements = len(analysis_result.get("requirements", []))
-            
-#             params = {
-#                 "temperature": 0.4 if complexity == "high" else 0.6,
-#                 "top_p": 0.8 if requirements > 5 else 0.9,
-#                 "presence_penalty": 0.1 if complexity == "high" else 0.0,
-#                 "frequency_penalty": 0.1 if requirements > 5 else 0.0
-#             }
-            
-#             return params
-#         except Exception:
-#             return {"temperature": 0.4, "top_p": 0.9, "presence_penalty": 0.0, "frequency_penalty": 0.0}
-
-class FeedbackStage(PipelineStage):
-    
-    def execute(self, pipeline_context: Dict) -> Dict:
-        try:
-            analysis_result = pipeline_context.get("stage_results", {}).get("analysis", {})
-            
-            system_message = """Generate ONLY parameter values as JSON object."""
-            
-            feedback_prompt = f"""Based on analysis: {analysis_result.get('content', '')}
-            Return ONLY:
-            {{
-                "temperature": 0.7,
-                "top_p": 0.9, 
-                "presence_penalty": 0.0,
-                "frequency_penalty": 0.0
-            }}"""
-
-            response = self.api_handler.make_api_call(
-                system_message=system_message,
-                prompt=feedback_prompt,
-                temperature=0.3
-            )
-
-            try:
-                content = response.get("content", "{}")
-                content = content[content.find('{'):content.rfind('}')+1]
-                return {"parameters": json.loads(content)}
-            except Exception:
-                return self._create_fallback_parameters()
-
-        except Exception:
-            return self._create_fallback_parameters()
-
-    def _create_fallback_parameters(self) -> Dict:
-        return {
-            "parameters": {
-                "temperature": 0.7,
-                "top_p": 0.9,
-                "presence_penalty": 0.0,
-                "frequency_penalty": 0.0
-            }
-        }
-
-    # def _create_fallback_parameters(self) -> Dict:
-    #     return {
-    #         "parameters": {
-    #             "temperature": {"value": 0.7, "reasoning": "Fallback balanced temperature"},
-    #             "top_p": {"value": 0.9, "reasoning": "Fallback sampling diversity"},
-    #             "presence_penalty": {"value": 0.0, "reasoning": "Fallback neutral presence"},
-    #             "frequency_penalty": {"value": 0.0, "reasoning": "Fallback neutral frequency"}
-    #         }
-    #     }
-
-# class GuidelinesStage(PipelineStage):
-#     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
-#         super().__init__(logger, api_handler, context_tracker)
-#         self.required_fields = ["guidelines", "parameters", "implementation_notes"]
-    
 
 
-#     def execute(self, pipeline_context: Dict) -> Dict:
-#         try:
-#             analysis = pipeline_context.get("stage_results", {}).get("analysis", {}).get("analysis_results", {})
-            
-#             analysis_content = analysis.get("content", "")
-#             prompt = analysis.get("original_prompt", "")
-#             ai_type = analysis.get("ai_type", "")
-#             style = analysis.get("style", "")
 
-#             system_message = f"""Return structured implementation guidelines in JSON format:
-#     {{
-#         "core_requirements": {{
-#             "technical_specifications": ["list of technical specs"],
-#             "functional_requirements": ["list of functional requirements"],
-#             "constraints": ["list of constraints"]
-#         }},
-#         "platform_guidelines": {{
-#             "{ai_type}_specific": ["list of platform requirements"],
-#             "implementation_steps": ["ordered list of steps"],
-#             "best_practices": ["list of best practices"]
-#         }},
-#         "style_guidelines": {{
-#             "communication_format": "{style}",
-#             "key_principles": ["list of style principles"],
-#             "presentation_rules": ["list of rules"]
-#         }}
-#     }}"""
-
-#             user_message = f"""Based on:
-#     Analysis: {analysis_content}
-#     Request: {prompt}
-#     Platform: {ai_type}
-#     Style: {style}
-
-#     Generate complete implementation guidelines focusing on:
-#     1. Technical and functional requirements
-#     2. Platform-specific implementation details
-#     3. Style and communication requirements"""
-
-#             response = self.api_handler.make_api_call(
-#                 system_message=system_message,
-#                 prompt=user_message,
-#                 temperature=0.3,
-#                 top_p=0.8,
-#                 presence_penalty=0.1
-#             )
-
-#             formatted_response = self._format_guidelines_response(
-#                 response.get("content", ""),
-#                 prompt,
-#                 ai_type,
-#                 style
-#             )
-            
-#             return self._preserve_context("guidelines", formatted_response)
-
-#         except Exception as e:
-#             self.logger.error(f"Guidelines generation failed: {str(e)}", exc_info=True)
-#             return self._create_fallback_guidelines(pipeline_context)
-        
-
-#     def _format_guidelines_response(self, content: str, prompt: str, ai_type: str, style: str) -> Dict:
-#         try:
-#             # Parse JSON content if possible
-#             if content.strip().startswith("{"):
-#                 guidelines = json.loads(content)
-#             else:
-#                 # Format text content into structured sections
-#                 sections = self._extract_sections(content)
-#                 guidelines = {
-#                     "core_requirements": sections.get("Core Requirements", {}),
-#                     "platform_guidelines": sections.get("Platform Guidelines", {}),
-#                     "style_guidelines": sections.get("Style Guidelines", {})
-#                 }
-
-#             return {
-#                 "content": guidelines,
-#                 "context": {
-#                     "prompt": prompt,
-#                     "ai_type": ai_type,
-#                     "style": style
-#                 },
-#                 "metadata": {
-#                     "timestamp": datetime.datetime.now().isoformat(),
-#                     "format_version": "2.0"
-#                 }
-#             }
-#         except Exception as e:
-#             self.logger.error(f"Guidelines formatting failed: {str(e)}")
-#             return self._create_fallback_guidelines_response(prompt, ai_type, style)
-        
-
-    
-#     def _create_fallback_guidelines(self, pipeline_context: Dict) -> Dict:
-#         return {
-#             "content": "Provide clear, structured explanation covering key aspects and requirements",
-#             "context": {
-#                 "prompt": pipeline_context.get("original_prompt", ""),
-#                 "ai_type": pipeline_context.get("ai_type", ""),
-#                 "style": pipeline_context.get("style", "")
-#             }
-#         }
-
-#     def _extract_parameters(self, params: Dict) -> Dict:
-#         default_params = {
-#             'temperature': 0.7,
-#             'top_p': 0.9,
-#             'presence_penalty': 0.0,
-#             'frequency_penalty': 0.0
-#         }
-        
-#         if not params or not isinstance(params, dict):
-#             return default_params
-            
-#         clean_params = {}
-#         for key, default in default_params.items():
-#             try:
-#                 param = params.get(key, {})
-#                 if isinstance(param, dict) and 'value' in param:
-#                     clean_params[key] = float(param['value'])
-#                 else:
-#                     clean_params[key] = float(param) if param is not None else default
-#             except (TypeError, ValueError):
-#                 clean_params[key] = default
-                
-#         return clean_params
-
-#     def _create_system_message(self, ai_type: str, style: str) -> str:
-#         return f"""You are a guidelines expert for {ai_type} systems.
-#         Generate comprehensive guidelines and return JSON in this exact structure:
-#         {{
-#             "guidelines": {{
-#                 "implementation_approach": "string",
-#                 "key_considerations": ["string"],
-#                 "best_practices": ["string"]
-#             }},
-#             "parameters": {{
-#                 "temperature": {{"value": 0.7, "reasoning": "string"}},
-#                 "top_p": {{"value": 0.9, "reasoning": "string"}},
-#                 "presence_penalty": {{"value": 0.0, "reasoning": "string"}},
-#                 "frequency_penalty": {{"value": 0.0, "reasoning": "string"}}
-#             }},
-#             "implementation_notes": {{
-#                 "critical_considerations": ["string"],
-#                 "success_criteria": ["string"]
-#             }}
-#         }}"""
-        
-#     def _create_guidelines_prompt(self, pipeline_context: Dict) -> str:
-#         guidelines_template = {
-#             "guidelines": {
-#                 "implementation_approach": "",
-#                 "platform_requirements": [],
-#                 "style_guidelines": []
-#             },
-#             "parameters": self._get_default_parameters(),
-#             "implementation_notes": {
-#                 "critical_considerations": [],
-#                 "success_criteria": []
-#             }
-#         }
-#         return f"Generate guidelines based on:\n{json.dumps(pipeline_context, indent=2)}\n\nUse format:\n{json.dumps(guidelines_template, indent=2)}"
-
-#     def _get_default_parameters(self) -> Dict:
-#         return {
-#             "temperature": {"value": 0.7, "reasoning": "Default"},
-#             "top_p": {"value": 0.9, "reasoning": "Default"},
-#             "presence_penalty": {"value": 0.0, "reasoning": "Default"},
-#             "frequency_penalty": {"value": 0.0, "reasoning": "Default"}
-#         }
-
-# class GuidelinesStage(PipelineStage):
-#     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
-#         super().__init__(logger, api_handler, context_tracker)
-#         self.required_fields = ["guidelines", "parameters", "implementation_notes"]
-    
-
-
-#     def execute(self, pipeline_context: Dict) -> Dict:
-#         try:
-#             # Enhanced context extraction
-#             analysis = pipeline_context.get("stage_results", {}).get("analysis", {}).get("analysis_results", {})
-#             guidelines = pipeline_context.get("stage_results", {}).get("guidelines", {}).get("content", "")
-#             analysis_content = analysis.get("content", "")
-#             original_prompt = analysis.get("original_prompt", "")
-#             ai_type = analysis.get("ai_type", "")
-#             style = analysis.get("style", "professional")
-#             self.logger.debug(f"Full pipeline context: {json.dumps(pipeline_context.get('stage_results', {}), indent=2)}")
-#             self.logger.debug(f"Analysis structure: {json.dumps(analysis, indent=2)}")
-#             self.logger.debug(f"Guidelines structure: {json.dumps(guidelines, indent=2)}")
-#             # Log critical components for prompt enhancement
-#             self.logger.debug("Critical components:")
-#             self.logger.debug(f"1. Analysis content: {analysis.get('content', '')[:200]}...")
-#             self.logger.debug(f"2. Style requirements: {style}")
-#             self.logger.debug(f"3. AI Type specifics: {ai_type}")
-#             # Ultra-Precise System Message
-#             system_message = """You are a prompt enhancement specialist.
-#         CRITICAL REQUIREMENTS:
-#         1. Response MUST be pure JSON with NO explanatory text or markdown
-#         2. Response MUST contain EXACTLY three complete prompts
-#         3. Response format MUST be:
-#         {
-#             "prompts": [
-#                 {"prompt": "enhanced version 1"},
-#                 {"prompt": "enhanced version 2"},
-#                 {"prompt": "enhanced version 3"}
-#             ]
-#         }
-#         4. No other fields or formatting allowed
-#         5. Each prompt must reflect the specified style and AI type requirements"""
-
-#             # Hyper-Detailed User Message
-#             user_message = f"""ADVANCED PROMPT ENGINEERING DEEP DIVE:
-
-# SPECIFIC CONTEXT: "{original_prompt}"
-# COMPREHENSIVE DOMAIN ANALYSIS: {analysis_content}
-
-# GENERATE AN EXHAUSTIVE PROMPT ENGINEERING MASTERCLASS GUIDELINE COVERING:
-
-# I. DOMAIN-SPECIFIC PROMPT ARCHITECTURE
-#    A. Comprehensive Subject Decomposition
-#    B. Analytical Approach Mapping
-#    C. Requirement Extraction Techniques
-
-# II. {ai_type.upper()} OPTIMIZATION FRAMEWORK
-#     A. System-Specific Interaction Strategies
-#     B. Computational Methodology Alignment
-#     C. Response Quality Maximization Techniques
-#     D. Any specific pointers to be included in terms of {ai_type} capabilities, if applicable
-
-# III. {style.upper()} COMMUNICATION PROTOCOL
-#      A. Linguistic Precision Techniques
-#      B. Structural Clarity Requirements
-#      C. Nuanced Expression Strategies
-
-# IV. TECHNICAL COMPLEXITY MANAGEMENT
-#     A. Complex Subject Deconstruction
-#     B. Maximum Analytical Insight Extraction
-#     C. Precision Maintenance Strategies
-
-# V. COMPREHENSIVE PROMPT CONSTRUCTION CHECKLIST
-#    A. Detailed Step-by-Step Guidelines
-#    B. Error Prevention Mechanisms
-#    C. Continuous Optimization Strategies
-
-# ABSOLUTE CRITICAL CONSTRAINTS:
-# - COMPLETE and UNABRIDGED response
-# - EXTREME TECHNICAL PRECISION
-# - ACTIONABLE, IMPLEMENTABLE INSIGHTS
-# - {ai_type}-LEVEL ANALYTICAL COMPREHENSIVENESS
-
-# MANDATORY OUTPUT FORMAT:
-# - Each section MUST be thoroughly explained
-# - Provide concrete, real-world examples
-# - Include potential implementation challenges
-# - Discuss mitigation strategies
-# - Demonstrate deep domain understanding"""
-
-#             # Enhanced API Call with More Generous Creativity Parameters
-#             response = self.api_handler.make_api_call(
-#                 system_message=system_message,
-#                 prompt=user_message,
-#                 temperature=0.7,  # Higher creativity
-#                 top_p=0.9,        # More diverse sampling
-#                 max_tokens=4000,  # Increased token limit
-#                 presence_penalty=0.2  # Slightly more diverse vocabulary
-#             )
-            
-#             # Advanced Response Processing
-#             formatted_response = {
-#                 "content": response.get("content", ""),
-#                 "context": {
-#                     "prompt": original_prompt,
-#                     "ai_type": ai_type,
-#                     "style": style,
-#                     "analysis_depth": len(analysis_content),
-#                     "generation_timestamp": datetime.datetime.now().isoformat()
-#                 }
-#             }
-            
-#             return self._preserve_context("guidelines", formatted_response)
-
-#         except Exception as e:
-#             self.logger.error(f"Guidelines generation failed: {str(e)}", exc_info=True)
-#             return self._create_fallback_guidelines(pipeline_context)
-
-#     def _create_fallback_guidelines(self, pipeline_context: Dict) -> Dict:
-#         """Create a robust fallback with structured, adaptable guidelines"""
-#         original_prompt = pipeline_context.get("original_prompt", "Generic Prompt")
-#         ai_type = pipeline_context.get("ai_type", "Generic AI")
-#         style = pipeline_context.get("style", "Professional")
-
-#         return {
-#             "content": f"""UNIVERSAL PROMPT ENGINEERING FRAMEWORK
-
-# 1. CONTEXTUAL MASTERY
-#    - Dissect {original_prompt} with surgical precision
-#    - Understand underlying conceptual frameworks
-#    - Anticipate analytical requirements
-
-# 2. {ai_type.upper()} OPTIMIZATION STRATEGIES
-#    - Leverage system-specific analytical capabilities
-#    - Construct prompts that maximize {ai_type}'s potential
-#    - Align with core computational methodologies
-
-# 3. {style.upper()} COMMUNICATION PROTOCOL
-#    - Maintain impeccable structural integrity
-#    - Demonstrate clarity without sacrificing depth
-#    - Balance technical accuracy with elegant expression
-
-# 4. PROMPT ARCHITECTURE
-#    - Introduction: Contextual framing
-#    - Body: Detailed, structured inquiry
-#    - Conclusion: Clear objective statement
-
-# 5. ERROR MITIGATION TECHNIQUES
-#    - Anticipate potential misinterpretations
-#    - Provide explicit constraints
-#    - Create self-correcting prompt mechanisms""",
-#             "context": {
-#                 "prompt": original_prompt,
-#                 "ai_type": ai_type,
-#                 "style": style
-#             }
-#         }
-
-#     def _extract_parameters(self, params: Dict) -> Dict:
-#         default_params = {
-#             'temperature': 0.7,
-#             'top_p': 0.9,
-#             'presence_penalty': 0.0,
-#             'frequency_penalty': 0.0
-#         }
-        
-#         if not params or not isinstance(params, dict):
-#             return default_params
-            
-#         clean_params = {}
-#         for key, default in default_params.items():
-#             try:
-#                 param = params.get(key, {})
-#                 if isinstance(param, dict) and 'value' in param:
-#                     clean_params[key] = float(param['value'])
-#                 else:
-#                     clean_params[key] = float(param) if param is not None else default
-#             except (TypeError, ValueError):
-#                 clean_params[key] = default
-                
-#         return clean_params
-
-#     def _create_system_message(self, ai_type: str, style: str) -> str:
-#         return f"""You are a guidelines expert for {ai_type} systems.
-#         Generate comprehensive guidelines and return JSON in this exact structure:
-#         {{
-#             "guidelines": {{
-#                 "implementation_approach": "string",
-#                 "key_considerations": ["string"],
-#                 "best_practices": ["string"]
-#             }},
-#             "parameters": {{
-#                 "temperature": {{"value": 0.7, "reasoning": "string"}},
-#                 "top_p": {{"value": 0.9, "reasoning": "string"}},
-#                 "presence_penalty": {{"value": 0.0, "reasoning": "string"}},
-#                 "frequency_penalty": {{"value": 0.0, "reasoning": "string"}}
-#             }},
-#             "implementation_notes": {{
-#                 "critical_considerations": ["string"],
-#                 "success_criteria": ["string"]
-#             }}
-#         }}"""
-        
-#     def _create_guidelines_prompt(self, pipeline_context: Dict) -> str:
-#         guidelines_template = {
-#             "guidelines": {
-#                 "implementation_approach": "",
-#                 "platform_requirements": [],
-#                 "style_guidelines": []
-#             },
-#             "parameters": self._get_default_parameters(),
-#             "implementation_notes": {
-#                 "critical_considerations": [],
-#                 "success_criteria": []
-#             }
-#         }
-#         return f"Generate guidelines based on:\n{json.dumps(pipeline_context, indent=2)}\n\nUse format:\n{json.dumps(guidelines_template, indent=2)}"
-
-#     def _get_default_parameters(self) -> Dict:
-#         return {
-#             "temperature": {"value": 0.7, "reasoning": "Default"},
-#             "top_p": {"value": 0.9, "reasoning": "Default"},
-#             "presence_penalty": {"value": 0.0, "reasoning": "Default"},
-#             "frequency_penalty": {"value": 0.0, "reasoning": "Default"}
-#         }
 
 class GuidelinesStage(PipelineStage):
     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
@@ -2880,68 +1933,56 @@ class GuidelinesStage(PipelineStage):
 
             # Ultra-Precise System Message
             system_message = f"""You are a WORLD-CLASS prompt engineering expert specializing in {ai_type} systems.
+Your task is to provide SPECIFIC, FOCUSED GUIDANCE for constructing prompts based on:
+1. The user's specific request and context
+2. {ai_type}'s specific capabilities and interaction patterns,the user is writing the prompts on this specific ai platform. It would be great if you also provide with platform specific guidance.
+3. {style} style requirements
+RETURN ONLY:
+1. Core Prompt Requirements - What MUST be included
+2. Style-Specific Guidelines - How to maintain {style} style
+3. AI-Specific Optimizations - Best practices for {ai_type}
+4. Key Considerations - Critical factors for this specific request
 
-ABSOLUTE REQUIREMENTS:
-- Generate COMPLETELY COMPREHENSIVE guidelines
-- MANDATORY: Provide FULL, UNABRIDGED response
-- ZERO tolerance for incomplete content
-- DEEP, EXHAUSTIVE analysis is REQUIRED
+Keep responses CONCISE and ACTIONABLE. 
 
 CRITICAL GUIDELINE COMPOSITION INSTRUCTIONS:
-1. MINIMUM response length: 500 words
+CRITICAL - 
+DO NOT GENERATE ANYTHIN WITHOUT CONFIRMING THE UNDERSTANDING OF MY REQUEST, IF THERE IS ANY CLARITY MISSING , ASK ME FOLLOW UP QUESTIONS BEFORE GENERATING AND ONLY THEN GENERATE.
+1. MAXIMUM response length: 500 words
 2. BREAK DOWN every single aspect
 3. Provide ACTIONABLE, IMPLEMENTABLE strategies
 4. Demonstrate PROFOUND understanding of the domain
-5. Include PRACTICAL examples and implementation techniques
 
 FAILURE TO MEET THESE REQUIREMENTS RESULTS IN IMMEDIATE REGENERATION OF THE RESPONSE."""
 
-            # Hyper-Detailed User Message
-            user_message = f"""ADVANCED PROMPT ENGINEERING DEEP DIVE:
+ 
+            user_message = f"""Generate focused guidelines for constructing prompts for:
 
-SPECIFIC CONTEXT: "{original_prompt}"
-COMPREHENSIVE DOMAIN ANALYSIS: {analysis_content}
+CONTEXT:
+Original Request: "{original_prompt}"
+Analysis: {analysis_content}
 
-GENERATE AN EXHAUSTIVE PROMPT ENGINEERING MASTERCLASS GUIDELINE COVERING:
+REQUIREMENTS:
+- AI Platform: {ai_type}
+- Response Style: {style}
 
-I. DOMAIN-SPECIFIC PROMPT ARCHITECTURE
-   A. Comprehensive Subject Decomposition
-   B. Analytical Approach Mapping
-   C. Requirement Extraction Techniques
+Return guidelines in this structure:
+1. CORE REQUIREMENTS:
+   - Essential elements for this specific request
+   - Critical context to include
 
-II. {ai_type.upper()} OPTIMIZATION FRAMEWORK
-    A. System-Specific Interaction Strategies
-    B. Computational Methodology Alignment
-    C. Response Quality Maximization Techniques
-    D. Any specific pointers to be included in terms of {ai_type} capabilities, if applicable
+2. STYLE GUIDELINES:
+   - How to maintain {style} style
+   - Style-specific dos and don'ts
 
-III. {style.upper()} COMMUNICATION PROTOCOL
-     A. Linguistic Precision Techniques
-     B. Structural Clarity Requirements
-     C. Nuanced Expression Strategies
+3. {ai_type} OPTIMIZATION:
+   - Platform-specific best practices
+   - Interaction patterns to use/avoid
 
-IV. TECHNICAL COMPLEXITY MANAGEMENT
-    A. Complex Subject Deconstruction
-    B. Maximum Analytical Insight Extraction
-    C. Precision Maintenance Strategies
-
-V. COMPREHENSIVE PROMPT CONSTRUCTION CHECKLIST
-   A. Detailed Step-by-Step Guidelines
-   B. Error Prevention Mechanisms
-   C. Continuous Optimization Strategies
-
-ABSOLUTE CRITICAL CONSTRAINTS:
-- COMPLETE and UNABRIDGED response
-- EXTREME TECHNICAL PRECISION
-- ACTIONABLE, IMPLEMENTABLE INSIGHTS
-- {ai_type}-LEVEL ANALYTICAL COMPREHENSIVENESS
-
-MANDATORY OUTPUT FORMAT:
-- Each section MUST be thoroughly explained
-- Provide concrete, real-world examples
-- Include potential implementation challenges
-- Discuss mitigation strategies
-- Demonstrate deep domain understanding"""
+4. PROMPT CONSTRUCTION:
+   - Structure recommendations
+Emphasise more on STYLE GUIDELINES and {ai_type} OPTIMIZATION
+Keep focused on THIS SPECIFIC REQUEST  No general theory or explanations."""
 
             # Enhanced API Call with More Generous Creativity Parameters
             response = self.api_handler.make_api_call(
@@ -2985,12 +2026,12 @@ MANDATORY OUTPUT FORMAT:
    - Understand underlying conceptual frameworks
    - Anticipate analytical requirements
 
-2. {ai_type.upper()} OPTIMIZATION STRATEGIES
+2. {ai_type} OPTIMIZATION STRATEGIES
    - Leverage system-specific analytical capabilities
    - Construct prompts that maximize {ai_type}'s potential
    - Align with core computational methodologies
 
-3. {style.upper()} COMMUNICATION PROTOCOL
+3. {style} COMMUNICATION PROTOCOL
    - Maintain impeccable structural integrity
    - Demonstrate clarity without sacrificing depth
    - Balance technical accuracy with elegant expression
@@ -3189,6 +2230,7 @@ class EnhancementStage(PipelineStage):
     def execute(self, pipeline_context: Dict) -> Dict:
         try:
             self.logger.info("Starting enhancement stage execution")
+            self.logger.debug("Pipeline Context: %s", json.dumps(pipeline_context, indent=2))
             
             # Extract and log context
             analysis = pipeline_context.get("stage_results", {}).get("analysis", {}).get("analysis_results", {})
@@ -3205,38 +2247,92 @@ class EnhancementStage(PipelineStage):
             self.logger.debug(f"Analysis Content Length: {len(analysis.get('content', ''))}")
             self.logger.debug(f"guidelines generated: {guidelines}")
 
+            selected_params = self._select_enhancement_parameters(ai_type, style)
+            self.logger.debug("Selected Parameters: %s", json.dumps(selected_params, indent=2))
+
             # Enhanced system message with strict JSON requirements
-            system_message = """CRITICAL INSTRUCTION - READ CAREFULLY:
-    1. Return ONLY pure JSON object
-    2. Format MUST be EXACTLY:
-    {
-        "prompts": [
-            {"prompt": "enhanced version 1"},
-            {"prompt": "enhanced version 2"},
-            {"prompt": "enhanced version 3"}
-        ]
-    }
-    3. NO markdown, NO explanations, NO other text
-    4. Each prompt MUST be complete - no truncation
-    5. Prompts MUST follow specified style and AI type requirements"""
+            system_message = f"""You are an expert prompt engineer specializing in crafting highly effective prompts for {ai_type} systems. 
+Your core expertise is understanding user intent and translating it into optimized prompts that generate superior results.
+
+KEY REQUIREMENTS:
+- ONLY generate three variations of the user's request
+- Each variation must be self-contained and complete
+- NO additional context or metadata
+- NO hypothetical scenarios or assumptions
+- STRICT adherence to {style} style
+
+CAPABILITIES AND FOCUS:
+- Deep understanding of {ai_type}'s strengths and interaction patterns
+- Expertise in {style} communication style
+- Ability to create contextually aware prompts
+
+YOUR TASK IS TO:
+1. Analyze the provided context and requirements
+2. Generate three distinct but complementary prompts that:
+   - Maintain {style} style consistently
+   - Leverage {ai_type}'s specific capabilities
+   - Each brings unique value while serving the main goal
+   Stay within {ai_type}'s capabilities
+   NO additional fields beyond "prompt"
+
+CRITICAL - YOUR RESPONSE MUST BE THIS EXACT JSON STRUCTURE AND NOTHING ELSE:
+{{
+    "prompts": [
+        {{ "prompt": "string - first variation" }},
+        {{ "prompt": "string - second variation" }},
+        {{ "prompt": "string - third variation" }}
+    ]
+}}
+
+RULES:
+- ONLY the exact JSON structure above is allowed
+- NO additional fields
+- NO nested objects
+- NO arrays except the main prompts array
+- NO metadata or context fields
+- Each prompt must be a plain string
+
+ANY DEVIATION FROM THIS STRUCTURE WILL CAUSE ERRORS.
+
+NO explanations, markdown, or additional text outside this structure."""
 
             # Create focused user message
-            user_message = f"""Input:
-    Prompt: {original_prompt}
-    Style: {style}
-    AI Type: {ai_type}
+            user_message = f"""
+            TRANSFORM THIS REQUEST:
+            CONTEXT:
+Original Request: "{original_prompt}"
+Style Required: {style}
+Platform: {ai_type}
 
-    Context:
-    {analysis.get('content', '')}
+ANALYSIS INSIGHTS:
+{analysis}
 
-    Guidelines:
-    {guidelines}
+GUIDELINES:
+{guidelines}
 
-    GENERATE EXACTLY THREE (3) ENHANCED PROMPTS:
-    1. Each must maintain {style} style
-    2. Each must be optimized for {ai_type}
-    3. Each must be complete and unique
-    4. Return as pure JSON with no extra text"""
+CREATE THREE ENHANCED PROMPTS THAT:
+
+   - Focus on primary user intent
+   - Maintain clear, direct instruction
+   - Emphasize essential requirements
+
+EACH PROMPT MUST:
+- Follow {style} style guidelines
+- Optimize for {ai_type}'s capabilities
+- Include clear context, action, and expected outcome consolidated and formatted together into a prompt.
+- Be complete and self-contained
+
+CONSTRAINTS:
+- Maintain {style} style consistently
+- No assumptions about tools or capabilities
+- Stay focused on user's original request
+- No additional content beyond prompt text
+
+GENERATE THREE VARIATIONS IN THE EXACT JSON FORMAT SPECIFIED.
+DO NOT ADD ANY FIELDS OR CONTEXT.
+"""
+            self.logger.debug(f"system message: {system_message}")
+            self.logger.debug(f"user message: {user_message}")
 
             # Make API call with increased token limit
             response = self.api_handler.make_api_call(
@@ -3635,7 +2731,7 @@ class EnhancedPromptPipeline:
         self.context_tracker = ContextTracker()
         
         self.analysis_stage = AnalysisStage(logger, self.api_handler, self.context_tracker)
-        self.feedback_stage = FeedbackStage(logger, self.api_handler, self.context_tracker)
+        # self.feedback_stage = FeedbackStage(logger, self.api_handler, self.context_tracker)
         self.guidelines_stage = GuidelinesStage(logger, self.api_handler, self.context_tracker)
         self.enhancement_stage = EnhancementStage(logger, self.api_handler, self.context_tracker)
 
@@ -4487,75 +3583,6 @@ class ResponseHandler:
             }
         }
 
-    # def format_response(self, pipeline_result: Dict) -> Dict:
-    #     """Enhanced response formatting with comprehensive structure"""
-    #     try:
-    #         # Error handling
-    #         if pipeline_result.get('status') in ['fallback', 'error']:
-    #             return self._format_error_response(pipeline_result)
-            
-    #         # Extract preprocessing details with new structure
-    #         preprocessing_details = self._extract_preprocessing_details(
-    #             pipeline_result.get('initial_analysis', {})
-    #         )
-            
-    #         # Get enhanced prompts with better structure
-    #         enhanced_prompts = pipeline_result.get('enhanced_prompts', {})
-    #         if isinstance(enhanced_prompts, str):
-    #             try:
-    #                 enhanced_prompts = json.loads(enhanced_prompts)
-    #             except json.JSONDecodeError:
-    #                 enhanced_prompts = {"prompts": []}
-                    
-    #         prompts_list = enhanced_prompts.get('prompts', [])
-            
-    #         # Format prompts with more detail
-    #         formatted_prompts = []
-    #         for p in prompts_list:
-    #             if isinstance(p, dict):
-    #                 formatted_prompts.append({
-    #                     "prompt": p.get("prompt", ""),
-    #                     "focus": p.get("focus", "general"),
-    #                     "perspective": p.get("perspective", "standard"),
-    #                     "metadata": {
-    #                         "format_version": "2.0",
-    #                         "generated_timestamp": datetime.datetime.now().isoformat()
-    #                     }
-    #                 })
-            
-    #         return {
-    #             "status": "success",
-    #             "metadata": {
-    #                 "timestamp": datetime.datetime.now().isoformat(),
-    #                 "version": "2.0.0",
-    #                 "processing_type": "enhanced"
-    #             },
-    #             "input": {
-    #                 "original_prompt": pipeline_result.get('original_prompt', ''),
-    #                 "preprocessing": preprocessing_details
-    #             },
-    #             "analysis": {
-    #                 "linguistic": {
-    #                     "semantic_analysis": preprocessing_details.get('semantic_analysis', {}),
-    #                     "discourse_analysis": preprocessing_details.get('discourse_analysis', {}),
-    #                     "complexity_metrics": preprocessing_details.get('complexity_metrics', {})
-    #                 },
-    #                 "contextual": pipeline_result.get('comparative_feedback', {})
-    #             },
-    #             "output": {
-    #                 "guidelines": pipeline_result.get('guidelines', {}),
-    #                 "enhanced_prompts": formatted_prompts
-    #             },
-    #             "processing_insights": {
-    #                 "key_decisions": preprocessing_details.get('key_decisions', []),
-    #                 "adaptation_points": preprocessing_details.get('adaptation_points', [])
-    #             }
-    #         }
-    #     except Exception as e:
-    #         return self._format_error_response({
-    #             "status": "error",
-    #             "error": str(e)
-    #         })
     def format_response(self, pipeline_context: Dict) -> Dict:
         try:
             # Ensure all required fields are present
@@ -4781,80 +3808,7 @@ class PromptEnhancer:
             self.logger.error(f"Analysis generation failed: {str(e)}")
             raise
 
-    # def _clean_json_content(self, content: str) -> str:
-    #     try:
-    #         self.logger.debug("=== Content Cleaning Start ===")
-    #         self.logger.debug(f"Original content: {content}")
-            
-    #         if not isinstance(content, str):
-    #             content = json.dumps(content)
-
-    #         json_start = content.find('{')
-    #         if json_start == -1:
-    #             raise ValueError("No JSON object found in content")
-            
-    #         content = content[json_start:]
-            
-    #         # Fix mangled parameter structure
-    #         param_pattern = r'"(temperature|top_p|presence_penalty|frequency_penalty)":\s*{[^}]*}value":-1,"reasoning":'
-    #         content = re.sub(param_pattern, r'"\1":{"value":-1,"reasoning":', content)
-            
-    #         # Remove duplicate parameter entries
-    #         content = re.sub(r'("value":-1,"reasoning":[^}]*})[^,}]*"value":-1,"reasoning":', r'\1', content)
-            
-    #         # Your existing code...
-    #         json_end = content.rfind('}') + 1
-    #         content = content[:json_end]
-    #         content = re.sub(r'```(?:json)?\s*(.*?)\s*```', r'\1', content, flags=re.DOTALL)
-    #         content = re.sub(r',(\s*})', r'\1', content)
-    #         content = re.sub(r',(\s*])', r'\1', content)
-            
-    #         # Array handling
-    #         array_starts = [m.start() for m in re.finditer(r'\[', content)]
-    #         for start in array_starts:
-    #             stack = []
-    #             end = start + 1
-    #             while end < len(content):
-    #                 if content[end] == '[':
-    #                     stack.append('[')
-    #                 elif content[end] == ']':
-    #                     if not stack:
-    #                         break
-    #                     stack.pop()
-    #                 end += 1
-                
-    #             section = content[start:end]
-    #             if section.count('{') > section.count('}'):
-    #                 content = content[:end] + '}' + content[end:]
-
-    #         # Normalize whitespace and ensure proper closure
-    #         content = re.sub(r'\s+', ' ', content).strip()
-    #         open_count = content.count('{')
-    #         close_count = content.count('}')
-    #         if open_count > close_count:
-    #             content += '}' * (open_count - close_count)
-            
-    #         try:
-    #             parsed = json.loads(content)
-    #             if isinstance(parsed, dict):
-    #                 if 'guidelines' in parsed:
-    #                     if isinstance(parsed['guidelines'], str):
-    #                         parsed['guidelines'] = parsed['guidelines'].replace('\n', '\\n')
-    #                 if 'prompts' in parsed:
-    #                     for prompt in parsed.get('prompts', []):
-    #                         if isinstance(prompt, dict) and 'prompt' in prompt:
-    #                             prompt['prompt'] = prompt['prompt'].replace('\n', '\\n')
-                
-    #             return json.dumps(parsed, ensure_ascii=False)
-                
-    #         except json.JSONDecodeError as e:
-    #             self.logger.error(f"JSON validation failed in cleaning: {str(e)}")
-    #             self.logger.debug(f"Failed content: {content}")
-    #             raise
-            
-    #     except Exception as e:
-    #         self.logger.error(f"Error in content cleaning: {str(e)}")
-    #         raise
+ 
 
     def _clean_json_content(self, content: str) -> str:
         try:
