@@ -1806,10 +1806,11 @@ class AnalysisStage(PipelineStage):
             Your  task is to perform a COMPLETE analysis of the user's request to communicate it to the {ai_type} LLM in the best possible way.
               Your analysis is supposed to provide the llm a high grade understanding of the user's request so that it understands the user's request to 
               generate precise and optimized response catering to the user's exact contextual requirement.
-              Your generated analysis will be used in creating super effective prompts.
-            1. Key requirements
-            2. Essential context
-            3. Do not hallucinate.
+              Your analysis directly informs prompt construction.
+
+            1.If the user's request is domain-specific, ensure your analysis accounts for domain-relevant terminology, tools, or best practices.
+            2.  Key requirements
+            3. Essential context
             4. Key constraints specific to {ai_type}'s capabilities
 NO speculation or assumptions. NO general guidance.
 
@@ -1825,6 +1826,7 @@ NO speculation or assumptions. NO general guidance.
             Your task is to create a concise analysis of the user's requirement in his written prompt,
               understand what the user needs, create pointers that can explain ths user's intent even more clearly.
             Include key requirements and context needed for prompt enhancement.
+            Consider whether there are any constraints, uncommon scenarios, or edge cases that might impact prompt effectiveness, and highlight them in your analysis.
             Return ONLY:
 1. Core intent
 You should breakdown and understand the domain which the user is targeting , and have a deep understanding of 
@@ -1832,8 +1834,8 @@ all the tools relevant to the domain that are present.
 2. Essential requirements
 3. Critical context needed for {ai_type}
 CRITICAL - 
-DO NOT GENERATE ANYTHIN WITHOUT CONFIRMING THE UNDERSTANDING OF MY REQUEST, IF THERE IS ANY CLARITY MISSING , 
-ASK ME FOLLOW UP QUESTIONS BEFORE GENERATING AND ONLY THEN GENERATE.
+Identify any potential ambiguities or missing details in the user’s request. If clarity is lacking, explicitly state the ambiguity and propose at least two follow-up questions to resolve it before proceeding.
+DO NOT ADD ANY EXAMPLES THAT WILL MISLEAD THE PROMPT CREATION PROCESS, DO NOT ADD ANY USER RELATED INFORMATION THAT THE USER HAS NOT MENTIONED. IF NEEDED ONLY USE PLACEHOLDERS.
 Keep analysis focused and factual."""
 
             # Adjust API call parameters
@@ -1935,24 +1937,25 @@ class GuidelinesStage(PipelineStage):
             system_message = f"""You are a WORLD-CLASS prompt engineering expert specializing in {ai_type} systems.
 Your task is to provide SPECIFIC, FOCUSED GUIDANCE for constructing prompts based on:
 1. The user's specific request and context
-2. {ai_type}'s specific capabilities and interaction patterns,the user is writing the prompts on this specific ai platform. It would be great if you also provide with platform specific guidance.
+2. {ai_type}'s specific capabilities and interaction patterns,the user is writing the prompts on this specific ai platform.
 3. {style} style requirements
 RETURN ONLY:
 1. Core Prompt Requirements - What MUST be included
-2. Style-Specific Guidelines - How to maintain {style} style
+2. Style-Specific Guidelines - How to maintain {style} style,In the "Style-Specific Guidelines" section, include common mistakes or pitfalls to avoid when maintaining the specified style.
 3. AI-Specific Optimizations - Best practices for {ai_type}
 4. Key Considerations - Critical factors for this specific request
+5. Ensure all guidelines are directly tied to the user's intent, as identified in the analysis stage.
+6.Suggest at least one way the user can validate the prompt's effectiveness in meeting their specific needs.
 
 Keep responses CONCISE and ACTIONABLE. 
 
 CRITICAL GUIDELINE COMPOSITION INSTRUCTIONS:
 CRITICAL - 
+
 DO NOT GENERATE ANYTHIN WITHOUT CONFIRMING THE UNDERSTANDING OF MY REQUEST, IF THERE IS ANY CLARITY MISSING , ASK ME FOLLOW UP QUESTIONS BEFORE GENERATING AND ONLY THEN GENERATE.
 1. MAXIMUM response length: 500 words
-2. BREAK DOWN every single aspect
-3. Provide ACTIONABLE, IMPLEMENTABLE strategies
-4. Demonstrate PROFOUND understanding of the domain
-
+2. Provide concise, bullet-pointed strategies for each section.
+3. DO NOT GENERATE ANY EXAMPLES AS IT WILL LEAD TO HALLUCNIATIONS FOR PROMPT CREATION
 FAILURE TO MEET THESE REQUIREMENTS RESULTS IN IMMEDIATE REGENERATION OF THE RESPONSE."""
 
  
@@ -1960,7 +1963,7 @@ FAILURE TO MEET THESE REQUIREMENTS RESULTS IN IMMEDIATE REGENERATION OF THE RESP
 
 CONTEXT:
 Original Request: "{original_prompt}"
-Analysis: {analysis_content}
+Analysis: {analysis_content} (If the analysis consists of any follow up questions, analyze them and answer them based on the user's requirements. If it adds up to the prompt, answer it. If it doesn't, don't answer it.)
 
 REQUIREMENTS:
 - AI Platform: {ai_type}
@@ -1982,7 +1985,9 @@ Return guidelines in this structure:
 4. PROMPT CONSTRUCTION:
    - Structure recommendations
 Emphasise more on STYLE GUIDELINES and {ai_type} OPTIMIZATION
-Keep focused on THIS SPECIFIC REQUEST  No general theory or explanations."""
+Keep focused on THIS SPECIFIC REQUEST  No general theory or explanations.
+
+"""
 
             # Enhanced API Call with More Generous Creativity Parameters
             response = self.api_handler.make_api_call(
@@ -2285,6 +2290,8 @@ CRITICAL - YOUR RESPONSE MUST BE THIS EXACT JSON STRUCTURE AND NOTHING ELSE:
 }}
 
 RULES:
+
+DO NOT USE ANY NAMES, INSTEAD USE PLACEHOLDERS IF AND ONLY IF NEEDED, YOU SHOULD NOT MISLEAD.
 - ONLY the exact JSON structure above is allowed
 - NO additional fields
 - NO nested objects
@@ -2311,6 +2318,7 @@ GUIDELINES:
 {guidelines}
 
 CREATE THREE ENHANCED PROMPTS THAT:
+    -If the request relates to a specialized domain, include tailored language and context that reflects industry-standard practices.
 
    - Focus on primary user intent
    - Maintain clear, direct instruction
@@ -2319,11 +2327,12 @@ CREATE THREE ENHANCED PROMPTS THAT:
 EACH PROMPT MUST:
 - Follow {style} style guidelines
 - Optimize for {ai_type}'s capabilities
-- Include clear context, action, and expected outcome consolidated and formatted together into a prompt.
+- Consolidate context, action, and expected outcomes into a single cohesive prompt.
 - Be complete and self-contained
+- Ensure that each prompt is adaptable to slight variations in user input without losing focus on the main objective.
 
 CONSTRAINTS:
-- Maintain {style} style consistently
+- Maintain {style} style consistently,Maintain the overall style but introduce subtle stylistic variations across the three prompts to allow the user to choose the most fitting tone or phrasing.
 - No assumptions about tools or capabilities
 - Stay focused on user's original request
 - No additional content beyond prompt text
@@ -2735,36 +2744,26 @@ class EnhancedPromptPipeline:
         self.guidelines_stage = GuidelinesStage(logger, self.api_handler, self.context_tracker)
         self.enhancement_stage = EnhancementStage(logger, self.api_handler, self.context_tracker)
 
-    def _enrich_context(self, current_stage_result: Dict, previous_context: Dict) -> Dict:
-        """
-        Intelligently merge current stage result with previous context.
-        
-        Args:
-            current_stage_result (Dict): Result from the current pipeline stage
-            previous_context (Dict): Accumulated context from previous stages
-        
-        Returns:
-            Dict: Enriched context with merged information
-        """
-        enriched_context = previous_context.copy()
-        
-        # Define keys to prioritize for context enrichment
-        priority_keys = [
-            'intent', 'requirements', 'context', 
-            'feedback', 'guidelines', 'prompts'
-        ]
-        
-        for key in priority_keys:
-            if key in current_stage_result and current_stage_result[key]:
-                enriched_context[key] = current_stage_result[key]
-        
-        # Add metadata about context evolution
-        enriched_context['_metadata'] = {
-            'last_updated_stage': current_stage_result.get('_stage_metadata', {}).get('stage_name'),
-            'updated_at': datetime.datetime.now().isoformat()
-        }
-        
-        return enriched_context
+    def _enrich_context(self, base_context: Dict, new_data: Dict) -> Dict:
+        """Enrich context with new stage data"""
+        try:
+            enriched = base_context.copy()
+            
+            # Update stage results
+            for stage, result in new_data.items():
+                enriched["stage_results"][stage] = result
+                
+            # Add metadata about context evolution
+            enriched["_metadata"] = {
+                "last_updated": datetime.datetime.now().isoformat(),
+                "stages_completed": list(enriched["stage_results"].keys())
+            }
+            
+            return enriched
+            
+        except Exception as e:
+            self.logger.error(f"Context enrichment failed: {str(e)}")
+            return base_context
     
     def _format_final_response(self, pipeline_context: Dict) -> Dict:
         """
@@ -2851,6 +2850,15 @@ class EnhancedPromptPipeline:
 
     def execute_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
         try:
+            # Log pipeline initialization
+            self.logger.info("=== Starting Pipeline Execution ===")
+            self.logger.info(f"Input Parameters:")
+            self.logger.info(f"Prompt: {prompt}")
+            self.logger.info(f"AI Type: {ai_type}")
+            self.logger.info(f"Style: {style}")
+
+            # Log base context creation
+            self.logger.info("Creating base context")
             base_context = {
                 "request_id": str(uuid.uuid4()),
                 "original_prompt": prompt,
@@ -2859,20 +2867,44 @@ class EnhancedPromptPipeline:
                 "timestamp": datetime.datetime.now().isoformat(),
                 "stage_results": {}
             }
+            self.logger.debug(f"Base Context Created: {json.dumps(base_context, indent=2)}")
 
-            # Execute Analysis stage
+            # Analysis Stage
+            self.logger.info("\n=== Starting Analysis Stage ===")
+            self.logger.info("Executing analysis_stage.execute()")
             analysis_result = self.analysis_stage.execute(base_context)
+            self.logger.debug(f"Analysis Stage Result: {json.dumps(analysis_result, indent=2)}")
+            
+            # Log context update after analysis
+            self.logger.info("Updating context with analysis results")
             base_context["stage_results"]["analysis"] = analysis_result
-            
-            # Execute Guidelines stage using analysis results
-            guidelines_result = self.guidelines_stage.execute(base_context)
-            base_context["stage_results"]["guidelines"] = guidelines_result
-            
-            # Execute Enhancement stage with guidelines context
-            enhancement_result = self.enhancement_stage.execute(base_context)
-            base_context["stage_results"]["enhancement"] = enhancement_result
+            self.logger.debug(f"Context after analysis: {json.dumps(base_context['stage_results'], indent=2)}")
 
-            return {
+            # Guidelines Stage
+            self.logger.info("\n=== Starting Guidelines Stage ===")
+            self.logger.info("Executing guidelines_stage.execute()")
+            guidelines_result = self.guidelines_stage.execute(base_context)
+            self.logger.debug(f"Guidelines Stage Result: {json.dumps(guidelines_result, indent=2)}")
+            
+            # Log context update after guidelines
+            self.logger.info("Updating context with guidelines results")
+            base_context["stage_results"]["guidelines"] = guidelines_result
+            self.logger.debug(f"Context after guidelines: {json.dumps(base_context['stage_results'], indent=2)}")
+
+            # Enhancement Stage
+            self.logger.info("\n=== Starting Enhancement Stage ===")
+            self.logger.info("Executing enhancement_stage.execute()")
+            enhancement_result = self.enhancement_stage.execute(base_context)
+            self.logger.debug(f"Enhancement Stage Result: {json.dumps(enhancement_result, indent=2)}")
+            
+            # Log context update after enhancement
+            self.logger.info("Updating context with enhancement results")
+            base_context["stage_results"]["enhancement"] = enhancement_result
+            self.logger.debug(f"Final context state: {json.dumps(base_context['stage_results'], indent=2)}")
+
+            # Log response creation
+            self.logger.info("\n=== Preparing Final Response ===")
+            response = {
                 "status": "success",
                 "request_id": base_context["request_id"],
                 "metadata": {
@@ -2889,14 +2921,32 @@ class EnhancedPromptPipeline:
                     "enhancement": {"result": enhancement_result}
                 }
             }
+            self.logger.debug(f"Final Response: {json.dumps(response, indent=2)}")
+            self.logger.info("=== Pipeline Execution Completed ===")
+
+            return response
 
         except Exception as e:
-            self.logger.error(f"Pipeline execution failed: {str(e)}")
-            return {
+            # Detailed error logging
+            self.logger.error("\n=== Pipeline Execution Failed ===")
+            self.logger.error(f"Error message: {str(e)}")
+            self.logger.error("Full traceback:", exc_info=True)
+            self.logger.error(f"Failed with context state: {json.dumps(base_context, indent=2)}")
+            
+            error_response = {
                 "status": "error",
                 "error": str(e),
-                "timestamp": datetime.datetime.now().isoformat()
+                "timestamp": datetime.datetime.now().isoformat(),
+                "error_context": {
+                    "last_successful_stage": next(
+                        (stage for stage in ["enhancement", "guidelines", "analysis"] 
+                        if stage in base_context.get("stage_results", {})),
+                        None
+                    )
+                }
             }
+            self.logger.debug(f"Error Response: {json.dumps(error_response, indent=2)}")
+            return error_response
 
     def _generate_style_metadata(self, style: str, ai_type: str) -> Dict:
         """
@@ -3082,20 +3132,25 @@ class EnhancedPromptPipeline:
 
     def _validate_stage_result(self, result: Dict, stage_name: str) -> bool:
         """Validate stage result structure and content"""
-        if not isinstance(result, dict):
+        try:
+            if not isinstance(result, dict):
+                self.logger.error(f"{stage_name} stage returned invalid result type: {type(result)}")
+                return False
+                
+            if result.get("status") == "error":
+                self.logger.error(f"{stage_name} stage reported error: {result.get('error')}")
+                return False
+                
+            if "result" not in result and "content" not in result:
+                self.logger.error(f"{stage_name} stage missing required content")
+                return False
+            
+            self.logger.debug(f"{stage_name} stage result validated successfully")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Stage validation failed: {str(e)}")
             return False
-            
-        required_fields = {
-            "analysis": ["intent", "requirements"],
-            "feedback": ["feedback", "suggestions"],
-            "guidelines": ["guidelines", "parameters"],
-            "enhancement": ["prompts"]
-        }
-        
-        if stage_name in required_fields:
-            return all(field in result for field in required_fields[stage_name])
-            
-        return True
         
         
 
@@ -4527,9 +4582,9 @@ def process_request():
 @app.route('/process', methods=['OPTIONS'])
 def handle_options():
     response = app.make_default_options_response()
-    response.headers.add('Access-Control-Allow-Origin', request.origin)
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+    response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'POST,OPTIONS'
     return response
 
 if __name__ == '__main__':
