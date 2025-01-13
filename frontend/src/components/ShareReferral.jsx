@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Share2, Copy, Check } from 'lucide-react';
 import Analytics from '../config/analytics';
+import referralBg from '../assets/subtract.png'; // Adjust path as needed
+
 
 const ShareReferral = ({ userId, authToken }) => {
     const [referralCode, setReferralCode] = useState('');
@@ -80,72 +82,58 @@ const ShareReferral = ({ userId, authToken }) => {
     };
 
     return (
-        <div className="w-full font-[Inter] max-w-lg mx-auto bg-[#1A1A1A] rounded-2xl p-4 sm:p-6 mt-4 mb-4 border border-[#333333]/30">
-  <h2 className="text-white/90 text-base sm:text-lg text-center mb-4 sm:mb-6">
-    For Each Referral
-  </h2>
+      <div className="w-full font-[Inter] rounded-3xl p-6  relative overflow-hidden"
+      style={{
+        backgroundImage: `url(${referralBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
+    }}>
+            <div className="text-center mb-2 relative z-10">
+                <h2 className="text-2xl text-white font-semibold">Earn More</h2>
+                <h3 className="text-xl text-white mb-3">Free Credits</h3>
+                <p className="text-[#999999] text-sm">
+                    You Get 50 Credits • Your Friend Gets 30 Credits
+                </p>
+            </div>
 
-  <div className="flex flex-row justify-between gap-4 sm:gap-2 mb-6 sm:mb-6">
-    <div className="text-center bg-black/30 p-3 sm:p-4 rounded-xl backdrop-blur-sm flex flex-col justify-center items-center w-full sm:w-[140px] min-h-[100px] sm:min-h-[120px]">
-      <p className="text-gray-400 text-xs sm:text-sm mb-2">Your Friend Gets</p>
-      <p className="text-white text-3xl sm:text-4xl font-semibold">30</p>
-    </div>
-
-    <div className="text-center bg-black/30 p-3 sm:p-4 rounded-xl backdrop-blur-sm flex flex-col justify-center items-center w-full sm:w-[140px] min-h-[100px] sm:min-h-[120px]">
-      <p className="text-gray-400 text-xs sm:text-sm mb-2">You Get</p>
-      <p className="text-white text-3xl sm:text-4xl font-semibold">50</p>
-    </div>
-  </div>
-
-  <div className="flex justify-center items-center mb-4">
-    <p className="text-[#ffffff]/60 text-sm text-center">
-      You've Earned {referralStats.tokensEarned || 0} tokens till now
-    </p>
-  </div>
-
-  <div className="flex items-center justify-center pt-6">
-    <button
-      onClick={shareReferral}
-      className="bg-[#0084CC] hover:bg-[#0095e8] text-white font-medium py-2.5 sm:py-3 px-4 sm:px-6 rounded-full transition-all duration-200 flex items-center justify-center gap-1 text-sm sm:text-base"
-    >
-      <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-      Share Now
-    </button>
-  </div>
-
-  {isModalOpen && (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#1A1A1A] rounded-xl p-4 sm:p-6 w-full max-w-[90%] sm:max-w-md border border-[#333333]/30">
-        <h2 className="text-white text-lg sm:text-xl mb-4 text-center">
-          Share Your Referral Code
-        </h2>
-        <div className="bg-[#2C2C2C] p-3 sm:p-4 rounded-lg flex justify-between items-center mb-4 sm:mb-6">
-          <span className="text-white font-mono text-sm sm:text-base break-all">
-            {referralCode}
-          </span>
           <button
-            onClick={copyToClipboard}
-            className="text-[#0084CC] hover:text-[#0095e8] transition-colors"
+              onClick={shareReferral}
+              className="w-full bg-white hover:bg-gray-100 text-black font-medium py-3 px-6 rounded-full transition-all duration-200 flex items-center justify-center gap-2 mt-4 mb-3"
           >
-            {copied ? (
-              <Check className="w-4 h-4 sm:w-5 sm:h-5" />
-            ) : (
-              <Copy className="w-4 h-4 sm:w-5 sm:h-5" />
-            )}
+              <span>Spread AI Empowerment</span>
+              <Share2 className="w-4 h-4" />
           </button>
-        </div>
-        <button
-          onClick={() => setIsModalOpen(false)}
-          className="w-full bg-[#2C2C2C] text-white font-medium py-2.5 sm:py-3 rounded-lg hover:bg-[#3C3C3C] transition-colors text-sm sm:text-base"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  )}
-</div>
 
-    );
+          <p className="text-[#999999] text-xs text-center">
+              Refer a friend and get enough credits to optimise upto 10 complex prompts
+          </p>
+
+          {isModalOpen && (
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-[#1A1A1A] rounded-2xl p-6 w-full max-w-md border border-[#333333]">
+                      <h3 className="text-xl text-white mb-4 text-center">Share Your Referral Code</h3>
+                      
+                      <div className="bg-black/30 p-4 rounded-xl flex justify-between items-center mb-6">
+                          <span className="text-white font-mono">{referralCode}</span>
+                          <button
+                              onClick={copyToClipboard}
+                              className="text-[#0084CC] hover:text-[#0095e8] transition-colors"
+                          >
+                              {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                          </button>
+                      </div>
+
+                      <button
+                          onClick={() => setIsModalOpen(false)}
+                          className="w-full bg-black/30 text-white font-medium py-3 rounded-xl hover:bg-black/40 transition-colors"
+                      >
+                          Close
+                      </button>
+                  </div>
+              </div>
+          )}
+      </div>
+  );
 };
 
 export default ShareReferral;
