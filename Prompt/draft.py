@@ -23,6 +23,23 @@ nltk.download('punkt')
 import time
 nltk.download('wordnet')
 import datetime
+from transformers import (
+    pipeline, AutoTokenizer, AutoModelForSequenceClassification
+    
+)
+from gensim.models import LdaModel
+from gensim.corpora import Dictionary
+from nltk.tokenize import sent_tokenize
+from nltk.parse.stanford import StanfordParser
+from nltk.tag import StanfordNERTagger
+from nltk.tokenize import word_tokenize
+import spacy
+from spacy.language import Language
+from spacy.tokens import Doc
+from typing import List, Dict, Any, Tuple, Optional
+from scipy.spatial.distance import cosine
+import torch
+from torch.nn.functional import cosine_similarity
 
 app = Flask(__name__)
 CORS(app, resources={
@@ -59,6 +76,28 @@ except Exception as e:
     logger.error(f"Failed to initialize Llama API: {str(e)}")
     llama = None
 
+# At the top of app.py
+def validate_api_config():
+    try:
+        api_key = os.getenv('LLAMA_API_KEY')
+        if not api_key:
+            raise ValueError("LLAMA_API_KEY not found")
+            
+        # Test API connection
+        test_response = llama.run({
+            "messages": [{"role": "system", "content": "test"}],
+            "model": "llama3.2-1b",
+            "stream": False
+        })
+        
+        if not test_response:
+            raise ValueError("Failed to connect to API")
+            
+        return True
+    except Exception as e:
+        logger.error(f"API configuration invalid: {e}")
+        return False
+
 class ModelManager:
     _instance = None
     _initialized = False
@@ -72,11 +111,20 @@ class ModelManager:
         if not self._initialized:
             logger.info("Initializing ML models...")
             try:
-                # Load all models once
-                self.nlp = load('en_core_web_sm')
+                # Enhanced model loading
+                self.nlp = spacy.load('en_core_web_trf')  # Upgrade to transformer pipeline
                 self.sentiment_analyzer = pipeline('sentiment-analysis')
                 self.keyword_model = KeyBERT()
-                self.semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
+                self.semantic_model = SentenceTransformer('all-mpnet-base-v2')  # Upgraded model
+                self.zero_shot_classifier = pipeline("zero-shot-classification")
+                self.ner_model = pipeline("token-classification", model="dbmdz/bert-large-cased-finetuned-conll03-english")
+                self.summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+                
+                # Add custom pipeline components
+                self.nlp.add_pipe('semantic_analyzer', after='parser')
+                self.nlp.add_pipe('style_analyzer', after='semantic_analyzer')
+                self.nlp.add_pipe('domain_classifier', after='style_analyzer')
+                
                 logger.info("All models loaded successfully")
                 ModelManager._initialized = True
             except Exception as e:
@@ -397,28 +445,55 @@ class APIHandler:
                 **params
             })
 
-            if hasattr(response, 'json'):
-                response_data = response.json()
-                
-                # Extract content from Llama API response
-                if 'choices' in response_data and len(response_data['choices']) > 0:
-                    if 'message' in response_data['choices'][0]:
-                        content = response_data['choices'][0]['message'].get('content', '')
-                    else:
-                        content = response_data['choices'][0].get('text', '')
-                        
-                    return {
-                        "content": content,
-                        "_metadata": {
-                            "timestamp": datetime.datetime.now().isoformat(),
-                            "response_type": "message"
-                        }
-                    }
+            # Log the entire raw response for debugging
+            self.logger.debug(f"Raw API Response: {response}")
 
-            raise ValueError("Invalid response structure from API")
+            # Check if response has a 'json' method
+            if hasattr(response, 'json'):
+                try:
+                    response_data = response.json()
+                    self.logger.debug(f"Parsed Response Data: {response_data}")
+
+                    # More robust content extraction
+                    if 'choices' in response_data and len(response_data['choices']) > 0:
+                        # Try multiple paths to extract content
+                        content_paths = [
+                            ['choices', 0, 'message', 'content'],
+                            ['choices', 0, 'text'],
+                            ['content']
+                        ]
+
+                        for path in content_paths:
+                            try:
+                                content = response_data
+                                for key in path:
+                                    content = content[key]
+                                
+                                if content:
+                                    return {
+                                        "content": content,
+                                        "_metadata": {
+                                            "timestamp": datetime.datetime.now().isoformat(),
+                                            "response_type": "message"
+                                        }
+                                    }
+                            except (KeyError, TypeError):
+                                continue
+
+                        # If no content found
+                        raise ValueError("No content found in API response")
+
+                except Exception as parse_error:
+                    self.logger.error(f"Response parsing failed: {parse_error}")
+                    raise ValueError(f"Invalid response structure: {parse_error}")
+
+            raise ValueError("Invalid response format")
             
         except Exception as e:
             self.logger.error(f"API call failed: {str(e)}")
+            # Log full traceback for more detailed debugging
+            import traceback
+            self.logger.error(traceback.format_exc())
             return {"error": str(e)}
 
     def _extract_clean_parameters(self, params: Dict) -> Dict:
@@ -846,284 +921,339 @@ class APIHandler:
                 "frequency_penalty": 0.0
             }
 
-
-class PromptPreprocessor:
-    def __init__(self, logger: Optional[Logger] = None):
-        self.logger = logger or logging.getLogger(__name__)
-        self.model_manager = ModelManager()
-        self.nlp = self.model_manager.models['nlp']
-        self.sentiment_analyzer = self.model_manager.models['sentiment_analyzer']
-        self.keyword_model = self.model_manager.models['keyword_model']
-        self.semantic_model = self.model_manager.models['semantic_model']
-
-    def _determine_relationship_type(self, similarity_score: float) -> str:
-        """Determine relationship type based on similarity score"""
-        if similarity_score > 0.8:
-            return 'strong_continuation'
-        elif similarity_score > 0.5:
-            return 'moderate_continuation'
-        else:
-            return 'weak_continuation'
-
-    def _analyze_semantic_relationships(self, doc) -> Dict:
-        """Analyze semantic relationships between sentences"""
-        sentences = [sent.text for sent in doc.sents]
-        embeddings = self.semantic_model.encode(sentences)
+class NLPPipeline:
+    def __init__(self, logger: Logger):
+        self.logger = logger
+        self.models = self._initialize_models()
         
-        # Missing numpy import
-        
-        
-        relationships = []
-        for i in range(len(embeddings)-1):
-            # Improved similarity calculation with error handling
-            try:
-                similarity = np.dot(embeddings[i], embeddings[i+1]) / \
-                        (np.linalg.norm(embeddings[i]) * np.linalg.norm(embeddings[i+1]))
-                relationship_type = self._determine_relationship_type(similarity)
-                relationships.append({
-                    'sentence_pair': (i, i+1),
-                    'similarity_score': float(similarity),
-                    'relationship_type': relationship_type
-                })
-            except Exception as e:
-                self.logger.error(f"Error calculating similarity: {e}")
-                relationships.append({
-                    'sentence_pair': (i, i+1),
-                    'similarity_score': 0.0,
-                    'relationship_type': 'unknown'
-                })
-        
-        return {
-            'sentence_relationships': relationships,
-            'coherence_score': float(np.mean([r['similarity_score'] for r in relationships])) if relationships else 0.0
-        }
-
-    def _analyze_discourse_structure(self, doc) -> Dict:
-        """Analyze discourse elements and rhetorical structure"""
-        discourse_markers = {
-            'causal': ['because', 'therefore', 'thus', 'hence'],
-            'contrast': ['however', 'but', 'although', 'despite'],
-            'sequence': ['first', 'then', 'finally', 'next'],
-            'elaboration': ['for example', 'specifically', 'in particular']
-        }
-        
-        structure = {category: [] for category in discourse_markers}
-        
-        for sent in doc.sents:
-            sent_text = sent.text.lower()
-            for category, markers in discourse_markers.items():
-                for marker in markers:
-                    if marker in sent_text:
-                        structure[category].append({
-                            'sentence': sent.text,
-                            'marker': marker
-                        })
-        
-        return {
-            'discourse_structure': structure,
-            'primary_discourse_type': max(structure.items(), key=lambda x: len(x[1]))[0]
-        }
-
-    def analyze_prompt(self, prompt_input: Union[str, Dict]) -> Dict:
-        """Comprehensive prompt analysis with improved field population"""
+    def _initialize_models(self) -> Dict[str, Any]:
+        """Initialize all NLP models with proper error handling"""
+        self.logger.info("Initializing NLP models...")
         try:
-            # Extract prompt string if input is dict
-            prompt = prompt_input['original_prompt'] if isinstance(prompt_input, dict) else prompt_input
-            
-            if not isinstance(prompt, str):
-                raise ValueError(f"Invalid prompt type: {type(prompt)}")
-            doc = self.nlp(prompt)
-            
-            # Enhanced entity extraction
-            named_entities = []
-            for ent in doc.ents:
-                named_entities.append({
-                    "text": ent.text,
-                    "label": ent.label_,
-                    "start": ent.start_char,
-                    "end": ent.end_char
-                })
-
-            # Enhanced keyword extraction
-            keywords = self.keyword_model.extract_keywords(prompt, 
-                                                        top_n=5, 
-                                                        stop_words='english')
-
-            # Sentiment analysis
-            sentiment_result = self.sentiment_analyzer(prompt)[0]
-            
-            # Enhanced complexity analysis
-            complexity_metrics = {
-                "flesch_score": textstat.flesch_reading_ease(prompt),
-                "grade_level": textstat.coleman_liau_index(prompt),
-                "sentence_complexity": self._calculate_sentence_complexity(doc)
-            }
-
-            # Semantic analysis
-            semantic_analysis = self._analyze_semantic_relationships(doc)
-            
-            # Discourse analysis
-            discourse_analysis = self._analyze_discourse_structure(doc)
-
             return {
-                "content_analysis": {
-                    "named_entities": named_entities,
-                    "keywords": [kw[0] for kw in keywords],
-                    "topics": self._extract_topics(prompt),
-                    "sentiment": {
-                        "label": sentiment_result['label'],
-                        "score": sentiment_result['score']
-                    }
-                },
-                "linguistic_features": {
-                    "semantic": semantic_analysis,
-                    "discourse": discourse_analysis,
-                    "complexity_metrics": complexity_metrics,
-                    "structural_features": {
-                        "sentence_count": len(list(doc.sents)),
-                        "word_count": len([token for token in doc if not token.is_punct]),
-                        "avg_sentence_length": self._calculate_avg_sentence_length(doc)
-                    }
-                }
+                'spacy': spacy.load('en_core_web_trf'),
+                'semantic': SentenceTransformer('all-mpnet-base-v2'),
+                'sentiment': pipeline('sentiment-analysis'),
+                'zero_shot': pipeline('zero-shot-classification'),
+                'ner': pipeline('token-classification', 
+                              model='dbmdz/bert-large-cased-finetuned-conll03-english'),
+                'summarizer': pipeline('summarization', model='facebook/bart-large-cnn')
             }
+        except Exception as e:
+            self.logger.error(f"Failed to initialize NLP models: {str(e)}")
+            raise
+
+    def analyze_prompt(self, prompt: str) -> Dict[str, Any]:
+        """Comprehensive prompt analysis with full logging"""
+        analysis_result = {}
+        self.logger.info(f"Starting prompt analysis for text length: {len(prompt)}")
+
+        try:
+            # Semantic Analysis
+            semantic_result = self._analyze_semantics(prompt)
+            analysis_result['semantic'] = semantic_result
+            self.logger.debug(f"Semantic analysis complete: {semantic_result['summary']}")
+
+            # Structural Analysis
+            structural_result = self._analyze_structure(prompt)
+            analysis_result['structural'] = structural_result
+            self.logger.debug(f"Structural analysis complete: {structural_result['summary']}")
+
+            # Style Analysis
+            style_result = self._analyze_style(prompt)
+            analysis_result['style'] = style_result
+            self.logger.debug(f"Style analysis complete: {style_result['summary']}")
+
+            # Entity Analysis
+            entities_result = self._analyze_entities(prompt)
+            analysis_result['entities'] = entities_result
+            self.logger.debug(f"Entity analysis complete: Found {len(entities_result)} entities")
+
+            return analysis_result
 
         except Exception as e:
-            self.logger.error(f"Prompt analysis failed: {str(e)}")
+            self.logger.error(f"Error in prompt analysis: {str(e)}")
             return self._create_fallback_analysis()
-        
-    def _extract_topics(self, text: str) -> List[str]:
-        """Extract main topics from text"""
+
+    def _analyze_semantics(self, text: str) -> Dict[str, Any]:
+        """Enhanced semantic analysis with embeddings and coherence"""
         try:
-            # Use KeyBERT for topic extraction
-            topics = self.keyword_model.extract_keywords(text, 
-                                                    top_n=3,
-                                                    stop_words='english',
-                                                    use_maxsum=True,
-                                                    diversity=0.7)
-            return [topic[0] for topic in topics]
-        except Exception:
-            return []
-        
-
-    def _calculate_sentence_complexity(self, doc) -> Dict:
-        """Calculate various sentence complexity metrics"""
-        sentences = list(doc.sents)
-        return {
-            "max_depth": max((len(list(sent.rights)) + len(list(sent.lefts))) for sent in sentences) if sentences else 0,
-            "avg_depth": sum((len(list(sent.rights)) + len(list(sent.lefts))) for sent in sentences) / len(sentences) if sentences else 0,
-            "compound_sentences": sum(1 for sent in sentences if "and" in sent.text.lower() or "but" in sent.text.lower() or "or" in sent.text.lower())
-        }
-    
-
-    def _calculate_avg_sentence_length(self, doc) -> float:
-        """Calculate average sentence length"""
-        sentences = list(doc.sents)
-        return sum(len([token for token in sent if not token.is_punct]) for sent in sentences) / len(sentences) if sentences else 0
-
-    def _create_fallback_analysis(self) -> Dict:
-        """Create fallback analysis results"""
-        return {
-            "named_entities": [],
-            "keywords": ["task", "organization"],
-            "sentiment": "NEUTRAL",
-            "sentiment_score": 0.5,
-            "complexity_score": 50.0,
-            "sentence_count": 1,
-            "word_count": 0,
-            "linguistic_features": {
-                "verbs": [],
-                "nouns": [],
-                "adjectives": [],
-                "dependencies": [],
-                "has_questions": False
-            }
-        }
-
-    def enhance_context(self, prompt: str, analysis: Dict) -> Dict:
-        """Enhance prompt context with additional information"""
-        try:
-            embeddings = self.semantic_model.encode(prompt)
+            doc = self.models['spacy'](text)
+            embedding = self.models['semantic'].encode(text)
             
-            sentences = sent_tokenize(prompt)
-            sentence_complexity = [textstat.flesch_reading_ease(sent) for sent in sentences]
-            
-            keywords = analysis.get('keywords', [])
-            related_concepts = set()
-            for keyword in keywords:
-                synsets = wordnet.synsets(keyword)
-                for syn in synsets[:2]:
-                    related_concepts.update([lemma.name() for lemma in syn.lemmas()])
-            
-            return {
-                "semantic_features": {
-                    "embedding_dim": len(embeddings),
-                    "semantic_complexity": float(embeddings.std()),
-                    "related_concepts": list(related_concepts)
-                },
-                "structural_features": {
-                    "sentence_complexities": sentence_complexity,
-                    "avg_sentence_complexity": sum(sentence_complexity) / len(sentence_complexity) 
-                        if sentence_complexity else 0,
-                    "coherence_score": self._calculate_coherence(sentences)
-                }
-            }
-        except Exception as e:
-            logger.error(f"Context enhancement failed: {str(e)}")
-            return self._create_fallback_context()
-
-    def _calculate_complexity(self, text: str) -> float:
-        try:
-            flesch_score = textstat.flesch_reading_ease(text)
-            grade_level = textstat.coleman_liau_index(text)
-            
-            normalized_flesch = (100 - flesch_score) / 100 * 50
-            normalized_grade = (grade_level / 20) * 50
-            
-            return normalized_flesch + normalized_grade
-        except Exception:
-            return 50.0
-
-    def _extract_linguistic_features(self, doc) -> Dict:
-        return {
-            "verbs": [token.text for token in doc if token.pos_ == "VERB"],
-            "nouns": [token.text for token in doc if token.pos_ == "NOUN"],
-            "adjectives": [token.text for token in doc if token.pos_ == "ADJ"],
-            "dependencies": [f"{token.text}:{token.dep_}" for token in doc],
-            "has_questions": any(token.text.lower() in ["what", "why", "how", "when", "where", "who"] 
-                               for token in doc)
-        }
-
-    def _calculate_coherence(self, sentences: List[str]) -> float:
-        try:
-            if len(sentences) < 2:
-                return 1.0
-                
-            embeddings = self.semantic_model.encode(sentences)
+            sentences = [sent.text for sent in doc.sents]
+            sentence_embeddings = self.models['semantic'].encode(sentences)
             
             coherence_scores = []
-            for i in range(len(embeddings) - 1):
-                similarity = np.dot(embeddings[i], embeddings[i+1]) / \
-                           (np.linalg.norm(embeddings[i]) * np.linalg.norm(embeddings[i+1]))
-                coherence_scores.append(similarity)
-                
-            return float(np.mean(coherence_scores))
-        except Exception:
-            return 0.5
+            for i in range(len(sentences)-1):
+                score = cosine_similarity(
+                    sentence_embeddings[i].reshape(1, -1),
+                    sentence_embeddings[i+1].reshape(1, -1)
+                )[0][0]
+                coherence_scores.append(float(score))
 
-    def _create_fallback_context(self) -> Dict:
-        """Create fallback context enhancement results"""
-        return {
-            "semantic_features": {
-                "embedding_dim": 384,
-                "semantic_complexity": 0.5,
-                "related_concepts": []
-            },
-            "structural_features": {
-                "sentence_complexities": [50.0],
-                "avg_sentence_complexity": 50.0,
-                "coherence_score": 0.5
+            return {
+                'embedding': embedding.tolist(),
+                'coherence_scores': coherence_scores,
+                'average_coherence': float(np.mean(coherence_scores)) if coherence_scores else 0.0,
+                'summary': self._generate_semantic_summary(doc),
+                'key_phrases': self._extract_key_phrases(doc)
             }
+        except Exception as e:
+            self.logger.error(f"Semantic analysis failed: {str(e)}")
+            return self._create_fallback_semantic_analysis()
+
+    def _analyze_style(self, text: str) -> Dict[str, Any]:
+        """Advanced style analysis with multiple metrics"""
+        try:
+            doc = self.models['spacy'](text)
+            
+            # Style metrics
+            metrics = {
+                'sentence_length': np.mean([len(sent) for sent in doc.sents]),
+                'vocab_complexity': len(set([token.text.lower() for token in doc])) / len(doc),
+                'formality_score': self._calculate_formality(doc),
+                'technical_terms': self._identify_technical_terms(doc),
+                'tone': self._analyze_tone(text)
+            }
+            
+            return {
+                'metrics': metrics,
+                'summary': self._generate_style_summary(metrics),
+                'suggestions': self._generate_style_suggestions(metrics)
+            }
+        except Exception as e:
+            self.logger.error(f"Style analysis failed: {str(e)}")
+            return self._create_fallback_style_analysis()
+
+class PromptPreprocessor:
+    def __init__(self, logger: Logger):
+        self.logger = logger
+        # Load models
+        self.nlp = spacy.load('en_core_web_trf')  # Using transformer pipeline
+        self.zero_shot_classifier = pipeline("zero-shot-classification")
+        self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+        self.style_classifier = AutoModelForSequenceClassification.from_pretrained('bert-base-uncased')
+        
+        # Initialize semantic models
+        self.semantic_model = SentenceTransformer('all-mpnet-base-v2')  # Upgraded model
+        
+        # Add custom pipeline components
+        self.nlp.add_pipe('semantic_analyzer', after='parser')
+        self.nlp.add_pipe('style_analyzer', after='semantic_analyzer')
+        self.nlp.add_pipe('domain_classifier', after='style_analyzer')
+
+    @Language.component('semantic_analyzer')
+    def semantic_analyzer(self, doc: Doc) -> Doc:
+        """Enhanced semantic analysis component."""
+        try:
+            # Compute document embeddings
+            doc._.semantic_embedding = self.semantic_model.encode(doc.text)
+            
+            # Extract main topics using LDA
+            tokens = [token.text for token in doc if not token.is_stop]
+            dictionary = Dictionary([tokens])
+            corpus = [dictionary.doc2bow(tokens)]
+            lda_model = LdaModel(corpus, num_topics=3, id2word=dictionary)
+            doc._.topics = lda_model.show_topics()
+            
+            # Semantic role labeling
+            doc._.semantic_roles = self._extract_semantic_roles(doc)
+            
+            return doc
+        except Exception as e:
+            self.logger.error(f"Semantic analysis failed: {str(e)}")
+            return doc
+
+    def _extract_semantic_roles(self, doc: Doc) -> Dict[str, List[str]]:
+        """Extract semantic roles from text."""
+        roles = {
+            'agent': [],
+            'action': [],
+            'patient': [],
+            'instrument': [],
+            'location': [],
+            'time': []
         }
+        
+        for token in doc:
+            if token.dep_ == 'nsubj':
+                roles['agent'].append(token.text)
+            elif token.pos_ == 'VERB':
+                roles['action'].append(token.text)
+            elif token.dep_ == 'dobj':
+                roles['patient'].append(token.text)
+            # Add more role extractions...
+            
+        return roles
+
+    def analyze_style_consistency(self, original: str, enhanced: List[str]) -> Dict[str, float]:
+        """Analyze style consistency between original and enhanced prompts."""
+        original_embedding = self.semantic_model.encode(original)
+        
+        style_scores = {}
+        for idx, prompt in enumerate(enhanced):
+            prompt_embedding = self.semantic_model.encode(prompt)
+            
+            # Compute style similarity
+            style_similarity = cosine_similarity(
+                torch.tensor(original_embedding).unsqueeze(0),
+                torch.tensor(prompt_embedding).unsqueeze(0)
+            ).item()
+            
+            # Add readability metrics
+            style_scores[f'version_{idx+1}'] = {
+                'style_similarity': style_similarity,
+                'readability_score': textstat.flesch_reading_ease(prompt),
+                'technical_complexity': self._calculate_technical_complexity(prompt)
+            }
+            
+        return style_scores
+
+    def _calculate_technical_complexity(self, text: str) -> float:
+        """Calculate technical complexity score."""
+        doc = self.nlp(text)
+        
+        # Consider multiple factors
+        technical_terms = len([token for token in doc if token.pos_ in ['NOUN', 'PROPN'] and token.is_stop == False])
+        sentence_complexity = np.mean([len(list(sent)) for sent in doc.sents])
+        dependency_depth = max(token.head.i - token.i for token in doc)
+        
+        # Normalize and combine scores
+        complexity_score = (
+            0.4 * (technical_terms / len(doc)) +
+            0.3 * (sentence_complexity / 20) +
+            0.3 * (dependency_depth / 10)
+        )
+        
+        return min(1.0, complexity_score)
+
+    def enhance_prompt_structure(self, prompt: str) -> Dict[str, Any]:
+        """Enhanced prompt structure analysis and optimization."""
+        doc = self.nlp(prompt)
+        
+        # Structural analysis
+        structure = {
+            'components': self._extract_structural_components(doc),
+            'patterns': self._identify_prompt_patterns(doc),
+            'coherence': self._analyze_coherence(doc),
+            'improvements': self._suggest_structural_improvements(doc)
+        }
+        
+        return structure
+
+    def _extract_structural_components(self, doc: Doc) -> Dict[str, List[str]]:
+        """Extract key structural components from prompt."""
+        components = {
+            'context': [],
+            'instructions': [],
+            'constraints': [],
+            'examples': [],
+            'output_format': []
+        }
+        
+        for sent in doc.sents:
+            # Classify sentence type using custom rules and NLP features
+            if any(token.text.lower() in ['example', 'instance', 'like'] for token in sent):
+                components['examples'].append(sent.text)
+            elif any(token.dep_ == 'ROOT' and token.pos_ == 'VERB' for token in sent):
+                components['instructions'].append(sent.text)
+            # Add more classification rules...
+            
+        return components
+
+    def _identify_prompt_patterns(self, doc: Doc) -> List[Dict[str, Any]]:
+        """Identify common prompt patterns and their effectiveness."""
+        patterns = []
+        
+        # Analyze sentence structures
+        for sent in doc.sents:
+            pattern = {
+                'type': self._classify_sentence_pattern(sent),
+                'complexity': len(list(sent.noun_chunks)),
+                'voice': 'passive' if self._is_passive(sent) else 'active',
+                'clarity_score': self._calculate_clarity_score(sent)
+            }
+            patterns.append(pattern)
+            
+        return patterns
+
+    def _classify_sentence_pattern(self, sent) -> str:
+        """Classify sentence pattern type."""
+        root = [token for token in sent if token.dep_ == 'ROOT'][0]
+        
+        if root.pos_ == 'VERB' and root.text.lower() in ['create', 'generate', 'write']:
+            return 'imperative_creation'
+        elif root.pos_ == 'VERB' and root.text.lower() in ['explain', 'describe', 'elaborate']:
+            return 'imperative_explanation'
+        # Add more pattern types...
+        
+        return 'other'
+
+    def analyze_platform_compatibility(self, prompt: str, platform: str) -> Dict[str, Any]:
+        """Analyze and optimize prompt for specific AI platforms."""
+        doc = self.nlp(prompt)
+        
+        platform_analysis = {
+            'compatibility_score': self._check_platform_compatibility(doc, platform),
+            'syntax_validation': self._validate_platform_syntax(doc, platform),
+            'capability_matching': self._match_platform_capabilities(doc, platform),
+            'style_conformance': self._check_style_conformance(doc, platform),
+            'optimization_suggestions': self._generate_platform_optimizations(doc, platform)
+        }
+        
+        return platform_analysis
+
+    def _check_platform_compatibility(self, doc: Doc, platform: str) -> float:
+        """Check compatibility with specific AI platform."""
+        platform_characteristics = {
+            'ChatGPT': {
+                'max_tokens': 4096,
+                'preferred_style': ['conversational', 'instructional'],
+                'capabilities': ['text', 'code', 'analysis']
+            },
+            'Claude': {
+                'max_tokens': 8192,
+                'preferred_style': ['academic', 'professional'],
+                'capabilities': ['text', 'code', 'analysis', 'math']
+            },
+            # Add more platform characteristics...
+        }
+        
+        platform_config = platform_characteristics.get(platform, {})
+        
+        # Calculate compatibility scores
+        token_compatibility = len(doc) / platform_config.get('max_tokens', 4096)
+        style_compatibility = self._check_style_match(doc, platform_config.get('preferred_style', []))
+        capability_match = self._check_capability_requirements(doc, platform_config.get('capabilities', []))
+        
+        # Weighted average of scores
+        compatibility_score = (
+            0.3 * token_compatibility +
+            0.4 * style_compatibility +
+            0.3 * capability_match
+        )
+        
+        return min(1.0, compatibility_score)
+
+class PromptQualityAssurance:
+    """Quality assurance for enhanced prompts."""
+    
+    def __init__(self):
+        self.grammar_checker = pipeline("text2text-generation", model="grammar_correction_model")
+        self.coherence_model = AutoModelForSequenceClassification.from_pretrained("coherence_model")
+    
+    def check_prompt_quality(self, original_prompt: str, enhanced_prompts: List[str]) -> Dict[str, Any]:
+        """Comprehensive quality check of enhanced prompts."""
+        quality_report = {
+            'grammar_check': self._check_grammar(enhanced_prompts),
+            'semantic_preservation': self._check_semantic_preservation(original_prompt, enhanced_prompts),
+            'coherence_analysis': self._analyze_coherence(enhanced_prompts),
+            'ambiguity_check': self._check_ambiguity(enhanced_prompts),
+            'completeness_check': self._check_completeness(original_prompt, enhanced_prompts)
+        }
+        
+        return quality_report
     
 
 class ErrorHandler:
@@ -1804,8 +1934,7 @@ class AnalysisStage(PipelineStage):
             
             system_message = f"""You are a prompt analysis expert specializing in {ai_type} systems.
             Your  task is to perform a COMPLETE analysis of the user's request to communicate it to the {ai_type} LLM in the best possible way.
-              Your analysis is supposed to provide the llm a high grade understanding of the user's request so that it understands the user's request to 
-              generate precise and optimized response catering to the user's exact contextual requirement.
+              Your analysis will be used to craft context-aware prompts for the user for the llm of their choice.
               Your analysis directly informs prompt construction.
 
             1.If the user's request is domain-specific, ensure your analysis accounts for domain-relevant terminology, tools, or best practices.
@@ -1816,6 +1945,7 @@ NO speculation or assumptions. NO general guidance.
 
             CRITICAL - 
             ONLY BUILD UPON WHAT THE USER HAS PROVIDED AND DO NOT ASSUME ANYTHING.
+            DO NOT ADD OR ASSUME ANYTHING THAT IS NOT OBVIOUS.
             
             THE RESPONSE SHOULD NOT BE MORE THAN 500 WORDS.
            """
@@ -1834,7 +1964,6 @@ all the tools relevant to the domain that are present.
 2. Essential requirements
 3. Critical context needed for {ai_type}
 CRITICAL - 
-Identify any potential ambiguities or missing details in the user’s request. If clarity is lacking, explicitly state the ambiguity and propose at least two follow-up questions to resolve it before proceeding.
 DO NOT ADD ANY EXAMPLES THAT WILL MISLEAD THE PROMPT CREATION PROCESS, DO NOT ADD ANY USER RELATED INFORMATION THAT THE USER HAS NOT MENTIONED. IF NEEDED ONLY USE PLACEHOLDERS.
 Keep analysis focused and factual."""
 
@@ -1949,13 +2078,15 @@ RETURN ONLY:
 
 Keep responses CONCISE and ACTIONABLE. 
 
-CRITICAL GUIDELINE COMPOSITION INSTRUCTIONS:
 CRITICAL - 
+DO NOT GENERATE ANY EXAMPLES AS IT WILL LEAD TO HALLUCNIATIONS FOR PROMPT CREATION
+
+CRITICAL GUIDELINE COMPOSITION INSTRUCTIONS:
+
 
 DO NOT GENERATE ANYTHIN WITHOUT CONFIRMING THE UNDERSTANDING OF MY REQUEST, IF THERE IS ANY CLARITY MISSING , ASK ME FOLLOW UP QUESTIONS BEFORE GENERATING AND ONLY THEN GENERATE.
 1. MAXIMUM response length: 500 words
 2. Provide concise, bullet-pointed strategies for each section.
-3. DO NOT GENERATE ANY EXAMPLES AS IT WILL LEAD TO HALLUCNIATIONS FOR PROMPT CREATION
 FAILURE TO MEET THESE REQUIREMENTS RESULTS IN IMMEDIATE REGENERATION OF THE RESPONSE."""
 
  
@@ -1963,8 +2094,7 @@ FAILURE TO MEET THESE REQUIREMENTS RESULTS IN IMMEDIATE REGENERATION OF THE RESP
 
 CONTEXT:
 Original Request: "{original_prompt}"
-Analysis: {analysis_content} (If the analysis consists of any follow up questions, analyze them and answer them based on the user's requirements. If it adds up to the prompt, answer it. If it doesn't, don't answer it.)
-
+Analysis: {analysis_content}
 REQUIREMENTS:
 - AI Platform: {ai_type}
 - Response Style: {style}
@@ -1981,9 +2111,9 @@ Return guidelines in this structure:
 3. {ai_type} OPTIMIZATION:
    - Platform-specific best practices
    - Interaction patterns to use/avoid
-
-4. PROMPT CONSTRUCTION:
-   - Structure recommendations
+CRITICAL - 
+DO NOT GENERATE ANY EXAMPLES AS IT WILL LEAD TO HALLUCNIATIONS FOR PROMPT CREATION
+   
 Emphasise more on STYLE GUIDELINES and {ai_type} OPTIMIZATION
 Keep focused on THIS SPECIFIC REQUEST  No general theory or explanations.
 
@@ -2324,6 +2454,9 @@ CREATE THREE ENHANCED PROMPTS THAT:
    - Maintain clear, direct instruction
    - Emphasize essential requirements
 
+   CRITICAL - EACH PROMPT MUST HAVE A DISTINCT STRUCTURE WHERE THE PROMPTS - TAKE OVER A FORMATTING WHERE THE PROMPT HAS A ROLE OR AN IDENEITY GIVEN TO THE AI, DEFINES THE PROBLEM STATEMENT, GIVES CONTEXT FOR BETTER UNDERSTANDING OF THE REQUEST AND GIVES A SUGGESTED OUTPUT FORMAT.
+   CONSOLIDATE THIS INTO A SINGLE COHESIVE PROMPT.
+   
 EACH PROMPT MUST:
 - Follow {style} style guidelines
 - Optimize for {ai_type}'s capabilities
@@ -2353,6 +2486,19 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
                 frequency_penalty=0.0,
                 max_tokens=4000  # Increased to prevent truncation
             )
+
+            self.logger.debug(f"Raw API Response: {response}")
+
+            if "error" in response:
+                self.logger.error(f"API call returned an error: {response['error']}")
+                return self._create_fallback_enhanced_prompts(original_prompt, style, ai_type)
+
+        # Try to extract content
+            content = response.get("content", "")
+            if not content:
+                self.logger.error("No content found in API response")
+                return self._create_fallback_enhanced_prompts(original_prompt, style, ai_type)
+
 
             # Enhanced response processing
             try:
@@ -2474,28 +2620,53 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
         
     def _process_api_response(self, response: Dict) -> Dict:
         try:
+            # Ensure response is a dictionary with 'content'
             if not isinstance(response, dict) or "content" not in response:
                 raise ValueError("Invalid response format")
 
-            content = response["content"]
-            # Clean content
-            if "```" in content:
-                content = content.split("```")[1]
-                if content.startswith("json"):
-                    content = content[4:]
-            content = content.strip()
+            content = response.get("content", "")
             
-            # Find the first valid JSON object
-            start_idx = content.find("{")
-            end_idx = content.rfind("}") + 1
-            if start_idx != -1 and end_idx > start_idx:
-                content = content[start_idx:end_idx]
+            # Log the raw content for debugging
+            self.logger.debug(f"Raw API response content: {content}")
+            
+            # Remove any markdown code block indicators and extra whitespace
+            content = re.sub(r'```(json)?', '', content).strip()
+            
+            # Try multiple parsing strategies
+            try:
+                # First, try direct JSON parsing
+                parsed_content = json.loads(content)
+            except json.JSONDecodeError:
+                # If direct parsing fails, try finding JSON within the content
+                json_match = re.search(r'\{.*\}', content, re.DOTALL | re.IGNORECASE)
+                if json_match:
+                    content = json_match.group(0)
+                    parsed_content = json.loads(content)
+                else:
+                    # Extract possible JSON between specific markers
+                    markers = [
+                        ('"prompts":', '}'),
+                        ('{', '}')
+                    ]
+                    
+                    for start_marker, end_marker in markers:
+                        start_idx = content.find(start_marker)
+                        end_idx = content.rfind(end_marker) + 1
+                        
+                        if start_idx != -1 and end_idx > start_idx:
+                            try:
+                                parsed_content = json.loads(content[start_idx:end_idx])
+                                break
+                            except json.JSONDecodeError:
+                                continue
+                    else:
+                        raise ValueError("No valid JSON found")
 
-            parsed_content = json.loads(content)
-            
+            # Validate parsed content
             if "prompts" not in parsed_content:
                 raise ValueError("Missing prompts in response")
 
+            # Ensure prompts are returned in the correct format
             return {"prompts": [
                 {"prompt": p.get("prompt", "")} 
                 for p in parsed_content.get("prompts", [])
@@ -2504,6 +2675,8 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
 
         except Exception as e:
             self.logger.error(f"Response processing failed: {str(e)}")
+            # Log the original content for debugging
+            self.logger.debug(f"Failed content: {content}")
             return {"prompts": []}
 
     def _extract_prompts_from_text(self, content: str) -> List[Dict]:
@@ -2729,12 +2902,71 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
             ]
         }}"""
 
+class ContentTypeHandler:
+    def __init__(self, nlp_pipeline: NLPPipeline, logger: Logger):
+        self.nlp_pipeline = nlp_pipeline
+        self.logger = logger
+        
+    def analyze_content_type(self, prompt: str, nlp_analysis: Dict) -> str:
+        """Determine the type of content and appropriate handling strategy"""
+        try:
+            # Use zero-shot classification for content type
+            content_types = [
+                "technical_documentation",
+                "creative_writing",
+                "business_communication",
+                "academic_writing",
+                "conversational"
+            ]
+            
+            result = self.nlp_pipeline.models['zero_shot'](
+                prompt,
+                candidate_labels=content_types,
+                hypothesis_template="This text is {}."
+            )
+            
+            content_type = result['labels'][0]
+            confidence = result['scores'][0]
+            
+            self.logger.info(f"Detected content type: {content_type} with confidence: {confidence}")
+            
+            return {
+                "type": content_type,
+                "confidence": confidence,
+                "handling_strategy": self._get_handling_strategy(content_type, nlp_analysis)
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Content type analysis failed: {str(e)}")
+            return {"type": "general", "confidence": 0.0, "handling_strategy": "default"}
 
+    def _get_handling_strategy(self, content_type: str, nlp_analysis: Dict) -> Dict:
+        """Determine optimal handling strategy based on content type and analysis"""
+        strategies = {
+            "technical_documentation": {
+                "temperature": 0.3,
+                "style_emphasis": "precision",
+                "required_elements": ["definitions", "steps", "examples"]
+            },
+            "creative_writing": {
+                "temperature": 0.8,
+                "style_emphasis": "engagement",
+                "required_elements": ["narrative", "description", "dialogue"]
+            }
+            # Add more strategies...
+        }
+        
+        return strategies.get(content_type, {
+            "temperature": 0.7,
+            "style_emphasis": "balanced",
+            "required_elements": ["clarity", "structure"]
+        })
 
 class EnhancedPromptPipeline:
     def __init__(self, logger: Logger):
         self.logger = logger 
         self.api_handler = APIHandler(logger)
+        self.nlp_pipeline = NLPPipeline(logger)
         self.response_manager = ResponseManager(logger)
         self.preprocessor = PromptPreprocessor(logger) 
         self.context_tracker = ContextTracker()
@@ -2857,6 +3089,9 @@ class EnhancedPromptPipeline:
             self.logger.info(f"AI Type: {ai_type}")
             self.logger.info(f"Style: {style}")
 
+            self.logger.info("Starting NLP analysis phase")
+            nlp_analysis = self.nlp_pipeline.analyze_prompt(prompt)
+
             # Log base context creation
             self.logger.info("Creating base context")
             base_context = {
@@ -2918,7 +3153,8 @@ class EnhancedPromptPipeline:
                 "stages": {
                     "analysis": {"result": analysis_result},
                     "guidelines": {"result": guidelines_result},
-                    "enhancement": {"result": enhancement_result}
+                    "enhancement": {"result": enhancement_result},
+                    "nlp_insights": nlp_analysis
                 }
             }
             self.logger.debug(f"Final Response: {json.dumps(response, indent=2)}")
@@ -2947,6 +3183,46 @@ class EnhancedPromptPipeline:
             }
             self.logger.debug(f"Error Response: {json.dumps(error_response, indent=2)}")
             return error_response
+        
+    def _create_enhanced_context(self, prompt: str, ai_type: str, style: str, 
+                               nlp_analysis: Dict) -> Dict:
+        """Create context enriched with NLP insights"""
+        context = {
+            "request_id": str(uuid.uuid4()),
+            "original_prompt": prompt,
+            "ai_type": ai_type,
+            "style": style,
+            "timestamp": datetime.datetime.now().isoformat(),
+            "nlp_insights": {
+                "semantic_coherence": nlp_analysis['semantic']['average_coherence'],
+                "style_metrics": nlp_analysis['style']['metrics'],
+                "key_entities": nlp_analysis['entities'],
+                "technical_complexity": self._calculate_technical_complexity(nlp_analysis)
+            },
+            "stage_results": {}
+        }
+        
+        self.logger.debug(f"Created enhanced context with NLP insights: {json.dumps(context, indent=2)}")
+        return context
+
+    def _calculate_technical_complexity(self, nlp_analysis: Dict) -> float:
+        """Calculate technical complexity score based on NLP insights"""
+        try:
+            style_metrics = nlp_analysis['style']['metrics']
+            semantic_metrics = nlp_analysis['semantic']
+            
+            complexity_score = (
+                style_metrics['vocab_complexity'] * 0.3 +
+                style_metrics['formality_score'] * 0.3 +
+                len(style_metrics['technical_terms']) / 100 * 0.2 +
+                semantic_metrics['average_coherence'] * 0.2
+            )
+            
+            return min(1.0, complexity_score)
+            
+        except Exception as e:
+            self.logger.error(f"Error calculating technical complexity: {str(e)}")
+            return 0.5
 
     def _generate_style_metadata(self, style: str, ai_type: str) -> Dict:
         """
@@ -4564,6 +4840,11 @@ def process_request():
             ai_type=data.get('AIType', 'descriptive'),
             style=data.get('style', 'professional')
         )
+
+        response['nlp_metrics'] = {
+            'processing_time': response.get('metadata', {}).get('processing_time'),
+            'enhancement_quality': response.get('nlp_insights', {}).get('quality_metrics')
+        }
 
         return jsonify(response)
 

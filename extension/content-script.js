@@ -1327,103 +1327,111 @@
   
     // Function to handle prompt enhancement
     async function enhancePrompt(originalText) {
-      console.log("enhancing");
+      console.log("Starting prompt enhancement");
       
-    //   trackContentEvent('Enhance Prompt', {
-    //     title: "Enhance Prompt"
-    // });
-        
-  
-  
-  
       try {
-        const state = getState();
-        let styleTransform = null;
-        console.log("style in state:"+state.styleType);
-        console.log("platform in state:"+state.platform);
-        trackEvent('Enhance Button clicked', {
-          platform:state.platform,
-          style:state.styleType,
-          promptLength: originalText.length
-      });
-      const creditValidation = await validateCredits(state);
+          const state = getState();
+          let styleTransform = null;
+          console.log("Current state configuration:", {
+              style: state.styleType,
+              platform: state.platform
+          });
   
-        // Check if style type exists and is valid
-        if (state.styleType && state.styleTransformations[state.styleType.toLowerCase()]) {
-          styleTransform = state.styleTransformations[state.styleType.toLowerCase()];
-        }
-    
-        const promptData = await savePromptToHistory(originalText, state.platform);
-        lastSavedPromptId = promptData.data.history_id;
-      
-        // Apply style transformation if valid
-        const modifiedPrompt = styleTransform ? styleTransform.modifier(originalText) : originalText;
-        const formData = new FormData();
-        const requestData = {
-          prompt: modifiedPrompt,
-          style: state.styleType,
-          AIType: state.platform,
-          singlePrompt: true
-        };
-          formData.append('data', JSON.stringify(requestData));
-        const response = await fetch('https://thinkvelocity.in/python-api/process', {
-          method: 'POST',
-          body: formData,
-        });
-        console.log("raw response:"+response);
-        const data = await response.json();
-        console.dir("response data"+data.response);
-        const parsedResponse = data.response;
-        let prompts;
-        if (typeof parsedResponse === 'string') {
-          try {
-            prompts = JSON.parse(parsedResponse).prompts;
-            
-          } catch (e) {
-            // If it's not JSON, treat it as a single response
-            prompts = [{ prompt: parsedResponse }];
+          // Track enhancement attempt
+          trackEvent('Enhance Button clicked', {
+              platform: state.platform,
+              style: state.styleType,
+              promptLength: originalText.length
+          });
+  
+          // Validate credits first
+          const creditValidation = await validateCredits(state);
+  
+          // Get style transformation logic
+          if (state.styleType && state.styleTransformations[state.styleType.toLowerCase()]) {
+              styleTransform = state.styleTransformations[state.styleType.toLowerCase()];
           }
-        } else if (parsedResponse.prompts) {
-          prompts = parsedResponse.prompts;
-        } else if (Array.isArray(parsedResponse)) {
-          prompts = parsedResponse;
+  
+          // Save prompt history first to ensure tracking
+          const promptData = await savePromptToHistory(originalText, state.platform);
+          lastSavedPromptId = promptData.data.history_id;
+  
+          // Prepare request with proper JSON structure
+          const requestData = {
+              prompt: styleTransform ? styleTransform.modifier(originalText) : originalText,
+              style: state.styleType,
+              AIType: state.platform,
+              singlePrompt: true
+          };
+  
+          // Make API request with JSON content type
+          const response = await fetch('https://thinkvelocity.in/python-api/process', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(requestData)
+          });
+  
+          // Check for response status before proceeding
+          if (!response.ok) {
+              throw new Error(`Server responded with status ${response.status}: ${await response.text()}`);
+          }
+  
+          const data = await response.json();
+          console.log("Received server response:", data);
+  
+          // Enhanced response parsing with proper validation
+          let parsedPrompts;
+          if (data.stages && data.stages.enhancement && data.stages.enhancement.result) {
+            const enhancementResult = data.stages.enhancement.result;
+            if (enhancementResult.result && Array.isArray(enhancementResult.result.prompts)) {
+                parsedPrompts = enhancementResult.result.prompts;
+            } else {
+                throw new Error('Invalid prompts structure in response');
+            }
         } else {
-          prompts = [{ prompt: String(parsedResponse) }];
+            throw new Error('Invalid response format from server');
         }
-        //const parsedResponse = response;
-    
-        if (!parsedResponse.prompts || !parsedResponse.prompts.length) {
-          throw new Error('No prompts received from server');
-        }
-        await deductCredits(state, creditValidation.requiredCredits);
   
-        trackEvent('Response Generated',
-          {
-            location: "Enhance Button",
-            length: parsedResponse.prompts.length
-          }
-        );
-        const enhancedPrompt = parsedResponse.prompts[0].prompt;
-        console.log("prompt length:"+parsedResponse.prompts.length);
-        await saveResponseToHistory(
-          enhancedPrompt, 
-          lastSavedPromptId,
-          state.platform,
-          lastTokensUsed
-        );
-        return enhancedPrompt;
+          // Validate we have valid prompts
+          if (!parsedPrompts || !parsedPrompts.length) {
+            throw new Error('No valid prompts received from server');
+        }
+          // Process successful response
+          await deductCredits(state, creditValidation.requiredCredits);
+  
+          trackEvent('Response Generated', {
+              location: "Enhance Button",
+              length: parsedPrompts.length
+          });
+  
+          const enhancedPrompt = parsedPrompts[0].prompt;
+          
+          // Save the response to history
+          await saveResponseToHistory(
+              enhancedPrompt,
+              lastSavedPromptId,
+              state.platform,
+              lastTokensUsed
+          );
+  
+          return enhancedPrompt;
+  
       } catch (error) {
-        console.log("error:"+error);
-        trackEvent('Generate Error', {
-          error: error.message,
-          platform:getState().platform,
-          style:getState().styleType,
-          location:"Enhance Button"
-      });
-        console.error('Enhancement failed:', error);
-        throw error;
+          console.error('Enhancement failed:', error);
+          
+          trackEvent('Generate Error', {
+              error: error.message,
+              platform: getState().platform,
+              style: getState().styleType,
+              location: "Enhance Button"
+          });
+  
+          // Re-throw the error for the UI layer to handle
+          throw error;
       }
-    }  // Function to create and attach enhance button
+  } // Function to create and attach enhance button
     function calculatePopupPosition(button, popup) {
       const buttonRect = button.getBoundingClientRect();
       const popupHeight = popup.offsetHeight;

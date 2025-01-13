@@ -1,0 +1,24 @@
+# Web Framework
+Flask==3.0.0
+flask-cors==4.0.0
+
+# Environment and API
+python-dotenv==1.0.1
+llamaapi==0.1.36
+
+# Core ML (CPU versions)
+numpy==1.24.3
+scikit-learn==1.3.0
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.0.1+cpu
+
+# NLP & Text Processing
+transformers==4.30.2
+spacy==3.7.2  # Updated to match en-core-web-sm requirements
+textstat==0.7.3
+keybert==0.7.0
+sentence-transformers==2.2.0
+nltk==3.8.1
+
+# Spacy Language Model
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl

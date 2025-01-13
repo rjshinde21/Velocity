@@ -809,9 +809,10 @@ async function sendRequest() {
     // Make the API request with enhanced error handling
     const response = await fetch('https://thinkvelocity.in/python-api/process', {
       method: 'POST',
-      body: formData,
-    }).catch(error => {
-      throw new Error('Network error: Failed to connect to server');
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestData)
     });
 
     if (!response.ok) {

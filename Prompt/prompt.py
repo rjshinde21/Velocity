@@ -11,7 +11,8 @@ from logging import Logger
 from llamaapi import LlamaAPI
 import re
 from transformers import pipeline
-from spacy import load
+import spacy
+from spacy import load  # Remove this line if using spacy.load directly
 import textstat
 from keybert import KeyBERT
 from sentence_transformers import SentenceTransformer
@@ -23,6 +24,7 @@ nltk.download('punkt')
 import time
 nltk.download('wordnet')
 import datetime
+
 
 app = Flask(__name__)
 CORS(app, resources={
@@ -924,72 +926,335 @@ class PromptPreprocessor:
             'primary_discourse_type': max(structure.items(), key=lambda x: len(x[1]))[0]
         }
 
+    # def analyze_prompt(self, prompt_input: Union[str, Dict]) -> Dict:
+    #     """
+    #     Enhanced prompt analysis with deeper NLP insights
+        
+    #     Extends existing preprocessing with advanced intent and context analysis
+    #     """
+    #     # Log the start of analysis
+    #     self.logger.info(f"Starting enhanced prompt analysis")
+        
+    #     # Extract prompt string if input is dict
+    #     prompt = prompt_input['original_prompt'] if isinstance(prompt_input, dict) else prompt_input
+        
+    #     # Existing preprocessing analysis
+    #     self.logger.debug("Performing base linguistic analysis")
+    #     base_analysis = super().analyze_prompt(prompt_input)
+        
+    #     # Intent Classification Enhancement
+    #     self.logger.info("Classifying prompt intent")
+    #     intent_classification = self._classify_intent(prompt)
+    #     base_analysis['intent_classification'] = intent_classification
+        
+    #     # AI Role/Persona Determination
+    #     self.logger.info("Determining AI persona")
+    #     ai_persona = self._determine_ai_persona(intent_classification, prompt)
+    #     base_analysis['ai_persona'] = ai_persona
+        
+    #     # Contextual Requirement Extraction
+    #     self.logger.info("Extracting contextual requirements")
+    #     contextual_requirements = self._extract_contextual_requirements(prompt)
+    #     base_analysis['contextual_requirements'] = contextual_requirements
+        
+    #     # Domain Identification
+    #     self.logger.info("Identifying domain and expertise level")
+    #     domain_insights = self._identify_domain(prompt)
+    #     base_analysis['domain_insights'] = domain_insights
+        
+    #     # Logging the comprehensive analysis
+    #     self.logger.debug(f"Comprehensive Prompt Analysis: {json.dumps(base_analysis, indent=2)}")
+        
+    #     return base_analysis
     def analyze_prompt(self, prompt_input: Union[str, Dict]) -> Dict:
-        """Comprehensive prompt analysis with improved field population"""
-        try:
-            # Extract prompt string if input is dict
-            prompt = prompt_input['original_prompt'] if isinstance(prompt_input, dict) else prompt_input
-            
-            if not isinstance(prompt, str):
-                raise ValueError(f"Invalid prompt type: {type(prompt)}")
-            doc = self.nlp(prompt)
-            
-            # Enhanced entity extraction
-            named_entities = []
-            for ent in doc.ents:
-                named_entities.append({
-                    "text": ent.text,
-                    "label": ent.label_,
-                    "start": ent.start_char,
-                    "end": ent.end_char
-                })
+        """
+        Enhanced prompt analysis with deeper NLP insights
+        """
+        # Log the start of analysis
+        self.logger.info(f"Starting enhanced prompt analysis")
+        
+        # Extract prompt string if input is dict
+        prompt = prompt_input['original_prompt'] if isinstance(prompt_input, dict) else prompt_input
+        
+        # Perform linguistic analysis using spaCy
+        doc = self.nlp(prompt)
+        linguistic_patterns = {
+        'technical_terms': [],
+        'action_verbs': [],
+        'domain_concepts': [],
+        'modifiers': []
+        }
 
-            # Enhanced keyword extraction
-            keywords = self.keyword_model.extract_keywords(prompt, 
-                                                        top_n=5, 
-                                                        stop_words='english')
-
-            # Sentiment analysis
-            sentiment_result = self.sentiment_analyzer(prompt)[0]
+        for token in doc:
+            if token.pos_ == 'VERB':
+                linguistic_patterns['action_verbs'].append(token.text)
+            elif token.pos_ == 'NOUN' and not token.is_stop:
+                linguistic_patterns['domain_concepts'].append(token.text)
+            elif token.pos_ in ['ADJ', 'ADV']:
+                linguistic_patterns['modifiers'].append(token.text)
             
-            # Enhanced complexity analysis
-            complexity_metrics = {
-                "flesch_score": textstat.flesch_reading_ease(prompt),
-                "grade_level": textstat.coleman_liau_index(prompt),
-                "sentence_complexity": self._calculate_sentence_complexity(doc)
-            }
+        
+        # Sentiment analysis
+        sentiment_result = self.sentiment_analyzer(prompt)[0]
+        
+        # Keyword extraction
+        keywords = self.keyword_model.extract_keywords(
+            prompt, 
+            top_n=5, 
+            stop_words='english'
+        )
+        
+        # Named entity recognition
+        named_entities = [
+            {
+                "text": ent.text, 
+                "label": ent.label_
+            } for ent in doc.ents
+        ]
 
-            # Semantic analysis
-            semantic_analysis = self._analyze_semantic_relationships(doc)
-            
-            # Discourse analysis
-            discourse_analysis = self._analyze_discourse_structure(doc)
-
-            return {
-                "content_analysis": {
-                    "named_entities": named_entities,
-                    "keywords": [kw[0] for kw in keywords],
-                    "topics": self._extract_topics(prompt),
-                    "sentiment": {
-                        "label": sentiment_result['label'],
-                        "score": sentiment_result['score']
-                    }
-                },
-                "linguistic_features": {
-                    "semantic": semantic_analysis,
-                    "discourse": discourse_analysis,
-                    "complexity_metrics": complexity_metrics,
-                    "structural_features": {
-                        "sentence_count": len(list(doc.sents)),
-                        "word_count": len([token for token in doc if not token.is_punct]),
-                        "avg_sentence_length": self._calculate_avg_sentence_length(doc)
-                    }
+        enhanced_entities = [{
+            'text': ent.text,
+            'label': ent.label_,
+            'confidence': self._calculate_entity_confidence(ent)
+         } for ent in doc.ents]
+        
+        
+        
+        # Linguistic features
+        linguistic_features = self._extract_linguistic_features(doc)
+        
+        # Complexity analysis
+        complexity_metrics = {
+            "flesch_score": textstat.flesch_reading_ease(prompt),
+            "grade_level": textstat.coleman_liau_index(prompt),
+            "sentence_count": len(list(doc.sents)),
+            "word_count": len([token for token in doc if not token.is_punct])
+        }
+        
+        # Intent Classification Enhancement
+        intent_classification = self._classify_intent(prompt)
+        
+        # AI Role/Persona Determination
+        ai_persona = self._determine_ai_persona(intent_classification, prompt)
+        
+        # Contextual Requirement Extraction
+        contextual_requirements = self._extract_contextual_requirements(prompt)
+        
+        # Domain Identification
+        domain_insights = self._identify_domain(prompt)
+        
+        # Comprehensive analysis dictionary
+        comprehensive_analysis = {
+            "content_analysis": {
+                "named_entities": named_entities,
+                "keywords": [kw[0] for kw in keywords],
+                "topics": self._extract_topics(prompt),
+                "sentiment": {
+                    "label": sentiment_result['label'],
+                    "score": sentiment_result['score']
                 }
-            }
+            },
+            "linguistic_features": {
+                "complexity_metrics": complexity_metrics,
+                "structural_features": linguistic_features
+            },
+            "intent_classification": intent_classification,
+            "ai_persona": ai_persona,
+            "contextual_requirements": contextual_requirements,
+            "domain_insights": domain_insights,
+            
+            # Maintaining compatibility with existing code
+            "keywords": [kw[0] for kw in keywords],
+            "named_entities": named_entities,
+            "sentiment": sentiment_result['label'],
+            "complexity_score": complexity_metrics['flesch_score'],
+            "sentence_count": complexity_metrics['sentence_count'],
+            "word_count": complexity_metrics['word_count']
+        }
+        
+        # Logging the comprehensive analysis
+        self.logger.debug(f"Comprehensive Prompt Analysis: {json.dumps(comprehensive_analysis, indent=2)}")
+        
+        return comprehensive_analysis
+    def _classify_intent(self, prompt: str) -> Dict:
+        """
+        Advanced intent classification using existing NLP capabilities
+        """
+        self.logger.debug(f"Classifying intent for prompt: {prompt}")
+        
+        # Intent classification patterns
+        intent_patterns = {
+            "task_completion": ["create", "develop", "build", "generate", "implement"],
+            "information_gathering": ["explain", "describe", "analyze", "breakdown", "understand"],
+            "problem_solving": ["solve", "resolve", "fix", "address", "troubleshoot"],
+            "creative_generation": ["write", "design", "compose", "imagine", "draft"],
+            "strategic_planning": ["plan", "strategy", "roadmap", "outline", "propose"]
+        }
+        
+        # Use spaCy for linguistic analysis
+        doc = self.nlp(prompt.lower())
+        
+        # Detect intent based on verb patterns and semantic analysis
+        detected_intents = []
+        for intent_type, keywords in intent_patterns.items():
+            if any(keyword in prompt.lower() for keyword in keywords):
+                detected_intents.append(intent_type)
+        
+        # Fallback to semantic analysis if no direct pattern match
+        if not detected_intents:
+            # Use sentence structure and verb types from spaCy
+            verbs = [token.lemma_ for token in doc if token.pos_ == "VERB"]
+            if verbs:
+                detected_intents = self._infer_intent_from_verbs(verbs)
+        
+        # Confidence calculation
+        confidence = len(detected_intents) / len(intent_patterns)
+        
+        intent_result = {
+            "primary_intent": detected_intents[0] if detected_intents else "general",
+            "possible_intents": detected_intents,
+            "confidence_score": confidence
+        }
+        
+        self.logger.info(f"Intent Classification Result: {intent_result}")
+        return intent_result
 
-        except Exception as e:
-            self.logger.error(f"Prompt analysis failed: {str(e)}")
-            return self._create_fallback_analysis()
+    def _determine_ai_persona(self, intent_classification: Dict, prompt: str) -> Dict:
+        """
+        Determine appropriate AI persona based on intent and prompt characteristics
+        """
+        self.logger.debug("Determining AI persona")
+        
+        persona_mapping = {
+            "task_completion": {
+                "role": "Technical Consultant",
+                "communication_style": "professional",
+                "traits": ["analytical", "precise", "solution-oriented"]
+            },
+            "information_gathering": {
+                "role": "Research Analyst",
+                "communication_style": "informative",
+                "traits": ["thorough", "detailed", "objective"]
+            },
+            "problem_solving": {
+                "role": "Strategic Advisor",
+                "communication_style": "pragmatic",
+                "traits": ["critical-thinking", "methodical", "solution-focused"]
+            },
+            "creative_generation": {
+                "role": "Creative Collaborator",
+                "communication_style": "imaginative",
+                "traits": ["innovative", "flexible", "inspirational"]
+            },
+            "strategic_planning": {
+                "role": "Strategic Planner",
+                "communication_style": "structured",
+                "traits": ["visionary", "systematic", "forward-thinking"]
+            }
+        }
+        
+        # Default to general persona
+        primary_intent = intent_classification.get('primary_intent', 'general')
+        persona = persona_mapping.get(primary_intent, {
+            "role": "General Assistant",
+            "communication_style": "balanced",
+            "traits": ["adaptable", "helpful"]
+        })
+        
+        # Additional persona refinement based on prompt complexity
+        doc = self.nlp(prompt)
+        complexity_factors = {
+            "sentence_length": len(doc),
+            "named_entities": len(list(doc.ents)),
+            "verb_diversity": len(set(token.lemma_ for token in doc if token.pos_ == "VERB"))
+        }
+        
+        persona["complexity_assessment"] = complexity_factors
+        
+        self.logger.info(f"Recommended AI Persona: {persona}")
+        return persona
+
+    def _extract_contextual_requirements(self, prompt: str) -> Dict:
+        """
+        Extract explicit and implicit requirements from the prompt
+        """
+        self.logger.debug("Extracting contextual requirements")
+        
+        doc = self.nlp(prompt)
+        
+        # Extract named entities as potential requirements
+        named_entities = [
+            {
+                "text": ent.text, 
+                "label": ent.label_
+            } for ent in doc.ents
+        ]
+        
+        # Use dependency parsing to identify potential requirements
+        potential_requirements = [
+            token.text for token in doc 
+            if token.dep_ in ['dobj', 'attr', 'xcomp']
+        ]
+        
+        requirements = {
+            "named_entities": named_entities,
+            "potential_requirements": potential_requirements,
+            "raw_requirements": [chunk.text for chunk in doc.noun_chunks]
+        }
+        
+        self.logger.info(f"Extracted Requirements: {requirements}")
+        return requirements
+
+    def _identify_domain(self, prompt: str) -> Dict:
+        """
+        Identify the specific domain of the request
+        """
+        self.logger.debug("Identifying domain and expertise level")
+        
+        domain_keywords = {
+            "Technical": ["code", "develop", "algorithm", "system", "software", "programming"],
+            "Creative": ["write", "design", "imagine", "story", "creative", "art"],
+            "Business": ["strategy", "plan", "market", "business", "sales", "management"],
+            "Academic": ["research", "study", "analysis", "academic", "scientific"],
+            "Personal": ["help", "advice", "personal", "guidance"]
+        }
+        
+        # Detect domain based on keyword presence
+        detected_domains = []
+        for domain, keywords in domain_keywords.items():
+            if any(keyword in prompt.lower() for keyword in keywords):
+                detected_domains.append(domain)
+        
+        # Complexity and expertise assessment
+        doc = self.nlp(prompt)
+        complexity_indicators = {
+            "vocabulary_complexity": textstat.flesch_reading_ease(prompt),
+            "sentence_complexity": len(doc),
+            "technical_term_count": len([token for token in doc if token.pos_ == "NOUN" and token.is_stop == False])
+        }
+        
+        domain_result = {
+            "primary_domain": detected_domains[0] if detected_domains else "general",
+            "possible_domains": detected_domains,
+            "expertise_level": self._assess_expertise_level(complexity_indicators)
+        }
+        
+        self.logger.info(f"Domain Identification Result: {domain_result}")
+        return domain_result
+
+    def _assess_expertise_level(self, complexity_indicators: Dict) -> str:
+        """
+        Assess expertise level based on complexity indicators
+        """
+        vocabulary_complexity = complexity_indicators['vocabulary_complexity']
+        technical_term_count = complexity_indicators['technical_term_count']
+        
+        if vocabulary_complexity < 30 and technical_term_count < 3:
+            return "beginner"
+        elif 30 <= vocabulary_complexity < 50 and 3 <= technical_term_count < 7:
+            return "intermediate"
+        else:
+            return "advanced"
         
     def _extract_topics(self, text: str) -> List[str]:
         """Extract main topics from text"""
@@ -1801,6 +2066,14 @@ class AnalysisStage(PipelineStage):
             prompt = pipeline_context.get("original_prompt")
             ai_type = pipeline_context.get("ai_type")
             style = pipeline_context.get("style")
+            preprocessor = PromptPreprocessor(self.logger)
+            nlp_analysis = preprocessor.analyze_prompt(prompt)
+
+            self.logger.debug("NLP Analysis Insights:")
+            self.logger.debug(f"Intent Classification: {nlp_analysis.get('intent_classification', {})}")
+            self.logger.debug(f"AI Persona: {nlp_analysis.get('ai_persona', {})}")
+            self.logger.debug(f"Contextual Requirements: {nlp_analysis.get('contextual_requirements', {})}")
+            self.logger.debug(f"Domain Insights: {nlp_analysis.get('domain_insights', {})}")
             
             system_message = f"""You are a prompt analysis expert specializing in {ai_type} systems.
             Your  task is to perform a COMPLETE analysis of the user's request to communicate it to the {ai_type} LLM in the best possible way.
@@ -1871,7 +2144,7 @@ Keep analysis focused and factual."""
                     "content": cleaned_content,
                     "original_prompt": pipeline_context.get("original_prompt"),
                     "ai_type": pipeline_context.get("ai_type"),
-                    "style": pipeline_context.get("style")
+                    "style": pipeline_context.get("style"),
                 },
                 "_metadata": {
                     "timestamp": datetime.datetime.now().isoformat(),
@@ -1927,11 +2200,15 @@ class GuidelinesStage(PipelineStage):
         try:
             # Enhanced context extraction
             analysis = pipeline_context.get("stage_results", {}).get("analysis", {}).get("analysis_results", {})
-            
+            nlp_insights = analysis.get("linguistic_features", {})
+            domain_concepts = nlp_insights.get("domain_concepts", [])
+            action_patterns = nlp_insights.get("action_verbs", [])
             analysis_content = analysis.get("content", "")
             original_prompt = analysis.get("original_prompt", "")
             ai_type = analysis.get("ai_type", "")
             style = analysis.get("style", "professional")
+            complexity_score = nlp_insights.get("complexity_metrics", {}).get("flesch_score", 50)
+            temperature = 0.7 if complexity_score > 50 else 0.5
 
             # Ultra-Precise System Message
             system_message = f"""You are a WORLD-CLASS prompt engineering expert specializing in {ai_type} systems.
@@ -2239,9 +2516,21 @@ class EnhancementStage(PipelineStage):
             
             # Extract and log context
             analysis = pipeline_context.get("stage_results", {}).get("analysis", {}).get("analysis_results", {})
+            # nlp_features = analysis.get("linguistic_features", {})
             guidelines = pipeline_context.get("stage_results", {}).get("guidelines", {}).get("content", "")
-            
+            # semantic_relationships = nlp_features.get("semantic", {}).get("relationships", [])
+            # prompt_patterns = self._extract_prompt_patterns(nlp_features)
             original_prompt = analysis.get("original_prompt", "")
+            nlp_features = analysis.get("linguistic_features", {})
+            semantic_relationships = nlp_features.get("semantic", {}).get("relationships", [])
+            prompt_patterns = self._extract_prompt_patterns(nlp_features)
+            
+            enhanced_prompts = self._generate_semantic_variations(
+                original_prompt,
+                semantic_relationships,
+                prompt_patterns
+            )
+            
             ai_type = analysis.get("ai_type", "")
             style = analysis.get("style", "")
             
@@ -2404,6 +2693,179 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
                 pipeline_context.get("style", ""),
                 pipeline_context.get("ai_type", "")
             )
+        
+    # These functions are referenced but not defined in EnhancementStage:
+    def _extract_prompt_patterns(self, nlp_features: Dict) -> Dict:
+        """Extracts prompt patterns from NLP features for enhanced variation generation"""
+        patterns = {
+            'structural': nlp_features.get('structural_features', {}),
+            'linguistic': nlp_features.get('verbs', []) + nlp_features.get('nouns', []),
+            'contextual': nlp_features.get('dependencies', [])
+        }
+        return patterns
+
+    def _determine_perspective(self, version: str) -> str:
+        """Determines the perspective/approach used in a prompt version"""
+        perspectives = {
+            'systematic': ['structure', 'organize', 'plan'],
+            'analytical': ['analyze', 'evaluate', 'assess'],
+            'creative': ['design', 'create', 'develop']
+        }
+        
+        for perspective, keywords in perspectives.items():
+            if any(keyword in version.lower() for keyword in keywords):
+                return perspective
+        return 'general'
+    
+    def _create_fallback_variation(self, prompt: str, patterns: Dict) -> str:
+        """Creates a fallback variation when semantic relationships aren't available"""
+        try:
+            # Extract basic patterns
+            structural = patterns.get('structural', {})
+            linguistic = patterns.get('linguistic', [])
+            contextual = patterns.get('contextual', [])
+            
+            # Use available patterns to create variation
+            if linguistic:
+                # Use linguistic patterns first
+                key_terms = linguistic[:3]  # Take up to 3 key terms
+                return f"Create a response that {' and '.join(key_terms)} for: {prompt}"
+            elif contextual:
+                # Fall back to contextual patterns
+                context = contextual[0] if contextual else ''
+                return f"Develop a {context} approach for: {prompt}"
+            else:
+                # Basic fallback
+                return f"Provide a comprehensive solution for: {prompt}"
+                
+        except Exception as e:
+            self.logger.error(f"Fallback variation creation failed: {str(e)}")
+            return prompt
+
+    def _generate_semantic_variations(self, prompt: str, 
+                                    semantic_relationships: List[Dict],
+                                    patterns: Dict) -> List[Dict]:
+        """Generates variations based on semantic relationships and patterns"""
+        variations = []
+        if semantic_relationships:
+            # Use semantic relationships for coherent variations
+            for relationship in semantic_relationships[:3]:  # Top 3 relationships
+                variation = self._create_variation_from_relationship(
+                    prompt, relationship, patterns
+                )
+                variations.append({"prompt": variation})
+        
+        # Ensure we have at least 3 variations
+        while len(variations) < 3:
+            variation = self._create_fallback_variation(prompt, patterns)
+            variations.append({"prompt": variation})
+        
+        return variations
+    
+    def _apply_structural_patterns(self, prompt: str, structural_patterns: Dict) -> str:
+        """Apply structural patterns to create a variation"""
+        try:
+            # Extract structural components
+            components = structural_patterns.get('features', {})
+            sentence_structure = components.get('sentence_count', 1)
+            complexity = components.get('complexity_score', 50)
+            
+            # Adjust prompt based on structural patterns
+            if complexity > 75:
+                return f"Create a detailed and structured response that thoroughly addresses: {prompt}"
+            elif complexity > 50:
+                return f"Provide a well-organized solution for: {prompt}"
+            else:
+                return f"Give a clear and direct response to: {prompt}"
+                
+        except Exception as e:
+            self.logger.error(f"Structural pattern application failed: {str(e)}")
+            return prompt
+
+    def _apply_linguistic_patterns(self, prompt: str, linguistic_patterns: List[str]) -> str:
+        """Apply linguistic patterns to create a variation"""
+        try:
+            if not linguistic_patterns:
+                return prompt
+                
+            # Use key linguistic elements
+            key_terms = linguistic_patterns[:2]  # Use top 2 patterns
+            terms_str = ' and '.join(key_terms)
+            
+            return f"Develop a solution that {terms_str} for: {prompt}"
+            
+        except Exception as e:
+            self.logger.error(f"Linguistic pattern application failed: {str(e)}")
+            return prompt
+
+    def _apply_contextual_patterns(self, prompt: str, contextual_patterns: List[str]) -> str:
+        """Apply contextual patterns to create a variation"""
+        try:
+            if not contextual_patterns:
+                return prompt
+                
+            # Use contextual dependencies
+            context = contextual_patterns[0] if contextual_patterns else ''
+            
+            return f"Create a {context}-focused solution for: {prompt}"
+            
+        except Exception as e:
+            self.logger.error(f"Contextual pattern application failed: {str(e)}")
+            return prompt
+
+    def _create_variation_from_relationship(self, 
+                                        prompt: str,
+                                        relationship: Dict,
+                                        patterns: Dict) -> str:
+        """Creates a prompt variation based on semantic relationship"""
+        relationship_type = relationship.get('relationship_type', 'weak_continuation')
+        score = relationship.get('similarity_score', 0.5)
+        
+        if relationship_type == 'strong_continuation':
+            # Use more structural elements for strong relationships
+            structural_patterns = patterns.get('structural', {})
+            return self._apply_structural_patterns(prompt, structural_patterns)
+        elif relationship_type == 'moderate_continuation':
+            # Mix linguistic and structural elements
+            linguistic_patterns = patterns.get('linguistic', [])
+            return self._apply_linguistic_patterns(prompt, linguistic_patterns)
+        else:
+            # Focus on contextual elements for weak relationships
+            contextual_patterns = patterns.get('contextual', [])
+            return self._apply_contextual_patterns(prompt, contextual_patterns)
+        
+    # Add to EnhancementStage class:
+    def _extract_prompt_components(self, prompt: str) -> Dict:
+        """Extract key components from prompt for structured enhancement"""
+        doc = self.nlp(prompt)
+        return {
+            'verb': next((token.text for token in doc if token.pos_ == 'VERB'), 'implement'),
+            'objective': ' '.join(chunk.text for chunk in doc.noun_chunks),
+            'constraints': [token.text for token in doc if token.dep_ == 'prep']
+        }
+
+    def _calculate_entity_confidence(self, entity) -> float:
+        """Calculate confidence score for named entity recognition"""
+        # Example implementation - replace with actual logic
+        base_score = 0.8
+        modifiers = {
+            'PERSON': 0.9,
+            'ORG': 0.85,
+            'GPE': 0.95
+        }
+        return modifiers.get(entity.label_, base_score)
+
+    def _extract_domain_vocabulary(self, text: str, domain: str) -> List[str]:
+        """Extract domain-specific vocabulary from text"""
+        doc = self.nlp(text)
+        domain_patterns = {
+            'technical': ['implement', 'develop', 'system'],
+            'creative': ['design', 'create', 'innovative'],
+            'business': ['strategy', 'market', 'revenue']
+        }
+        
+        patterns = domain_patterns.get(domain.lower(), [])
+        return [token.text for token in doc if token.text.lower() in patterns]
 
     def _process_enhancement_response(self, response: Dict, style: str, ai_type: str) -> Dict:
         """Process and validate enhancement response"""
@@ -2468,10 +2930,42 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
                 }
             }
 
+
+
         except Exception as e:
             self.logger.error(f"Enhancement processing failed: {str(e)}")
             return self._create_fallback_enhanced_prompts(ai_type, style)
-        
+
+    # def _process_enhancement_response(self, response: Dict, style: str, ai_type: str) -> Dict:
+    #     try:
+    #         # Add NLP validation of generated prompts
+    #         for prompt in response.get("prompts", []):
+    #             # Validate semantic coherence
+    #             coherence_score = self._validate_semantic_coherence(
+    #                 prompt["prompt"], 
+    #                 original_prompt
+    #             )
+                
+    #             # Check style consistency
+    #             style_adherence = self._check_style_patterns(
+    #                 prompt["prompt"], 
+    #                 style
+    #             )
+                
+    #             # Validate domain terminology
+    #             domain_accuracy = self._validate_domain_terms(
+    #                 prompt["prompt"], 
+    #                 ai_type
+    #             )
+                
+    #             prompt["quality_metrics"] = {
+    #                 "coherence": coherence_score,
+    #                 "style_adherence": style_adherence,
+    #                 "domain_accuracy": domain_accuracy
+    #             }
+    #     except Exception as e:
+    #         self.logger.error(f"Enhancement processing failed: {str(e)}")
+    #         return self._create_fallback_enhanced_prompts(ai_type, style)
     def _process_api_response(self, response: Dict) -> Dict:
         try:
             if not isinstance(response, dict) or "content" not in response:
@@ -2873,6 +3367,8 @@ class EnhancedPromptPipeline:
             self.logger.info("\n=== Starting Analysis Stage ===")
             self.logger.info("Executing analysis_stage.execute()")
             analysis_result = self.analysis_stage.execute(base_context)
+
+
             self.logger.debug(f"Analysis Stage Result: {json.dumps(analysis_result, indent=2)}")
             
             # Log context update after analysis
