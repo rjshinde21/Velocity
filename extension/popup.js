@@ -461,69 +461,50 @@ function getSelectedRadioValue() {
   return selectedRadio ? selectedRadio.value : 'General'; // Provide default value
 }
 function showError(message) {
-  console.error(message); // Keep console logging for debugging
-  
-  // Create error div with styling
+  const responseDiv = document.getElementById('response');
+  if (!responseDiv) {
+    console.log('Creating response div');
+    responseDiv = document.createElement('div');
+    responseDiv.id = 'response';
+    document.body.appendChild(responseDiv);
+  }
+
   const errorDiv = document.createElement('div');
   errorDiv.className = 'error-message rounded-2xl border border-red-500 p-4 mb-4';
-  errorDiv.style.color = 'white';
-  errorDiv.style.textAlign = 'center';
   errorDiv.style.cssText = `
     color: white;
     text-align: center;
-    width: 100%;              /* Set width to 90% of parent */
-    max-width: 640px;        /* Maximum width */
-    margin-left: auto;       /* Center horizontally */
-    margin-right: auto;      /* Center horizontally */
-    box-sizing: border-box;  /* Include padding in width */
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    box-sizing: border-box;
     background: rgba(0, 0, 0, 0.4);
   `;
 
-  // Create error content
+
+  
   const errorContent = document.createElement('div');
   errorContent.className = 'flex items-center justify-center gap-2';
   
-  // Add error icon (optional)
   const errorIcon = document.createElement('span');
   errorIcon.innerHTML = '⚠️';
   errorIcon.className = 'text-xl';
   
-  // Add error text
   const errorText = document.createElement('span');
   errorText.textContent = message;
   
-  // Assemble error message
   errorContent.appendChild(errorIcon);
   errorContent.appendChild(errorText);
   errorDiv.appendChild(errorContent);
   
-  // Find and clear the response div
-  const responseDiv = document.getElementById('response');
-  if (responseDiv) {
-    responseDiv.innerHTML = '';
-    responseDiv.style.cssText = `
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0 16px;
-    box-sizing: border-box;
-    background: transparent !important; /* Force remove any background */
-  `;
-    responseDiv.appendChild(errorDiv);
-  }
-  
-  // Remove error message after 5 seconds
+  responseDiv.innerHTML = '';
+  responseDiv.appendChild(errorDiv);
+
   setTimeout(() => {
-    if (responseDiv && responseDiv.contains(errorDiv)) {
+    if (responseDiv.contains(errorDiv)) {
       errorDiv.remove();
     }
   }, 5000);
-
-  // Adjust popup size if needed
-  if (typeof adjustPopupSize === 'function') {
-    adjustPopupSize();
-  }
 }
 document.addEventListener('DOMContentLoaded', () => {
   // Check current auth state
@@ -785,13 +766,20 @@ async function sendRequest() {
     }
 
     // Prepare request data
-    const formData = new FormData();
-    const requestData = {
-      prompt: prompt,
-      style: selectedStyle,
-      AIType: selectedPlatform,
-      singlePrompt: false
-    };
+    const response = await fetch('https://thinkvelocity.in/python-api/process', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        prompt,
+        style: selectedStyle,
+        AIType: selectedPlatform,
+        singlePrompt: false
+      })
+    });
+
+    console.log('Raw server response:', response);
 
     // Track button click
     trackEvent('Generate Button Clicked', {
@@ -801,19 +789,12 @@ async function sendRequest() {
       timestamp: new Date().toISOString()
     });
 
-    formData.append('data', JSON.stringify(requestData));
-
+    
     // Update loader message for API call
     velocityUI.showLoading('generate', 'Processing your request...');
     
     // Make the API request with enhanced error handling
-    const response = await fetch('https://thinkvelocity.in/python-api/process', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestData)
-    });
+   
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -828,6 +809,7 @@ async function sendRequest() {
     });
 
     const data = await response.json();
+    console.log('Parsed response data:', data);
     if (data.error) {
       throw new Error(data.error);
     }
@@ -856,18 +838,15 @@ async function sendRequest() {
     creditsDeducted = true;
 
     // Handle the response with scroll indication
-    if (data.response) {
+    if (data && data.stages?.enhancement?.result) {
       const responseContainer = document.querySelector('.responses-wrapper');
-      responseContainer.classList.remove('hidden');
-      
-      handleParsedResponse(data.response);
-      
-      // Show scroll indicator if content overflows
-      if (responseContainer.scrollHeight > responseContainer.clientHeight) {
-        velocityResponses.showScrollIndicator(responseContainer);
+      if (!responseContainer) {
+        throw new Error('Response container not found');
       }
+      responseContainer.classList.remove('hidden');
+      handleParsedResponse(data);
     } else {
-      throw new Error('No response data received from server');
+      throw new Error('Invalid response structure from server');
     }
 
     // Cleanup stored prompt
@@ -1366,19 +1345,72 @@ const ResponseDebugManager = {
     return observer;
   }
 };
+// function handleParsedResponse(parsedResponse) {
+//   console.log('handleParsedResponse input:', parsedResponse);
+
+//   const responsesWrapper = document.getElementById('responsesWrapper');
+//   const mainContent = document.getElementById('mainContent');
+//   const responsesGrid = document.querySelector('.responses-grid');
+
+//   if (!responsesWrapper || !mainContent || !responsesGrid) {
+//     console.error('DOM elements check:', {
+//       responsesWrapper: !!responsesWrapper,
+//       mainContent: !!mainContent,
+//       responsesGrid: !!responsesGrid
+//     });
+//     return;
+//   }
+
+//   responsesGrid.innerHTML = '';
+
+//   try {
+//     // Handle server response structure
+//     const response = typeof parsedResponse === 'string' ? 
+//       JSON.parse(parsedResponse) : parsedResponse;
+      
+//     const prompts = response.stages?.enhancement?.result?.prompts || [];
+    
+//     if (!prompts.length) {
+//       throw new Error('No prompts received from server');
+//     }
+
+//     prompts.forEach((promptObj, index) => {
+//       const responseElement = createResponseElement(promptObj);
+//       if (responseElement) {
+//         responseElement.style.animationDelay = `${index * 100}ms`;
+//         responsesGrid.appendChild(responseElement);
+//       }
+//     });
+
+//     // Show responses wrapper
+//     mainContent.classList.add('hidden');
+//     responsesWrapper.classList.remove('hidden');
+    
+//     setTimeout(() => {
+//       responsesWrapper.classList.add('visible');
+//     }, 50);
+
+//   } catch (error) {
+//     console.error('Error displaying responses:', error);
+//     showError('Failed to display responses');
+//   }
+// }
+
 function handleParsedResponse(parsedResponse) {
   const responsesWrapper = document.getElementById('responsesWrapper');
   const mainContent = document.getElementById('mainContent');
   const responsesGrid = document.querySelector('.responses-grid');
 
+  responsesGrid.innerHTML = '';
+
   try {
-    // Clear existing responses
-    responsesGrid.innerHTML = '';
+    const response = parsedResponse.stages?.enhancement?.result?.result || {};
+    const prompts = response.prompts || [];
+    
+    if (!prompts.length) {
+      throw new Error('No prompts received from server');
+    }
 
-    // Extract prompts from the response
-    const prompts = parsedResponse.prompts || [];
-
-    // Create and append response elements
     prompts.forEach((promptObj, index) => {
       const responseElement = createResponseElement(promptObj);
       if (responseElement) {
@@ -1387,11 +1419,9 @@ function handleParsedResponse(parsedResponse) {
       }
     });
 
-    // Show responses wrapper
     mainContent.classList.add('hidden');
     responsesWrapper.classList.remove('hidden');
     
-    // Ensure visibility transition
     setTimeout(() => {
       responsesWrapper.classList.add('visible');
     }, 50);
@@ -1412,12 +1442,11 @@ function createResponseElement(promptObj) {
   
   const copyButton = document.createElement('button');
   copyButton.className = 'copy-button';
-  copyButton.innerHTML = `
-    <span>Copy</span>
-  `;
+  copyButton.innerHTML = '<span>Copy</span>';
   
   copyButton.addEventListener('click', async () => {
     try {
+      await saveResponseToHistory(content.textContent, lastSavedPromptId, getSelectedPlatform());
       await navigator.clipboard.writeText(content.textContent);
       copyButton.classList.add('copied');
       copyButton.querySelector('span').textContent = 'Copied!';
