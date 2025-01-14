@@ -857,6 +857,16 @@ class PromptPreprocessor:
         self.sentiment_analyzer = self.model_manager.models['sentiment_analyzer']
         self.keyword_model = self.model_manager.models['keyword_model']
         self.semantic_model = self.model_manager.models['semantic_model']
+        self._model_cache = {}
+        
+        def _lazy_load_model(self, model_name: str):
+            if model_name not in self._model_cache:
+                if model_name == 'nlp':
+                    self._model_cache[model_name] = self.model_manager.models['nlp']
+                elif model_name == 'sentiment':
+                    self._model_cache[model_name] = self.model_manager.models['sentiment_analyzer']
+                # Add other models...
+            return self._model_cache[model_name]
 
     def _determine_relationship_type(self, similarity_score: float) -> str:
         """Determine relationship type based on similarity score"""
@@ -866,6 +876,342 @@ class PromptPreprocessor:
             return 'moderate_continuation'
         else:
             return 'weak_continuation'
+        
+    def _analyze_flow_pattern(self, relationships: List[Dict]) -> Dict:
+        """
+        Analyzes the overall flow pattern of ideas across sentences by examining
+        the sequence of relationship types and transition strengths.
+        
+        Args:
+            relationships: List of relationship dictionaries containing similarity scores
+                        and relationship types between consecutive sentences
+        
+        Returns:
+            Dict containing flow pattern analysis results
+        """
+        try:
+            if not relationships:
+                return {
+                    'pattern_type': 'unknown',
+                    'coherence_level': 'unknown',
+                    'transitions': []
+                }
+
+            # Analyze transition patterns
+            transitions = []
+            for i in range(len(relationships)):
+                rel = relationships[i]
+                transition = {
+                    'position': i,
+                    'type': rel['relationship_type'],
+                    'strength': rel.get('transition_strength', {}).get('strength', 'unknown'),
+                    'similarity': rel['similarity_score']
+                }
+                transitions.append(transition)
+
+            # Determine overall pattern type
+            strong_connections = sum(1 for t in transitions if t['type'] == 'strong_continuation')
+            weak_connections = sum(1 for t in transitions if t['type'] == 'weak_continuation')
+            
+            if strong_connections > len(transitions) * 0.7:
+                pattern_type = 'strongly_connected'
+            elif weak_connections > len(transitions) * 0.7:
+                pattern_type = 'loosely_connected'
+            else:
+                pattern_type = 'mixed_connection'
+
+            # Calculate overall coherence
+            average_similarity = sum(t['similarity'] for t in transitions) / len(transitions) if transitions else 0
+            
+            coherence_level = 'high' if average_similarity > 0.8 else \
+                            'medium' if average_similarity > 0.5 else 'low'
+
+            return {
+                'pattern_type': pattern_type,
+                'coherence_level': coherence_level,
+                'transitions': transitions,
+                'metrics': {
+                    'average_similarity': average_similarity,
+                    'strong_connections_ratio': strong_connections / len(transitions) if transitions else 0,
+                    'weak_connections_ratio': weak_connections / len(transitions) if transitions else 0
+                }
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error analyzing flow pattern: {e}")
+            return {
+                'pattern_type': 'unknown',
+                'coherence_level': 'unknown',
+                'transitions': [],
+                'error': str(e)
+            }
+        
+    def _create_fallback_relationship(self, index: int) -> Dict:
+        """
+        Creates a fallback relationship entry when similarity calculation fails.
+        
+        Args:
+            index: Index of the relationship in the sequence
+            
+        Returns:
+            Dict containing fallback relationship data
+        """
+        self.logger.debug(f"Creating fallback relationship for index {index}")
+        return {
+            'sentence_pair': (index, index + 1),
+            'similarity_score': 0.0,
+            'relationship_type': 'unknown',
+            'transition_strength': {
+                'has_transition_words': False,
+                'shared_concepts': 0,
+                'strength': 'weak'
+            }
+        }
+
+    def _calculate_term_relevance(self, token) -> float:
+        """
+        Calculates relevance score for a domain term based on multiple factors.
+        
+        Args:
+            token: spaCy token object
+            
+        Returns:
+            float: Relevance score between 0 and 1
+        """
+        self.logger.debug(f"Calculating relevance for term: {token.text}")
+        
+        # Base relevance score
+        relevance = 0.5
+        
+        # Adjust based on token position
+        if token.i < len(token.doc) * 0.2:  # Term appears early
+            relevance += 0.1
+            
+        # Adjust based on dependencies
+        if any(child.dep_ in ['nsubj', 'dobj'] for child in token.children):
+            relevance += 0.1
+            
+        # Adjust based on frequency
+        frequency = sum(1 for t in token.doc if t.lower_ == token.lower_)
+        if frequency > 1:
+            relevance += 0.1
+            
+        # Adjust based on technical nature
+        if self._is_technical_term(token.text):
+            relevance += 0.2
+            
+        return min(relevance, 1.0)
+
+    def _extract_main_concept(self, sentence: str) -> str:
+        """
+        Extracts the main concept from a sentence using syntactic dependencies.
+        Called by _extract_key_concepts but not defined.
+        
+        Args:
+            sentence: Input sentence string
+        
+        Returns:
+            str: Main concept from the sentence
+        """
+        doc = self.nlp(sentence)
+        
+        # Look for subject-verb-object patterns first
+        for token in doc:
+            if token.dep_ == "ROOT":
+                # Get subject
+                subjects = [child for child in token.children if child.dep_ == "nsubj"]
+                if subjects:
+                    return subjects[0].text
+        
+        # Fallback to first noun phrase if no clear subject
+        for chunk in doc.noun_chunks:
+            return chunk.text
+            
+        # Final fallback to first token if no noun phrases
+        return doc[0].text
+    
+    def _calculate_hierarchical_domain_scores(self, doc, domain_categories: Dict) -> Dict:
+        """
+        Calculates hierarchical scores for different domain categories.
+        Called by _analyze_domain_context but not defined.
+        
+        Args:
+            doc: spaCy Doc object
+            domain_categories: Dictionary of domain categories and their keywords
+        
+        Returns:
+            Dict: Hierarchical domain scores
+        """
+        scores = {
+            domain: {
+                subdomain: 0 for subdomain in subcategories.keys()
+            } for domain, subcategories in domain_categories.items()
+        }
+        
+        # Process each token
+        for token in doc:
+            term = token.text.lower()
+            
+            # Check each domain and subdomain
+            for domain, subcategories in domain_categories.items():
+                for subdomain, keywords in subcategories.items():
+                    if term in keywords:
+                        scores[domain][subdomain] += 1
+        
+        # Calculate domain totals
+        domain_totals = {
+            domain: sum(subdomain_scores.values())
+            for domain, subdomain_scores in scores.items()
+        }
+        
+        return {
+            'detailed_scores': scores,
+            'domain_totals': domain_totals
+        }
+    
+    def _analyze_domain_relationships(self, domain_scores: Dict) -> Dict:
+        """
+        Analyzes relationships between different domains based on their scores.
+        Called by _analyze_domain_context but not defined.
+        
+        Args:
+            domain_scores: Dictionary containing domain scores
+            
+        Returns:
+            Dict: Analysis of domain relationships
+        """
+        detailed_scores = domain_scores.get('detailed_scores', {})
+        domain_totals = domain_scores.get('domain_totals', {})
+        
+        # Calculate domain overlaps
+        overlaps = {}
+        domains = list(domain_totals.keys())
+        
+        for i, domain1 in enumerate(domains):
+            for domain2 in domains[i+1:]:
+                shared_terms = set(
+                    term for term, score in detailed_scores[domain1].items()
+                    if score > 0 and detailed_scores[domain2].get(term, 0) > 0
+                )
+                overlaps[f"{domain1}-{domain2}"] = len(shared_terms)
+        
+        return {
+            'overlaps': overlaps,
+            'relationships': self._calculate_domain_overlap(domain_totals)
+        }
+    
+    def _calculate_confidence_scores(self, domain_scores: Dict) -> Dict:
+        """
+        Calculates confidence scores for domain classification.
+        Called by _analyze_domain_context but not defined.
+        
+        Args:
+            domain_scores: Dictionary containing domain scores
+            
+        Returns:
+            Dict: Confidence scores for each domain
+        """
+        totals = domain_scores.get('domain_totals', {})
+        overall_total = sum(totals.values())
+        
+        if overall_total == 0:
+            return {'confidence_scores': {}, 'overall_confidence': 0.0}
+        
+        # Calculate normalized confidence scores
+        confidence_scores = {
+            domain: (score / overall_total) if overall_total > 0 else 0.0
+            for domain, score in totals.items()
+        }
+        
+        # Calculate overall confidence
+        max_confidence = max(confidence_scores.values()) if confidence_scores else 0.0
+        
+        return {
+            'confidence_scores': confidence_scores,
+            'overall_confidence': max_confidence,
+            'confidence_level': 'high' if max_confidence > 0.7 else
+                            'medium' if max_confidence > 0.4 else 'low'
+        }
+
+    def _infer_intent_from_verbs(self, verbs: List[str]) -> List[str]:
+        """
+        Infers possible intents from verb patterns when no direct matches found.
+        
+        Args:
+            verbs: List of verbs found in the prompt
+            
+        Returns:
+            List[str]: Inferred intent types
+        """
+        self.logger.debug(f"Inferring intent from verbs: {verbs}")
+        
+        # Map verbs to intent categories
+        verb_intent_mapping = {
+            'create': 'task_completion',
+            'analyze': 'information_gathering',
+            'solve': 'problem_solving',
+            'design': 'creative_generation',
+            'plan': 'strategic_planning'
+        }
+        
+        inferred_intents = set()
+        for verb in verbs:
+            for known_verb, intent in verb_intent_mapping.items():
+                if self._calculate_verb_similarity(verb, known_verb) > 0.8:
+                    inferred_intents.add(intent)
+                    self.logger.debug(f"Inferred intent '{intent}' from verb '{verb}'")
+                    
+        return list(inferred_intents) if inferred_intents else ['general']
+
+    def _calculate_verb_similarity(self, verb1: str, verb2: str) -> float:
+        """
+        Calculates semantic similarity between two verbs using embeddings.
+        
+        Args:
+            verb1: First verb to compare
+            verb2: Second verb to compare
+            
+        Returns:
+            float: Similarity score between 0 and 1
+        """
+        try:
+            embeddings = self.semantic_model.encode([verb1, verb2])
+            similarity = np.dot(embeddings[0], embeddings[1]) / \
+                        (np.linalg.norm(embeddings[0]) * np.linalg.norm(embeddings[1]))
+            return float(similarity)
+        except Exception as e:
+            self.logger.error(f"Error calculating verb similarity: {e}")
+            return 0.0
+        
+    def _calculate_domain_overlap(self, domain_scores: Dict[str, int]) -> Dict[str, float]:
+        """
+        Calculates overlap between different domains based on shared terminology.
+        
+        Args:
+            domain_scores: Dictionary mapping domains to their term frequency scores
+            
+        Returns:
+            Dictionary containing overlap ratios between domains
+        """
+        overlaps = {}
+        total_terms = sum(domain_scores.values())
+        
+        if total_terms == 0:
+            return {'overlap_ratio': 0.0}
+            
+        # Calculate normalized overlap ratios
+        primary_domain = max(domain_scores.items(), key=lambda x: x[1])[0]
+        primary_score = domain_scores[primary_domain]
+        
+        for domain, score in domain_scores.items():
+            if domain != primary_domain and score > 0:
+                overlaps[f"{primary_domain}_{domain}"] = score / primary_score
+                
+        return {
+            'primary_domain': primary_domain,
+            'overlap_ratios': overlaps,
+            'overlap_score': len([s for s in domain_scores.values() if s > 0]) / len(domain_scores)
+        }
 
     def _analyze_semantic_relationships(self, doc) -> Dict:
         """Analyze semantic relationships between sentences"""
@@ -968,114 +1314,305 @@ class PromptPreprocessor:
     #     return base_analysis
     def analyze_prompt(self, prompt_input: Union[str, Dict]) -> Dict:
         """
-        Enhanced prompt analysis with deeper NLP insights
+        Enhanced prompt analysis with deeper NLP insights and domain understanding.
         """
-        # Log the start of analysis
         self.logger.info(f"Starting enhanced prompt analysis")
+        self.logger.debug(f"Input type: {type(prompt_input)}")
         
         # Extract prompt string if input is dict
         prompt = prompt_input['original_prompt'] if isinstance(prompt_input, dict) else prompt_input
+        self.logger.debug(f"Processing prompt: {prompt[:100]}...")
+        prompt = self._normalize_input(prompt_input)
+        analysis_result = self._perform_analysis(prompt)
+
+        
         
         # Perform linguistic analysis using spaCy
         doc = self.nlp(prompt)
+        self.logger.debug(f"Found {len(list(doc.sents))} sentences, {len(doc)} tokens")
+        
+        # Extract domain-specific patterns
         linguistic_patterns = {
-        'technical_terms': [],
-        'action_verbs': [],
-        'domain_concepts': [],
-        'modifiers': []
+            'technical_terms': [],
+            'action_verbs': [],
+            'domain_concepts': [],
+            'modifiers': []
         }
+        self.logger.info("Extracting linguistic patterns")
+        self.logger.debug(f"Found patterns: {linguistic_patterns}")
 
+        # Enhanced token analysis with domain understanding
         for token in doc:
             if token.pos_ == 'VERB':
-                linguistic_patterns['action_verbs'].append(token.text)
+                linguistic_patterns['action_verbs'].append({
+                    'text': token.text,
+                    'lemma': token.lemma_,
+                    'tense': token.morph.get('Tense', [''])[0]
+                })
             elif token.pos_ == 'NOUN' and not token.is_stop:
-                linguistic_patterns['domain_concepts'].append(token.text)
+                linguistic_patterns['domain_concepts'].append({
+                    'text': token.text,
+                    'is_technical': self._is_technical_term(token.text)
+                })
             elif token.pos_ in ['ADJ', 'ADV']:
                 linguistic_patterns['modifiers'].append(token.text)
-            
-        
-        # Sentiment analysis
+
+        # Enhanced sentiment analysis with context
         sentiment_result = self.sentiment_analyzer(prompt)[0]
-        
-        # Keyword extraction
+        sentiment_context = self._analyze_sentiment_context(doc, sentiment_result)
+
+        # Improved keyword extraction with domain weighting
         keywords = self.keyword_model.extract_keywords(
             prompt, 
-            top_n=5, 
+            top_n=5,
             stop_words='english'
         )
-        
-        # Named entity recognition
-        named_entities = [
-            {
-                "text": ent.text, 
-                "label": ent.label_
-            } for ent in doc.ents
-        ]
 
-        enhanced_entities = [{
+        # Enhanced named entity recognition with confidence scores
+        named_entities = [{
             'text': ent.text,
             'label': ent.label_,
             'confidence': self._calculate_entity_confidence(ent)
-         } for ent in doc.ents]
-        
-        
-        
-        # Linguistic features
-        linguistic_features = self._extract_linguistic_features(doc)
-        
-        # Complexity analysis
+        } for ent in doc.ents]
+
+        # Extract technical complexity metrics
         complexity_metrics = {
             "flesch_score": textstat.flesch_reading_ease(prompt),
             "grade_level": textstat.coleman_liau_index(prompt),
             "sentence_count": len(list(doc.sents)),
-            "word_count": len([token for token in doc if not token.is_punct])
+            "word_count": len([token for token in doc if not token.is_punct]),
+            "technical_density": self._calculate_technical_density(doc)
         }
-        
-        # Intent Classification Enhancement
-        intent_classification = self._classify_intent(prompt)
-        
-        # AI Role/Persona Determination
-        ai_persona = self._determine_ai_persona(intent_classification, prompt)
-        
-        # Contextual Requirement Extraction
-        contextual_requirements = self._extract_contextual_requirements(prompt)
-        
-        # Domain Identification
-        domain_insights = self._identify_domain(prompt)
-        
-        # Comprehensive analysis dictionary
-        comprehensive_analysis = {
+
+        # Generate semantic insights
+        semantic_insights = self._analyze_semantic_relationships(doc)
+
+        return {
             "content_analysis": {
                 "named_entities": named_entities,
                 "keywords": [kw[0] for kw in keywords],
                 "topics": self._extract_topics(prompt),
                 "sentiment": {
                     "label": sentiment_result['label'],
-                    "score": sentiment_result['score']
+                    "score": sentiment_result['score'],
+                    "context": sentiment_context
                 }
             },
+            "analysis": analysis_result,
             "linguistic_features": {
+                "patterns": linguistic_patterns,
                 "complexity_metrics": complexity_metrics,
-                "structural_features": linguistic_features
+                "semantic_insights": semantic_insights
             },
-            "intent_classification": intent_classification,
-            "ai_persona": ai_persona,
-            "contextual_requirements": contextual_requirements,
-            "domain_insights": domain_insights,
-            
-            # Maintaining compatibility with existing code
-            "keywords": [kw[0] for kw in keywords],
-            "named_entities": named_entities,
-            "sentiment": sentiment_result['label'],
-            "complexity_score": complexity_metrics['flesch_score'],
-            "sentence_count": complexity_metrics['sentence_count'],
-            "word_count": complexity_metrics['word_count']
+            "domain_analysis": self._analyze_domain_context(doc),
+            "technical_assessment": {
+                "complexity_level": self._assess_technical_complexity(doc),
+                "domain_specific_terms": self._extract_domain_terms(doc),
+                "implementation_requirements": self._extract_implementation_requirements(doc)
+            }
+        }
+    
+    def _is_technical_term(self, term: str) -> bool:
+        """
+        Determines if a word is a technical term by checking against common technical 
+        patterns and domain-specific vocabularies.
+        """
+        technical_indicators = {
+            'prefixes': ['cyber', 'multi', 'meta', 'inter', 'micro', 'macro'],
+            'suffixes': ['tion', 'ology', 'metric', 'ware', 'wise'],
+            'common_tech_words': ['api', 'data', 'code', 'algorithm', 'system', 'interface']
         }
         
-        # Logging the comprehensive analysis
-        self.logger.debug(f"Comprehensive Prompt Analysis: {json.dumps(comprehensive_analysis, indent=2)}")
+        term_lower = term.lower()
+        return any([
+            any(term_lower.startswith(prefix) for prefix in technical_indicators['prefixes']),
+            any(term_lower.endswith(suffix) for suffix in technical_indicators['suffixes']),
+            term_lower in technical_indicators['common_tech_words']
+        ])
+    
+    def _calculate_entity_confidence(self, entity) -> float:
+        """
+        Calculates a confidence score for named entity recognition based on 
+        multiple factors including context and pattern matching.
+        """
+        base_score = 0.8  # Base confidence score
         
-        return comprehensive_analysis
+        # Adjust score based on entity type
+        type_scores = {
+            'PERSON': 0.9,
+            'ORG': 0.85,
+            'GPE': 0.95,
+            'PRODUCT': 0.8,
+            'EVENT': 0.75
+        }
+        
+        # Adjust based on entity length (longer entities tend to be more reliable)
+        length_factor = min(len(entity.text.split()) * 0.05, 0.15)
+        
+        # Get base type score or default to 0.7
+        type_score = type_scores.get(entity.label_, 0.7)
+        
+        return min(base_score + type_score + length_factor, 1.0)
+    
+    def _analyze_semantic_relationships(self, doc) -> Dict:
+        """Enhanced semantic analysis with contextual understanding"""
+        # Extract sentences and their embeddings
+        sentences = [sent.text for sent in doc.sents]
+        embeddings = self.semantic_model.encode(sentences)
+        
+        # Build semantic graph
+        semantic_graph = self._build_semantic_graph(sentences, embeddings)
+        
+        # Analyze discourse patterns
+        discourse_patterns = self._analyze_discourse_patterns(doc)
+        
+        # Analyze semantic coherence
+        coherence_analysis = self._analyze_semantic_coherence(semantic_graph)
+        
+        return {
+            'semantic_graph': semantic_graph,
+            'discourse_patterns': discourse_patterns,
+            'coherence_metrics': coherence_analysis,
+            'key_concepts': self._extract_key_concepts(semantic_graph)
+        }
+    
+    def _analyze_transition_strength(self, sent1, sent2) -> Dict:
+        """
+        Analyzes the strength of transitions between sentences by looking at 
+        connecting words and shared concepts.
+        """
+        transition_words = set(['however', 'therefore', 'thus', 'consequently', 'moreover'])
+        shared_entities = set(token.text for token in sent1).intersection(set(token.text for token in sent2))
+        
+        return {
+            'has_transition_words': any(word in sent2.text.lower() for word in transition_words),
+            'shared_concepts': len(shared_entities),
+            'strength': 'strong' if len(shared_entities) > 2 else 'moderate' if len(shared_entities) > 0 else 'weak'
+        }
+    
+    def _analyze_domain_context(self, doc) -> Dict:
+        """Enhanced domain analysis with multi-level categorization"""
+        domain_categories = {
+            'technical': {
+                'programming': ['code', 'algorithm', 'function'],
+                'data_science': ['analysis', 'dataset', 'model'],
+                'infrastructure': ['system', 'network', 'server']
+            },
+            'business': {
+                'strategy': ['plan', 'objective', 'goal'],
+                'finance': ['revenue', 'cost', 'budget'],
+                'marketing': ['campaign', 'audience', 'brand']
+            }
+            # Add more domains
+        }
+        
+        # Hierarchical domain scoring
+        domain_scores = self._calculate_hierarchical_domain_scores(doc, domain_categories)
+        
+        # Domain overlap analysis
+        domain_relationships = self._analyze_domain_relationships(domain_scores)
+        
+        return {
+            'primary_domain': self._determine_primary_domain(domain_scores),
+            'domain_hierarchy': domain_scores,
+            'domain_relationships': domain_relationships,
+            'confidence_scores': self._calculate_confidence_scores(domain_scores)
+        }
+
+    def _assess_technical_complexity(self, doc) -> Dict:
+        """Enhanced technical complexity assessment"""
+        # Analyze code-like patterns
+        code_patterns = self._identify_code_patterns(doc)
+        
+        # Assess technical vocabulary
+        technical_terms = self._extract_technical_terms(doc)
+        
+        # Calculate complexity metrics
+        complexity_metrics = {
+            'cyclomatic': self._calculate_cyclomatic_complexity(doc),
+            'halstead': self._calculate_halstead_metrics(doc),
+            'cognitive': self._assess_cognitive_complexity(doc)
+        }
+        
+        return {
+            'complexity_metrics': complexity_metrics,
+            'technical_patterns': code_patterns,
+            'technical_vocabulary': technical_terms,
+            'implementation_requirements': self._extract_implementation_requirements(doc)
+        }
+
+    def _assess_requirement_priority(self, sentence) -> str:
+        """
+        Assesses the priority level of a requirement based on language indicators
+        and context.
+        """
+        text = sentence.text.lower()
+        priority_indicators = {
+            'high': ['must', 'critical', 'essential', 'required'],
+            'medium': ['should', 'important', 'needed'],
+            'low': ['could', 'might', 'optional']
+        }
+        
+        for priority, indicators in priority_indicators.items():
+            if any(indicator in text for indicator in indicators):
+                return priority
+                
+        return 'medium'  # Default priority if no clear indicators
+
+    def _extract_domain_terms(self, doc) -> List[Dict]:
+        """
+        Extracts domain-specific terminology from the document with context 
+        and relevance scores.
+        """
+        domain_terms = []
+        for token in doc:
+            if (token.pos_ in ['NOUN', 'PROPN'] and 
+                not token.is_stop and 
+                self._is_technical_term(token.text)):
+                
+                domain_terms.append({
+                    'term': token.text,
+                    'context': self._extract_term_context(token),
+                    'relevance': self._calculate_term_relevance(token)
+                })
+                
+        return domain_terms
+
+    def _extract_term_context(self, token) -> Dict:
+        """
+        Extracts the contextual information around a specific term including
+        modifiers and related concepts.
+        """
+        return {
+            'modifiers': [child.text for child in token.children if child.dep_ in ['amod', 'advmod']],
+            'related_terms': [child.text for child in token.children if child.dep_ in ['compound', 'nmod']],
+            'sentence_position': token.i / len(token.doc)
+        }
+
+    def _calculate_technical_density(self, doc) -> float:
+        """Calculate the density of technical terms in the text."""
+        technical_terms = self._extract_domain_terms(doc)
+        total_words = len([token for token in doc if not token.is_punct])
+        return len(technical_terms) / total_words if total_words > 0 else 0
+
+    def _analyze_sentiment_context(self, doc, sentiment_result: Dict) -> Dict:
+        """Analyze the context around sentiment expressions."""
+        return {
+            "modifiers": [token.text for token in doc if token.dep_ == 'amod'],
+            "intensifiers": [token.text for token in doc if token.dep_ == 'advmod'],
+            "negations": [token.text for token in doc if token.dep_ == 'neg']
+        }
+
+    def _extract_implementation_requirements(self, doc) -> List[Dict]:
+        """Extract implementation requirements from the text."""
+        requirements = []
+        for sent in doc.sents:
+            if any(term in sent.text.lower() for term in ["must", "should", "need", "require"]):
+                requirements.append({
+                    "text": sent.text,
+                    "priority": self._assess_requirement_priority(sent)
+                })
+        return requirements
     def _classify_intent(self, prompt: str) -> Dict:
         """
         Advanced intent classification using existing NLP capabilities
@@ -1390,6 +1927,199 @@ class PromptPreprocessor:
             }
         }
     
+    def _build_semantic_graph(self, sentences: List[str], embeddings: np.ndarray) -> Dict:
+        """
+        Builds a semantic graph representation of sentence relationships.
+        This is called by _analyze_semantic_relationships() but wasn't defined.
+        """
+        graph = {}
+        try:
+            for i, (sent, emb) in enumerate(zip(sentences, embeddings)):
+                connections = []
+                for j, other_emb in enumerate(embeddings):
+                    if i != j:
+                        similarity = np.dot(emb, other_emb) / \
+                                (np.linalg.norm(emb) * np.linalg.norm(other_emb))
+                        if similarity > 0.5:  # Threshold for meaningful connections
+                            connections.append({
+                                'target_sentence': j,
+                                'similarity': float(similarity),
+                                'relationship_type': self._determine_relationship_type(similarity)
+                            })
+                graph[i] = {
+                    'sentence': sent,
+                    'connections': connections,
+                    'centrality': len(connections)
+                }
+            return graph
+        except Exception as e:
+            self.logger.error(f"Error building semantic graph: {e}")
+            return {}
+        
+    def _analyze_discourse_patterns(self, doc) -> Dict:
+        """
+        Analyzes discourse patterns in the text.
+        Called by _analyze_semantic_relationships() but wasn't defined.
+        """
+        patterns = {
+            'connectives': [],
+            'topic_shifts': [],
+            'rhetorical_structures': []
+        }
+        
+        # Analyze connecting words and phrases
+        discourse_markers = {
+            'addition': ['moreover', 'furthermore', 'additionally'],
+            'contrast': ['however', 'nevertheless', 'although'],
+            'causation': ['therefore', 'consequently', 'thus'],
+            'sequence': ['firstly', 'subsequently', 'finally']
+        }
+        
+        for sent in doc.sents:
+            sent_text = sent.text.lower()
+            for category, markers in discourse_markers.items():
+                for marker in markers:
+                    if marker in sent_text:
+                        patterns['connectives'].append({
+                            'marker': marker,
+                            'category': category,
+                            'sentence': sent.text
+                        })
+        
+        # Analyze topic shifts
+        prev_topic = None
+        for sent in doc.sents:
+            current_topic = self._extract_sentence_topic(sent)
+            if prev_topic and current_topic != prev_topic:
+                patterns['topic_shifts'].append({
+                    'from_topic': prev_topic,
+                    'to_topic': current_topic,
+                    'sentence': sent.text
+                })
+            prev_topic = current_topic
+        
+        return patterns
+    
+    def _analyze_semantic_coherence(self, semantic_graph: Dict) -> Dict:
+        """
+        Analyzes the semantic coherence of the text based on the semantic graph.
+        Called by _analyze_semantic_relationships() but wasn't defined.
+        """
+        try:
+            # Calculate global coherence metrics
+            all_similarities = []
+            for node in semantic_graph.values():
+                similarities = [conn['similarity'] for conn in node['connections']]
+                if similarities:
+                    all_similarities.extend(similarities)
+            
+            # Calculate various coherence metrics
+            coherence_metrics = {
+                'global_coherence': float(np.mean(all_similarities)) if all_similarities else 0.0,
+                'coherence_variance': float(np.std(all_similarities)) if all_similarities else 0.0,
+                'connectivity_density': len(all_similarities) / len(semantic_graph) if semantic_graph else 0.0
+            }
+            
+            # Identify coherence patterns
+            coherence_patterns = {
+                'strong_connections': sum(1 for s in all_similarities if s > 0.8),
+                'weak_connections': sum(1 for s in all_similarities if s < 0.5),
+                'average_connections_per_sentence': len(all_similarities) / len(semantic_graph) if semantic_graph else 0
+            }
+            
+            return {
+                'metrics': coherence_metrics,
+                'patterns': coherence_patterns,
+                'coherence_assessment': self._assess_coherence_level(coherence_metrics)
+            }
+        except Exception as e:
+            self.logger.error(f"Error analyzing semantic coherence: {e}")
+            return {
+                'metrics': {},
+                'patterns': {},
+                'coherence_assessment': 'unknown'
+            }
+        
+    def _extract_key_concepts(self, semantic_graph: Dict) -> List[Dict]:
+        """
+        Extracts key concepts from the semantic graph based on centrality and connections.
+        """
+        concepts = []
+        try:
+            # Sort nodes by centrality
+            central_nodes = sorted(
+                semantic_graph.items(),
+                key=lambda x: x[1]['centrality'],
+                reverse=True
+            )
+            
+            # Extract top concepts
+            for node_id, node_data in central_nodes[:5]:  # Top 5 most central concepts
+                concepts.append({
+                    'concept': self._extract_main_concept(node_data['sentence']),
+                    'centrality_score': node_data['centrality'],
+                    'connected_concepts': [
+                        self._extract_main_concept(semantic_graph[conn['target_sentence']]['sentence'])
+                        for conn in node_data['connections']
+                    ]
+                })
+            
+            return concepts
+        except Exception as e:
+            self.logger.error(f"Error extracting key concepts: {e}")
+            return []
+        
+    def _extract_sentence_topic(self, sent) -> str:
+        """
+        Extracts the main topic of a sentence using NLP analysis.
+        """
+        # Extract noun phrases as potential topics
+        noun_phrases = [chunk.text for chunk in sent.noun_chunks]
+        
+        if not noun_phrases:
+            return None
+            
+        # Use the first noun phrase as the topic
+        # This is a simplified approach - could be enhanced with more sophisticated topic modeling
+        return noun_phrases[0]
+    
+    def _assess_coherence_level(self, coherence_metrics: Dict) -> str:
+        """
+        Assesses the overall coherence level based on computed metrics.
+        """
+        global_coherence = coherence_metrics.get('global_coherence', 0)
+        connectivity = coherence_metrics.get('connectivity_density', 0)
+        
+        if global_coherence > 0.8 and connectivity > 0.7:
+            return 'high'
+        elif global_coherence > 0.6 and connectivity > 0.5:
+            return 'medium'
+        else:
+            return 'low'
+        
+    def _normalize_input(self, prompt_input: Union[str, Dict]) -> str:
+        """
+        Normalizes the input prompt to ensure consistent processing.
+        """
+        if isinstance(prompt_input, dict):
+            return prompt_input.get('original_prompt', '')
+        return str(prompt_input)
+
+    def _perform_analysis(self, prompt: str) -> Dict:
+        """
+        Performs the core analysis of the prompt.
+        """
+        doc = self.nlp(prompt)
+        
+        return {
+            "linguistic_analysis": self._extract_linguistic_features(doc),
+            "semantic_analysis": self._analyze_semantic_relationships(doc),
+            "discourse_analysis": self._analyze_discourse_structure(doc),
+            "domain_analysis": self._analyze_domain_context(doc),
+            "technical_assessment": self._assess_technical_complexity(doc),
+        }
+    
+
 
 class ErrorHandler:
     @staticmethod
