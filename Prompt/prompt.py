@@ -6,7 +6,7 @@ import json
 import numpy as np
 import os
 import logging
-from typing import Dict, Any, List, Tuple, Union, Optional
+from typing import Dict, Any, List, Tuple, Union, Optional, Set
 from logging import Logger
 from llamaapi import LlamaAPI
 import re
@@ -24,6 +24,9 @@ nltk.download('punkt')
 import time
 nltk.download('wordnet')
 import datetime
+import asyncio
+from spellchecker import SpellChecker
+from concurrent.futures import ThreadPoolExecutor
 
 
 app = Flask(__name__)
@@ -95,6 +98,678 @@ class ModelManager:
         }
 
 
+class EnhancedPromptPreprocessor:
+    def __init__(self, logger: Logger):
+        self.logger = logger
+        self.logger.info("Initializing EnhancedPromptPreprocessor with NLP models...")
+        try:
+            self.spell_checker = SpellChecker()
+            self.model_manager = ModelManager()
+            self.nlp = self.model_manager.models['nlp']
+            self.sentiment_analyzer = self.model_manager.models['sentiment_analyzer']
+            self.keyword_model = self.model_manager.models['keyword_model']
+            self.semantic_model = self.model_manager.models['semantic_model']
+            self.logger.info("Successfully initialized all NLP models")
+        except Exception as e:
+            self.logger.error(f"Failed to initialize NLP models: {str(e)}")
+            raise
+
+
+    def _calculate_specificity(self, doc) -> float:
+        """
+        Calculate the specificity of the text based on linguistic features
+        
+        Args:
+            doc (spaCy Doc): Processed document
+        
+        Returns:
+            Float representing specificity score (0-1)
+        """
+        # Specificity is determined by:
+        # 1. Ratio of specific nouns to total nouns
+        # 2. Presence of precise descriptors
+        # 3. Absence of vague terms
+        
+        # Count total and specific nouns
+        total_nouns = len([token for token in doc if token.pos_ == "NOUN"])
+        specific_nouns = len([
+            token for token in doc 
+            if token.pos_ == "NOUN" and not token.is_stop
+        ])
+        
+        # Count precise descriptors (adjectives that are not general)
+        precise_descriptors = len([
+            token for token in doc 
+            if token.pos_ == "ADJ" and token.text.lower() not in ['good', 'bad', 'nice', 'great']
+        ])
+        
+        # Count vague terms
+        vague_terms = len([
+            token for token in doc 
+            if token.text.lower() in ['thing', 'stuff', 'something', 'anything', 
+                                    'whatever', 'somehow', 'kind of', 'sort of']
+        ])
+        
+        # Calculate specificity components
+        noun_specificity = specific_nouns / total_nouns if total_nouns > 0 else 0
+        descriptor_impact = min(precise_descriptors * 0.1, 0.3)
+        vague_term_penalty = min(vague_terms * 0.2, 0.4)
+        
+        # Combine components
+        specificity_score = noun_specificity + descriptor_impact - vague_term_penalty
+        
+        return max(min(specificity_score, 1.0), 0.0)
+    def _analyze_semantic_relationships(self, doc) -> Dict:
+        """
+        Analyze semantic relationships between sentences and tokens
+        """
+        try:
+            sentences = list(doc.sents)
+            embeddings = self.semantic_model.encode([sent.text for sent in sentences])
+            
+            relationships = []
+            for i in range(len(embeddings) - 1):
+                try:
+                    # Calculate cosine similarity between consecutive sentence embeddings
+                    similarity = np.dot(embeddings[i], embeddings[i+1]) / \
+                        (np.linalg.norm(embeddings[i]) * np.linalg.norm(embeddings[i+1]))
+                    
+                    relationships.append({
+                        'sentence_pair': (i, i+1),
+                        'similarity_score': float(similarity),
+                        'relationship_type': self._determine_relationship_type(similarity)
+                    })
+                except Exception as e:
+                    self.logger.warning(f"Error calculating semantic relationship: {e}")
+                    relationships.append({
+                        'sentence_pair': (i, i+1),
+                        'similarity_score': 0.0,
+                        'relationship_type': 'unknown'
+                    })
+            
+            return {
+                'sentence_relationships': relationships,
+                'coherence_score': float(np.mean([r['similarity_score'] for r in relationships]) 
+                                        if relationships else 0.0)
+            }
+        except Exception as e:
+            self.logger.error(f"Semantic relationship analysis failed: {e}")
+            return {
+                'sentence_relationships': [],
+                'coherence_score': 0.0
+            }
+
+    def _determine_relationship_type(self, similarity_score: float) -> str:
+        """
+        Determine the type of semantic relationship based on similarity score
+        """
+        if similarity_score > 0.8:
+            return 'strong_continuation'
+        elif similarity_score > 0.5:
+            return 'moderate_continuation'
+        else:
+            return 'weak_continuation'
+
+    def _analyze_discourse_structure(self, doc) -> Dict:
+        """
+        Analyze discourse markers and structural elements
+        """
+        discourse_markers = {
+            'causal': ['because', 'therefore', 'thus', 'hence'],
+            'contrast': ['however', 'but', 'although', 'despite'],
+            'sequence': ['first', 'then', 'finally', 'next'],
+            'elaboration': ['for example', 'specifically', 'in particular']
+        }
+        
+        structure = {category: [] for category in discourse_markers}
+        
+        for sent in doc.sents:
+            sent_text = sent.text.lower()
+            for category, markers in discourse_markers.items():
+                for marker in markers:
+                    if marker in sent_text:
+                        structure[category].append({
+                            'sentence': sent.text,
+                            'marker': marker
+                        })
+        
+        return {
+            'discourse_structure': structure,
+            'primary_discourse_type': max(structure.items(), key=lambda x: len(x[1]))[0] 
+                if any(structure.values()) else 'none'
+        }
+
+    def _analyze_domain_context(self, doc) -> Dict:
+        """
+        Analyze domain-specific context and terminology
+        """
+        domain_keywords = {
+            'Technical': ['code', 'develop', 'algorithm', 'system', 'software', 'programming'],
+            'Creative': ['write', 'design', 'imagine', 'story', 'creative', 'art'],
+            'Business': ['strategy', 'plan', 'market', 'business', 'sales', 'management'],
+            'Academic': ['research', 'study', 'analysis', 'academic', 'scientific'],
+            'Personal': ['help', 'advice', 'personal', 'guidance']
+        }
+        
+        detected_domains = []
+        for domain, keywords in domain_keywords.items():
+            if any(keyword in doc.text.lower() for keyword in keywords):
+                detected_domains.append(domain)
+        
+        # Extract domain-specific terms
+        domain_terms = [
+            token.text for token in doc 
+            if token.pos_ == "NOUN" and not token.is_stop
+        ]
+        
+        return {
+            'detected_domains': detected_domains,
+            'domain_terms': domain_terms,
+            'primary_domain': detected_domains[0] if detected_domains else 'general'
+        }
+
+    def _check_ambiguity(self, doc) -> Dict:
+        """
+        Analyze the ambiguity in the text
+        
+        Args:
+            doc (spaCy Doc): Processed document
+        
+        Returns:
+            Dict containing ambiguity metrics
+        """
+        ambiguity_indicators = {
+            'multiple_meanings': self._detect_multiple_meanings(doc),
+            'vague_terms': self._identify_vague_terms(doc),
+            'complex_sentences': self._analyze_sentence_complexity(doc)
+        }
+        
+        # Calculate overall ambiguity score
+        ambiguity_score = self._calculate_ambiguity_score(ambiguity_indicators)
+        
+        return {
+            'has_ambiguity': ambiguity_score > 0.5,
+            'ambiguity_details': ambiguity_indicators,
+            'ambiguity_score': ambiguity_score
+        }
+
+    def _detect_multiple_meanings(self, doc) -> List[str]:
+        """
+        Detect words with multiple potential meanings
+        """
+        multiple_meaning_words = []
+        for token in doc:
+            # Check for tokens with multiple possible parts of speech
+            if len([pos for pos in token.pos_]) > 1:
+                multiple_meaning_words.append(token.text)
+        return multiple_meaning_words
+
+    def _identify_vague_terms(self, doc) -> List[str]:
+        """
+        Identify vague or imprecise terms
+        """
+        vague_terms = [
+            'thing', 'stuff', 'something', 'anything', 
+            'whatever', 'somehow', 'kind of', 'sort of'
+        ]
+        return [token.text for token in doc if token.text.lower() in vague_terms]
+
+    def _analyze_sentence_complexity(self, doc) -> List[Dict]:
+        """
+        Analyze sentence complexity as a factor of ambiguity
+        """
+        complex_sentences = []
+        for sent in doc.sents:
+            # Check sentence depth and number of clauses
+            depth = len(list(sent.subtree))
+            clauses = len([token for token in sent if token.dep_ in ['ROOT', 'conj']])
+            
+            if depth > 10 or clauses > 2:
+                complex_sentences.append({
+                    'text': sent.text,
+                    'depth': depth,
+                    'clause_count': clauses
+                })
+        return complex_sentences
+
+    def _calculate_ambiguity_score(self, ambiguity_indicators: Dict) -> float:
+        """
+        Calculate an overall ambiguity score
+        """
+        # Weighted scoring of different ambiguity factors
+        multiple_meaning_weight = min(len(ambiguity_indicators['multiple_meanings']) * 0.1, 0.5)
+        vague_terms_weight = min(len(ambiguity_indicators['vague_terms']) * 0.2, 0.4)
+        complex_sentences_weight = min(len(ambiguity_indicators['complex_sentences']) * 0.1, 0.3)
+        
+        return multiple_meaning_weight + vague_terms_weight + complex_sentences_weight
+
+    def _extract_domain_context(self, doc) -> Dict:
+        """
+        Analyze domain-specific context and terminology
+        """
+        domain_keywords = {
+            'Technical': ['code', 'develop', 'algorithm', 'system', 'software', 'programming'],
+            'Creative': ['write', 'design', 'imagine', 'story', 'creative', 'art'],
+            'Business': ['strategy', 'plan', 'market', 'business', 'sales', 'management'],
+            'Academic': ['research', 'study', 'analysis', 'academic', 'scientific'],
+            'Personal': ['help', 'advice', 'personal', 'guidance']
+        }
+        
+        detected_domains = []
+        for domain, keywords in domain_keywords.items():
+            if any(keyword in doc.text.lower() for keyword in keywords):
+                detected_domains.append(domain)
+        
+        # Extract domain-specific terms
+        domain_terms = [
+            token.text for token in doc 
+            if token.pos_ == "NOUN" and not token.is_stop
+        ]
+        
+        return {
+            'detected_domains': detected_domains,
+            'domain_terms': domain_terms,
+            'primary_domain': detected_domains[0] if detected_domains else 'general'
+        }
+
+    def _assess_technical_complexity(self, doc) -> Dict:
+        """
+        Assess the technical complexity of the prompt
+        """
+        # Calculate sentence depth
+        max_depth = max(
+            (len(list(sent.rights)) + len(list(sent.lefts))) 
+            for sent in doc.sents
+        ) if list(doc.sents) else 0
+        
+        # Count technical terms
+        technical_term_count = len([
+            token for token in doc 
+            if token.pos_ == "NOUN" and not token.is_stop
+        ])
+        
+        # Assess verb complexity
+        verb_complexity = len([
+            token for token in doc 
+            if token.pos_ == "VERB" and token.dep_ in ['ROOT', 'xcomp', 'ccomp']
+        ])
+        
+        return {
+            'max_sentence_depth': max_depth,
+            'technical_term_count': technical_term_count,
+            'verb_complexity': verb_complexity,
+            'complexity_score': self._calculate_complexity_score(
+                max_depth, 
+                technical_term_count, 
+                verb_complexity
+            )
+        }
+
+    def _calculate_complexity_score(self, depth: int, term_count: int, verb_complexity: int) -> float:
+        """
+        Calculate an overall complexity score
+        """
+        # Base complexity calculation
+        complexity = (
+            (depth * 0.3) +  # Sentence structure complexity
+            (term_count * 0.2) +  # Technical term density
+            (verb_complexity * 0.5)  # Verb complexity
+        )
+        
+        # Normalize to 0-100 scale
+        return min(max(complexity, 0), 100)
+
+    def _extract_linguistic_features(self, doc) -> Dict:
+        return {
+            "verbs": [token.text for token in doc if token.pos_ == "VERB"],
+            "nouns": [token.text for token in doc if token.pos_ == "NOUN"],
+            "adjectives": [token.text for token in doc if token.pos_ == "ADJ"],
+            "dependencies": [f"{token.text}:{token.dep_}" for token in doc],
+            "has_questions": any(token.text.lower() in ["what", "why", "how", "when", "where", "who"] 
+                            for token in doc)
+        }
+
+    def analyze_prompt_with_cot(self, prompt: str, steps: int = 3) -> Dict:
+        """
+        Apply Chain-of-Thought (CoT) preprocessing
+        
+        Args:
+            prompt (str): Original user prompt
+            steps (int): Number of reasoning steps to generate
+        
+        Returns:
+            Dict containing CoT analysis and insights
+        """
+        base_analysis = self.analyze_prompt(prompt)
+        
+        # Generate reasoning steps
+        reasoning_steps = self._generate_reasoning_steps(prompt, steps)
+        
+        base_analysis['chain_of_thought'] = {
+            'reasoning_steps': reasoning_steps,
+            'complexity': len(reasoning_steps)
+        }
+        
+        return base_analysis
+
+    def _generate_reasoning_steps(self, prompt: str, num_steps: int) -> List[str]:
+        """
+        Generate reasoning steps using semantic analysis
+        
+        Args:
+            prompt (str): Original user prompt
+            num_steps (int): Number of reasoning steps to generate
+        
+        Returns:
+            List of reasoning steps
+        """
+        doc = self.nlp(prompt)
+        steps = []
+        
+        # Extract key concepts and dependencies
+        key_concepts = [chunk.text for chunk in doc.noun_chunks]
+        action_verbs = [token.lemma_ for token in doc if token.pos_ == "VERB"]
+        
+        # Generate reasoning steps
+        for i in range(num_steps):
+            step = f"Step {i+1}: {action_verbs[i % len(action_verbs)]} {key_concepts[i % len(key_concepts)]}"
+            steps.append(step)
+        
+        return steps
+
+    def preprocess_prompt(self, prompt: str) -> Dict:
+        """Main preprocessing function"""
+        self.logger.info(f"Starting prompt preprocessing for text length: {len(prompt)}")
+        try:
+            # Log input text characteristics
+            self.logger.debug(f"Input prompt: {prompt[:100]}...")
+            
+            # Step 1: Spell check
+            self.logger.info("Performing spell check and text cleaning...")
+            cleaned_text, spelling_corrections = self._clean_and_spell_check(prompt)
+            if spelling_corrections:
+                self.logger.info(f"Found {len(spelling_corrections)} spelling corrections")
+                self.logger.debug(f"Spelling corrections: {spelling_corrections}")
+            
+            # Step 2: NLP Analysis
+            self.logger.info("Performing deep NLP analysis...")
+            nlp_analysis = self._perform_analysis(cleaned_text)
+            self.logger.debug(f"NLP analysis results: {json.dumps(nlp_analysis, indent=2)}")
+            
+            # Step 3: Intent Analysis
+            self.logger.info("Analyzing intent...")
+            intent_analysis = self._analyze_intent(cleaned_text)
+            self.logger.debug(f"Intent analysis results: {json.dumps(intent_analysis, indent=2)}")
+            
+            # Step 4: Quality Metrics
+            self.logger.info("Calculating quality metrics...")
+            quality_metrics = self._calculate_quality_metrics(cleaned_text)
+            
+            result = {
+                "processed_text": cleaned_text,
+                "spelling_corrections": spelling_corrections,
+                "nlp_analysis": nlp_analysis,
+                "intent_analysis": intent_analysis,
+                "quality_metrics": quality_metrics,
+                "original_text": prompt,
+                "_metadata": {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "preprocessing_version": "2.0"
+                }
+            }
+            
+            self.logger.info("Preprocessing completed successfully")
+            return result
+
+        except Exception as e:
+            self.logger.error(f"Preprocessing failed: {str(e)}")
+            self.logger.exception("Full traceback:")
+            return self._create_fallback_preprocessing(prompt)
+
+    def _classify_primary_intent(self, actions: List[Dict], doc) -> Dict:
+        """
+        Classify the primary intent of the prompt based on actions and linguistic analysis
+        
+        Args:
+            actions (List[Dict]): List of extracted actions
+            doc (spaCy Doc): Processed document
+        
+        Returns:
+            Dict containing intent classification details
+        """
+        # Define intent categories with associated keywords
+        intent_categories = {
+            'task_completion': ['create', 'develop', 'build', 'generate', 'implement', 'make'],
+            'information_gathering': ['explain', 'describe', 'analyze', 'understand', 'breakdown', 'define'],
+            'problem_solving': ['solve', 'resolve', 'fix', 'address', 'troubleshoot', 'improve'],
+            'creative_generation': ['write', 'design', 'compose', 'imagine', 'draft', 'invent'],
+            'strategic_planning': ['plan', 'strategy', 'roadmap', 'outline', 'propose', 'structure']
+        }
+        
+        # Extract primary verbs
+        primary_verbs = [action['verb'].lower() for action in actions]
+        
+        # Classify intent based on verb matches
+        detected_intents = []
+        for category, keywords in intent_categories.items():
+            if any(verb in keywords for verb in primary_verbs):
+                detected_intents.append(category)
+        
+        # Fallback to general classification if no specific intent detected
+        primary_intent = detected_intents[0] if detected_intents else 'general_inquiry'
+        
+        # Calculate intent confidence
+        intent_confidence = self._calculate_intent_confidence(doc)
+        
+        # Extract key nouns to provide additional context
+        key_nouns = [token.text for token in doc if token.pos_ == 'NOUN' and not token.is_stop]
+        
+        return {
+            'primary_category': primary_intent,
+            'possible_intents': detected_intents,
+            'confidence_score': intent_confidence,
+            'key_nouns': key_nouns[:5],  # Limit to top 5 key nouns
+            'raw_actions': actions
+        }
+
+    def _extract_requirements(self, doc) -> List[Dict]:
+        """
+        Extract detailed requirements from the document
+        
+        Args:
+            doc (spaCy Doc): Processed document
+        
+        Returns:
+            List of extracted requirements
+        """
+        requirements = []
+        
+        # Extract noun chunks as potential requirements
+        for chunk in doc.noun_chunks:
+            requirement = {
+                'text': chunk.text,
+                'root': chunk.root.text,
+                'type': chunk.root.pos_
+            }
+            requirements.append(requirement)
+        
+        # Extract verb phrases with their objects
+        for token in doc:
+            if token.pos_ == 'VERB':
+                objects = [child.text for child in token.children if child.dep_ in ['dobj', 'pobj']]
+                if objects:
+                    requirements.append({
+                        'text': f"{token.text} {' '.join(objects)}",
+                        'type': 'action_requirement'
+                    })
+        
+        return requirements
+
+    def _perform_analysis(self, prompt: str) -> Dict:
+        """
+            Performs the core analysis of the prompt.
+            """
+        doc = self.nlp(prompt)
+            
+        return {
+                "linguistic_analysis": self._extract_linguistic_features(doc),
+                "semantic_analysis": self._analyze_semantic_relationships(doc),
+                "discourse_analysis": self._analyze_discourse_structure(doc),
+                "domain_analysis": self._analyze_domain_context(doc),
+                "technical_assessment": self._assess_technical_complexity(doc),
+            }
+
+    def _create_fallback_preprocessing(self, prompt: str) -> Dict:
+        """
+            Create a fallback preprocessing result when analysis fails
+            """
+        return {
+                "status": "fallback",
+                "linguistic_features": {
+                    "raw_text": prompt,
+                    "length": len(prompt),
+                    "word_count": len(prompt.split()),
+                    "character_count": len(prompt)
+                },
+                "basic_analysis": {
+                    "detected_language": "Unknown",
+                    "complexity_score": 50.0,
+                    "processing_mode": "fallback"
+                }
+            }
+  
+
+    def _clean_and_spell_check(self, text: str) -> Tuple[str, Dict[str, str]]:
+        """
+        Clean text and perform spell checking
+        """
+        # Basic text cleaning
+        cleaned_text = text.strip()
+        cleaned_text = re.sub(r'\s+', ' ', cleaned_text)  # Remove extra whitespace
+        
+        # Spell checking
+        words = cleaned_text.split()
+        corrections = {}
+        corrected_words = []
+        
+        for word in words:
+            # Skip spell checking for common special terms
+            if self._is_special_term(word):
+                corrected_words.append(word)
+                continue
+                
+            # Check spelling
+            if word not in self.spell_checker:
+                correction = self.spell_checker.correction(word)
+                if correction and correction != word:
+                    corrections[word] = correction
+                    corrected_words.append(correction)
+                else:
+                    corrected_words.append(word)
+            else:
+                corrected_words.append(word)
+        
+        corrected_text = ' '.join(corrected_words)
+        return corrected_text, corrections
+
+    def _is_special_term(self, word: str) -> bool:
+        """
+        Check if word is a special term that should skip spell checking
+        """
+        # Common AI model names
+        ai_terms = {'gpt', 'chatgpt', 'dalle', 'midjourney', 'claude', 'gemini'}
+        
+        # Common technical terms
+        tech_terms = {'api', 'json', 'html', 'css', 'url', 'sql'}
+        
+        # Check if word is in special terms or contains numbers
+        return (
+            word.lower() in ai_terms or 
+            word.lower() in tech_terms or
+            any(char.isdigit() for char in word) or
+            '@' in word or  # Email addresses
+            '/' in word or  # URLs/paths
+            word.startswith(('http', 'www'))  # URLs
+        )
+
+    def _analyze_intent(self, text: str) -> Dict:
+        """
+        Enhanced intent analysis with domain awareness
+        """
+        doc = self.nlp(text)
+        
+        # Extract action verbs and their objects
+        actions = []
+        for token in doc:
+            if token.pos_ == "VERB":
+                # Get verb objects
+                verb_objects = [child.text for child in token.children 
+                              if child.dep_ in ['dobj', 'pobj']]
+                actions.append({
+                    "verb": token.text,
+                    "objects": verb_objects,
+                    "lemma": token.lemma_
+                })
+
+        # Classify primary intent
+        intent_classification = self._classify_primary_intent(actions, doc)
+        
+        # Extract task requirements
+        requirements = self._extract_requirements(doc)
+        
+        return {
+            "primary_intent": intent_classification,
+            "actions": actions,
+            "requirements": requirements,
+            "confidence_score": self._calculate_intent_confidence(doc),
+            "domain_context": self._extract_domain_context(doc)
+        }
+
+    def _calculate_intent_confidence(self, doc) -> float:
+        """Calculate confidence score for intent classification"""
+        # Base confidence from sentence structure clarity
+        base_confidence = 0.7
+        
+        # Adjust based on presence of clear action verbs
+        verb_count = len([token for token in doc if token.pos_ == "VERB"])
+        if verb_count > 0:
+            base_confidence += 0.1
+            
+        # Adjust based on presence of clear objects
+        obj_count = len([token for token in doc if token.dep_ in ['dobj', 'pobj']])
+        if obj_count > 0:
+            base_confidence += 0.1
+            
+        # Penalize for ambiguity
+        ambiguous_terms = len([token for token in doc 
+                             if token.text.lower() in ['maybe', 'perhaps', 'possibly']])
+        base_confidence -= (ambiguous_terms * 0.1)
+        
+        return min(max(base_confidence, 0.1), 1.0)
+
+    def _calculate_quality_metrics(self, text: str) -> Dict:
+        """
+        Calculate various text quality metrics
+        """
+        doc = self.nlp(text)
+        
+        return {
+            "readability": {
+                "flesch_score": textstat.flesch_reading_ease(text),
+                "grade_level": textstat.coleman_liau_index(text)
+            },
+            "structure": {
+                "sentence_count": len(list(doc.sents)),
+                "word_count": len([token for token in doc if not token.is_punct]),
+                "avg_word_length": sum(len(token.text) for token in doc if not token.is_punct) / 
+                                 len([token for token in doc if not token.is_punct]) if doc else 0
+            },
+            "clarity": {
+                "has_ambiguity": self._check_ambiguity(doc),
+                "specificity_score": self._calculate_specificity(doc)
+            }
+        }
+
 class ParameterManager:
     @staticmethod
     def get_default_parameters() -> Dict:
@@ -147,6 +822,69 @@ class ParameterManager:
             logger.error(f"Parameter extraction failed: {str(e)}")
             return default_params
         
+
+class AsyncPipelineCoordinator:
+    def __init__(self, logger: Logger):
+        self.logger = logger
+        self.preprocessor = PromptPreprocessor(logger)
+        self.guidelines_generator = GuidelinesStage(logger)
+        self.context_tracker = ContextTracker()
+        self.spell_checker = SpellChecker()
+        
+    async def coordinate_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
+        try:
+            # Create tasks for parallel execution
+            preprocessing_task = asyncio.create_task(
+                self.run_preprocessing(prompt)
+            )
+            
+            guidelines_task = asyncio.create_task(
+                self.run_guidelines(prompt, ai_type, style)
+            )
+            
+            # Wait for both tasks to complete
+            preprocessing_result, guidelines_result = await asyncio.gather(
+                preprocessing_task,
+                guidelines_task,
+                return_exceptions=True
+            )
+            
+            # Validate results and handle any errors
+            self._validate_stage_results(preprocessing_result, guidelines_result)
+            
+            # Combine results for enhancement stage
+            combined_context = self._merge_stage_results(
+                preprocessing_result, 
+                guidelines_result
+            )
+            
+            return combined_context
+            
+        except Exception as e:
+            self.logger.error(f"Pipeline coordination failed: {str(e)}")
+            raise
+
+    async def run_preprocessing(self, prompt: str) -> Dict:
+        """Run NLP preprocessing asynchronously"""
+        with ThreadPoolExecutor() as executor:
+            return await asyncio.get_event_loop().run_in_executor(
+                executor,
+                self._execute_preprocessing,
+                prompt
+            )
+
+    async def run_guidelines(self, prompt: str, ai_type: str, style: str) -> Dict:
+        """Run guidelines generation asynchronously"""
+        with ThreadPoolExecutor() as executor:
+            return await asyncio.get_event_loop().run_in_executor(
+                executor,
+                self._execute_guidelines,
+                prompt,
+                ai_type,
+                style
+            )
+
+
 class ContextTracker:
     def __init__(self):
         self.context_chain = []  # Main storage for all context
@@ -1412,6 +2150,21 @@ class PromptPreprocessor:
             }
         }
     
+    def _perform_analysis(self, prompt: str) -> Dict:
+        """
+            Performs the core analysis of the prompt.
+            """
+        doc = self.nlp(prompt)
+            
+        return {
+                "linguistic_analysis": self._extract_linguistic_features(doc),
+                "semantic_analysis": self._analyze_semantic_relationships(doc),
+                "discourse_analysis": self._analyze_discourse_structure(doc),
+                "domain_analysis": self._analyze_domain_context(doc),
+                "technical_assessment": self._assess_technical_complexity(doc),
+            }
+
+
     def _is_technical_term(self, term: str) -> bool:
         """
         Determines if a word is a technical term by checking against common technical 
@@ -2105,20 +2858,7 @@ class PromptPreprocessor:
             return prompt_input.get('original_prompt', '')
         return str(prompt_input)
 
-    def _perform_analysis(self, prompt: str) -> Dict:
-        """
-        Performs the core analysis of the prompt.
-        """
-        doc = self.nlp(prompt)
-        
-        return {
-            "linguistic_analysis": self._extract_linguistic_features(doc),
-            "semantic_analysis": self._analyze_semantic_relationships(doc),
-            "discourse_analysis": self._analyze_discourse_structure(doc),
-            "domain_analysis": self._analyze_domain_context(doc),
-            "technical_assessment": self._assess_technical_complexity(doc),
-        }
-    
+  
 
 
 class ErrorHandler:
@@ -3160,6 +3900,54 @@ class EnhancementStage(PipelineStage):
         self.logger.debug(f"Generated fallback response: {fallback_response}")
         return fallback_response
 
+    def _create_system_message(self, ai_type: str, style: str) -> str:
+        # First, let's define AI-specific characteristics
+        ai_characteristics = {
+            'ChatGPT': {
+                'capabilities': ['natural language understanding', 'contextual awareness'],
+                'constraints': ['token limit', 'recency cutoff'],
+                'interaction_patterns': ['dialogue-based', 'context-window aware']
+            },
+            'Claude': {
+                'capabilities': ['long-form content', 'complex reasoning'],
+                'constraints': ['specific formatting requirements'],
+                'interaction_patterns': ['detailed instruction following']
+            }
+            # Add other AI types
+        }
+
+        # Then, define style characteristics
+        style_characteristics = {
+            'descriptive': {
+                'sentence_patterns': ['detailed explanations', 'rich descriptions'],
+                'vocabulary_level': 'comprehensive',
+                'organization': 'hierarchical'
+            },
+            'professional': {
+                'sentence_patterns': ['clear statements', 'formal structure'],
+                'vocabulary_level': 'industry-standard',
+                'organization': 'logical'
+            }
+            # Add other styles
+        }
+
+        return f"""You are a specialized prompt engineering expert for {ai_type} systems.
+        System Characteristics to Consider:
+        - Capabilities: {', '.join(ai_characteristics[ai_type]['capabilities'])}
+        - Constraints: {', '.join(ai_characteristics[ai_type]['constraints'])}
+        - Interaction Patterns: {', '.join(ai_characteristics[ai_type]['interaction_patterns'])}
+        
+        Style Requirements ({style}):
+        - Sentence Structure: {', '.join(style_characteristics[style]['sentence_patterns'])}
+        - Vocabulary Level: {style_characteristics[style]['vocabulary_level']}
+        - Organization: {style_characteristics[style]['organization']}
+        
+        Your task is to generate prompts that:
+        1. Leverage {ai_type}'s specific capabilities
+        2. Work within its constraints
+        3. Follow {style} communication patterns
+        4. Maintain consistency in tone and approach"""
+
 
 
 
@@ -3239,7 +4027,7 @@ class EnhancementStage(PipelineStage):
     }
         return params.get(style, {"temperature": 0.7})
 
-    def execute(self, pipeline_context: Dict) -> Dict:
+    async def execute(self, pipeline_context: Dict) -> Dict:
         try:
             self.logger.info("Starting enhancement stage execution")
             self.logger.debug("Pipeline Context: %s", json.dumps(pipeline_context, indent=2))
@@ -3917,21 +4705,21 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
             self.logger.error(f"Enhancement processing failed: {str(e)}")
             return self._create_fallback_enhanced_prompts()
         
-    def _create_system_message(self, ai_type: str, style: str) -> str:
-        return f"""You are a prompt enhancement expert for {ai_type} systems.
-        Generate three optimized versions of the original prompt that are:
-        1. Adapted specifically for {ai_type} capabilities
-        2. Following {style} style strictly
-        3. Direct and implementation-ready
+    # def _create_system_message(self, ai_type: str, style: str) -> str:
+    #     return f"""You are a prompt enhancement expert for {ai_type} systems.
+    #     Generate three optimized versions of the original prompt that are:
+    #     1. Adapted specifically for {ai_type} capabilities
+    #     2. Following {style} style strictly
+    #     3. Direct and implementation-ready
         
-        Return ONLY in this exact JSON structure:
-        {{
-            "prompts": [
-                {{ "prompt": "first_enhanced_version" }},
-                {{ "prompt": "second_enhanced_version" }},
-                {{ "prompt": "third_enhanced_version" }}
-            ]
-        }}"""
+    #     Return ONLY in this exact JSON structure:
+    #     {{
+    #         "prompts": [
+    #             {{ "prompt": "first_enhanced_version" }},
+    #             {{ "prompt": "second_enhanced_version" }},
+    #             {{ "prompt": "third_enhanced_version" }}
+    #         ]
+    #     }}"""
 
     def _create_user_message(self, pipeline_context: Dict) -> str:
         original_prompt = pipeline_context.get("original_prompt", "")
@@ -3957,14 +4745,12 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
 
 class EnhancedPromptPipeline:
     def __init__(self, logger: Logger):
-        self.logger = logger 
+        self.logger = logger
+        self.logger.info("Initializing Enhanced Prompt Pipeline...")
         self.api_handler = APIHandler(logger)
-        self.response_manager = ResponseManager(logger)
-        self.preprocessor = PromptPreprocessor(logger) 
+        self.preprocessor = EnhancedPromptPreprocessor(logger)  # Use new preprocessor
         self.context_tracker = ContextTracker()
-        
         self.analysis_stage = AnalysisStage(logger, self.api_handler, self.context_tracker)
-        # self.feedback_stage = FeedbackStage(logger, self.api_handler, self.context_tracker)
         self.guidelines_stage = GuidelinesStage(logger, self.api_handler, self.context_tracker)
         self.enhancement_stage = EnhancementStage(logger, self.api_handler, self.context_tracker)
 
@@ -4071,18 +4857,96 @@ class EnhancedPromptPipeline:
             self.logger.error(f"Analysis stage failed: {str(e)}")
             return self.analysis_stage._create_fallback_analysis(prompt, ai_type, style)
 
+    def analyze_prompt(self, prompt: str) -> Dict:
+        """Enhanced prompt analysis focusing on actionable insights"""
+        doc = self.nlp(prompt)
+        
+        # Extract actionable patterns
+        command_patterns = self._extract_command_patterns(doc)
+        domain_requirements = self._extract_domain_requirements(doc)
+        technical_constraints = self._extract_technical_constraints(doc)
+        
+        return {
+            "execution_patterns": {
+                "primary_command": command_patterns['primary'],
+                "modifiers": command_patterns['modifiers'],
+                "constraints": command_patterns['constraints']
+            },
+            "domain_context": {
+                "technical_level": self._assess_technical_level(doc),
+                "domain_specific_terms": domain_requirements['terms'],
+                "required_expertise": domain_requirements['expertise_level']
+            },
+            "implementation_requirements": {
+                "explicit_constraints": technical_constraints['explicit'],
+                "implicit_requirements": technical_constraints['implicit'],
+                "success_criteria": self._extract_success_criteria(doc)
+            }
+        }
 
-    def execute_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
+    def _extract_command_patterns(self, doc) -> Dict:
+        """Extract actionable command patterns"""
+        # Find main verb and its modifiers
+        main_verb = None
+        modifiers = []
+        constraints = []
+        
+        for token in doc:
+            if token.dep_ == "ROOT" and token.pos_ == "VERB":
+                main_verb = {
+                    "verb": token.text,
+                    "lemma": token.lemma_,
+                    "objects": [child.text for child in token.children 
+                              if child.dep_ in ("dobj", "pobj")]
+                }
+            elif token.dep_ in ("advmod", "amod"):
+                modifiers.append({
+                    "modifier": token.text,
+                    "target": token.head.text,
+                    "type": token.dep_
+                })
+            elif token.dep_ == "prep" and token.text.lower() in ("with", "without", "using"):
+                constraints.append({
+                    "type": "tool_constraint",
+                    "constraint": " ".join([token.text] + 
+                                        [child.text for child in token.children])
+                })
+                
+        return {
+            "primary": main_verb,
+            "modifiers": modifiers,
+            "constraints": constraints
+        }
+    def _create_fallback_preprocessing(self, prompt: str) -> Dict:
+        """
+        Create a fallback preprocessing result when the primary preprocessing fails.
+        
+        Args:
+            prompt (str): The original user prompt
+        
+        Returns:
+            Dict: A standardized preprocessing fallback result
+        """
+        return {
+            "status": "fallback",
+            "linguistic_features": {
+                "raw_text": prompt,
+                "length": len(prompt),
+                "word_count": len(prompt.split()),
+                "character_count": len(prompt)
+            },
+            "basic_analysis": {
+                "detected_language": "Unknown",
+                "complexity_score": 50.0,
+                "processing_mode": "fallback"
+            }
+        }
+    async def execute_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
+        """Execute pipeline with parallel preprocessing and guidelines"""
         try:
-            # Log pipeline initialization
-            self.logger.info("=== Starting Pipeline Execution ===")
-            self.logger.info(f"Input Parameters:")
-            self.logger.info(f"Prompt: {prompt}")
-            self.logger.info(f"AI Type: {ai_type}")
-            self.logger.info(f"Style: {style}")
-
-            # Log base context creation
-            self.logger.info("Creating base context")
+            self.logger.info(f"Starting pipeline execution for AI type: {ai_type}, style: {style}")
+            
+            # Create base context
             base_context = {
                 "request_id": str(uuid.uuid4()),
                 "original_prompt": prompt,
@@ -4091,88 +4955,102 @@ class EnhancedPromptPipeline:
                 "timestamp": datetime.datetime.now().isoformat(),
                 "stage_results": {}
             }
-            self.logger.debug(f"Base Context Created: {json.dumps(base_context, indent=2)}")
-
-            # Analysis Stage
-            self.logger.info("\n=== Starting Analysis Stage ===")
-            self.logger.info("Executing analysis_stage.execute()")
-            analysis_result = self.analysis_stage.execute(base_context)
-
-
-            self.logger.debug(f"Analysis Stage Result: {json.dumps(analysis_result, indent=2)}")
             
-            # Log context update after analysis
-            self.logger.info("Updating context with analysis results")
-            base_context["stage_results"]["analysis"] = analysis_result
-            self.logger.debug(f"Context after analysis: {json.dumps(base_context['stage_results'], indent=2)}")
+            self.logger.debug(f"Created base context: {json.dumps(base_context, indent=2)}")
 
-            # Guidelines Stage
-            self.logger.info("\n=== Starting Guidelines Stage ===")
-            self.logger.info("Executing guidelines_stage.execute()")
-            guidelines_result = self.guidelines_stage.execute(base_context)
-            self.logger.debug(f"Guidelines Stage Result: {json.dumps(guidelines_result, indent=2)}")
+            # Create tasks for parallel execution
+            self.logger.info("Initiating parallel preprocessing and guidelines generation")
             
-            # Log context update after guidelines
-            self.logger.info("Updating context with guidelines results")
+            preprocessing_task = asyncio.create_task(
+                self._execute_preprocessing(prompt)
+            )
+            
+            guidelines_task = asyncio.create_task(
+                self._execute_guidelines(base_context)
+            )
+            
+            # Wait for both tasks to complete
+            preprocessing_result, guidelines_result = await asyncio.gather(
+                preprocessing_task,
+                guidelines_task,
+                return_exceptions=True
+            )
+            
+            # Handle potential errors from parallel execution
+            if isinstance(preprocessing_result, Exception):
+                self.logger.error(f"Preprocessing failed: {str(preprocessing_result)}")
+                
+                
+            if isinstance(guidelines_result, Exception):
+                self.logger.error(f"Guidelines generation failed: {str(guidelines_result)}")
+                guidelines_result = self._create_fallback_guidelines(base_context)
+
+            # Update context with results
+            base_context["stage_results"]["preprocessing"] = preprocessing_result
             base_context["stage_results"]["guidelines"] = guidelines_result
-            self.logger.debug(f"Context after guidelines: {json.dumps(base_context['stage_results'], indent=2)}")
-
-            # Enhancement Stage
-            self.logger.info("\n=== Starting Enhancement Stage ===")
-            self.logger.info("Executing enhancement_stage.execute()")
-            enhancement_result = self.enhancement_stage.execute(base_context)
-            self.logger.debug(f"Enhancement Stage Result: {json.dumps(enhancement_result, indent=2)}")
             
-            # Log context update after enhancement
-            self.logger.info("Updating context with enhancement results")
+            self.logger.info("Preprocessing and guidelines generation completed")
+            self.logger.debug(f"Updated context: {json.dumps(base_context, indent=2)}")
+
+            # Execute enhancement stage with combined results
+            self.logger.info("Starting enhancement stage")
+            enhancement_result = await self._execute_enhancement(base_context)
             base_context["stage_results"]["enhancement"] = enhancement_result
-            self.logger.debug(f"Final context state: {json.dumps(base_context['stage_results'], indent=2)}")
-
-            # Log response creation
-            self.logger.info("\n=== Preparing Final Response ===")
-            response = {
-                "status": "success",
-                "request_id": base_context["request_id"],
-                "metadata": {
-                    "timestamp": base_context["timestamp"],
-                    "ai_type": ai_type,
-                    "style": style,
-                    "execution_metrics": {
-                        "completion_time": datetime.datetime.now().isoformat()
-                    }
-                },
-                "stages": {
-                    "analysis": {"result": analysis_result},
-                    "guidelines": {"result": guidelines_result},
-                    "enhancement": {"result": enhancement_result}
-                }
-            }
-            self.logger.debug(f"Final Response: {json.dumps(response, indent=2)}")
-            self.logger.info("=== Pipeline Execution Completed ===")
-
-            return response
+            
+            self.logger.info("Pipeline execution completed successfully")
+            return self._format_final_response(base_context)
 
         except Exception as e:
-            # Detailed error logging
-            self.logger.error("\n=== Pipeline Execution Failed ===")
-            self.logger.error(f"Error message: {str(e)}")
-            self.logger.error("Full traceback:", exc_info=True)
-            self.logger.error(f"Failed with context state: {json.dumps(base_context, indent=2)}")
-            
-            error_response = {
-                "status": "error",
-                "error": str(e),
-                "timestamp": datetime.datetime.now().isoformat(),
-                "error_context": {
-                    "last_successful_stage": next(
-                        (stage for stage in ["enhancement", "guidelines", "analysis"] 
-                        if stage in base_context.get("stage_results", {})),
-                        None
-                    )
-                }
+            self.logger.error(f"Pipeline execution failed: {str(e)}")
+            self.logger.exception("Full traceback:")
+            return self._create_error_response(str(e))
+
+    async def _execute_preprocessing(self, prompt: str) -> Dict:
+        """Execute preprocessing in thread pool"""
+        self.logger.info("Executing preprocessing stage")
+        with ThreadPoolExecutor() as executor:
+            return await asyncio.get_event_loop().run_in_executor(
+                executor,
+                self.preprocessor.preprocess_prompt,
+                prompt
+            )
+
+    async def _execute_guidelines(self, context: Dict) -> Dict:
+        """Execute guidelines stage in thread pool"""
+        self.logger.info("Executing guidelines stage")
+        with ThreadPoolExecutor() as executor:
+            return await asyncio.get_event_loop().run_in_executor(
+                executor,
+                self.guidelines_stage.execute,
+                context
+            )
+
+    async def _execute_enhancement(self, context: Dict) -> Dict:
+        """Execute enhancement stage"""
+        self.logger.info("Executing enhancement stage")
+        return await self.enhancement_stage.execute(context)
+
+    def _format_final_response(self, context: Dict) -> Dict:
+        """Format the final pipeline response"""
+        self.logger.info("Formatting final response")
+        try:
+            response = {
+                "status": "success",
+                "request_id": context["request_id"],
+                "metadata": {
+                    "timestamp": context["timestamp"],
+                    "ai_type": context["ai_type"],
+                    "style": context["style"]
+                },
+                "stages": context["stage_results"],
+                "enhancement_result": context["stage_results"].get("enhancement", {}).get("result", {})
             }
-            self.logger.debug(f"Error Response: {json.dumps(error_response, indent=2)}")
-            return error_response
+            self.logger.debug(f"Final response: {json.dumps(response, indent=2)}")
+            return response
+        except Exception as e:
+            self.logger.error(f"Error formatting final response: {str(e)}")
+            return self._create_error_response(str(e))
+
 
     def _generate_style_metadata(self, style: str, ai_type: str) -> Dict:
         """
@@ -5750,27 +6628,33 @@ except Exception as e:
 
 
 @app.route('/process', methods=['POST'])
-def process_request():
+async def process_request():
     try:
+        logger.info("Received new process request")
+        
+        # Parse request data
         if request.is_json:
             data = request.get_json()
         elif request.content_type == 'application/x-www-form-urlencoded':
             try:
                 form_data = request.form.get('data')
                 if not form_data:
+                    logger.error("No data provided in form")
                     return jsonify({
                         "status": "error",
                         "error": "No data provided in form",
                         "timestamp": datetime.datetime.now().isoformat()
                     }), 400
                 data = json.loads(form_data)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in form data: {str(e)}")
                 return jsonify({
                     "status": "error",
                     "error": "Invalid JSON in form data",
                     "timestamp": datetime.datetime.now().isoformat()
                 }), 400
         else:
+            logger.error(f"Unsupported Content-Type: {request.content_type}")
             return jsonify({
                 "status": "error",
                 "error": f"Unsupported Content-Type: {request.content_type}",
@@ -5778,22 +6662,27 @@ def process_request():
             }), 415
 
         if not data or 'prompt' not in data:
+            logger.error("Missing prompt in request data")
             return jsonify({
                 "status": "error",
                 "error": "Missing prompt in request data",
                 "timestamp": datetime.datetime.now().isoformat()
             }), 400
 
+        # Execute pipeline
         pipeline = EnhancedPromptPipeline(logger)
-        response = pipeline.execute_pipeline(
+        response = await pipeline.execute_pipeline(
             prompt=data['prompt'],
             ai_type=data.get('AIType', 'descriptive'),
             style=data.get('style', 'professional')
         )
 
+        logger.info("Request processed successfully")
         return jsonify(response)
 
     except Exception as e:
+        logger.error(f"Request processing failed: {str(e)}")
+        logger.exception("Full traceback:")
         return jsonify({
             "status": "error",
             "error": str(e),
