@@ -25,7 +25,6 @@ import time
 nltk.download('wordnet')
 import datetime
 import asyncio
-from spellchecker import SpellChecker
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -103,7 +102,6 @@ class EnhancedPromptPreprocessor:
         self.logger = logger
         self.logger.info("Initializing EnhancedPromptPreprocessor with NLP models...")
         try:
-            self.spell_checker = SpellChecker()
             self.model_manager = ModelManager()
             self.nlp = self.model_manager.models['nlp']
             self.sentiment_analyzer = self.model_manager.models['sentiment_analyzer']
@@ -113,6 +111,7 @@ class EnhancedPromptPreprocessor:
         except Exception as e:
             self.logger.error(f"Failed to initialize NLP models: {str(e)}")
             raise
+
 
 
     def _calculate_specificity(self, doc) -> float:
@@ -641,40 +640,19 @@ class EnhancedPromptPreprocessor:
 
     def _clean_and_spell_check(self, text: str) -> Tuple[str, Dict[str, str]]:
         """
-        Clean text and perform spell checking
+        Clean text without spell checking
+        Returns cleaned text and an empty corrections dictionary for compatibility
         """
         # Basic text cleaning
         cleaned_text = text.strip()
         cleaned_text = re.sub(r'\s+', ' ', cleaned_text)  # Remove extra whitespace
         
-        # Spell checking
-        words = cleaned_text.split()
-        corrections = {}
-        corrected_words = []
-        
-        for word in words:
-            # Skip spell checking for common special terms
-            if self._is_special_term(word):
-                corrected_words.append(word)
-                continue
-                
-            # Check spelling
-            if word not in self.spell_checker:
-                correction = self.spell_checker.correction(word)
-                if correction and correction != word:
-                    corrections[word] = correction
-                    corrected_words.append(correction)
-                else:
-                    corrected_words.append(word)
-            else:
-                corrected_words.append(word)
-        
-        corrected_text = ' '.join(corrected_words)
-        return corrected_text, corrections
+        # Return cleaned text with empty corrections dict to maintain interface
+        return cleaned_text, {}
 
     def _is_special_term(self, word: str) -> bool:
         """
-        Check if word is a special term that should skip spell checking
+        Check if word is a special term (kept for future reference)
         """
         # Common AI model names
         ai_terms = {'gpt', 'chatgpt', 'dalle', 'midjourney', 'claude', 'gemini'}
@@ -682,7 +660,6 @@ class EnhancedPromptPreprocessor:
         # Common technical terms
         tech_terms = {'api', 'json', 'html', 'css', 'url', 'sql'}
         
-        # Check if word is in special terms or contains numbers
         return (
             word.lower() in ai_terms or 
             word.lower() in tech_terms or
@@ -690,7 +667,7 @@ class EnhancedPromptPreprocessor:
             '@' in word or  # Email addresses
             '/' in word or  # URLs/paths
             word.startswith(('http', 'www'))  # URLs
-        )
+        ) 
 
     def _analyze_intent(self, text: str) -> Dict:
         """
@@ -826,10 +803,10 @@ class ParameterManager:
 class AsyncPipelineCoordinator:
     def __init__(self, logger: Logger):
         self.logger = logger
-        self.preprocessor = PromptPreprocessor(logger)
+        self.preprocessor = EnhancedPromptPreprocessor(logger)
         self.guidelines_generator = GuidelinesStage(logger)
         self.context_tracker = ContextTracker()
-        self.spell_checker = SpellChecker()
+        # self.spell_checker = SpellChecker()
         
     async def coordinate_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
         try:
@@ -3530,74 +3507,98 @@ class PipelineStage:
 
 
 class AnalysisStage(PipelineStage):
-    def execute(self, pipeline_context: Dict) -> Dict:
+    def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
+        super().__init__(logger, api_handler, context_tracker)
+        self.preprocessor = EnhancedPromptPreprocessor(logger)
+
+    async def execute(self, pipeline_context: Dict) -> Dict:
         try:
             self.logger.info("Starting analysis stage")
             prompt = pipeline_context.get("original_prompt")
             ai_type = pipeline_context.get("ai_type")
             style = pipeline_context.get("style")
-            preprocessor = PromptPreprocessor(self.logger)
-            nlp_analysis = preprocessor.analyze_prompt(prompt)
 
-            self.logger.debug("NLP Analysis Insights:")
-            self.logger.debug(f"Intent Classification: {nlp_analysis.get('intent_classification', {})}")
-            self.logger.debug(f"AI Persona: {nlp_analysis.get('ai_persona', {})}")
-            self.logger.debug(f"Contextual Requirements: {nlp_analysis.get('contextual_requirements', {})}")
-            self.logger.debug(f"Domain Insights: {nlp_analysis.get('domain_insights', {})}")
+            preprocessing_result = await self._execute_preprocessing(prompt)
+            self.logger.debug(f"Preprocessing result: {preprocessing_result}")
+
             
-            system_message = f"""You are a prompt analysis expert specializing in {ai_type} systems.
-            Your  task is to perform a COMPLETE analysis of the user's request to communicate it to the {ai_type} LLM in the best possible way.
-              Your analysis is supposed to provide the llm a high grade understanding of the user's request so that it understands the user's request to 
-              generate precise and optimized response catering to the user's exact contextual requirement.
-              Your analysis directly informs prompt construction.
 
-            1.If the user's request is domain-specific, ensure your analysis accounts for domain-relevant terminology, tools, or best practices.
-            2.  Key requirements
-            3. Essential context
-            4. Key constraints specific to {ai_type}'s capabilities
-NO speculation or assumptions. NO general guidance.
-
-            CRITICAL - 
-            ONLY BUILD UPON WHAT THE USER HAS PROVIDED AND DO NOT ASSUME ANYTHING.
+            # self.logger.debug("NLP Analysis Insights:")
+            # self.logger.debug(f"Intent Classification: {nlp_analysis.get('intent_classification', {})}")
+            # self.logger.debug(f"AI Persona: {nlp_analysis.get('ai_persona', {})}")
+            # self.logger.debug(f"Contextual Requirements: {nlp_analysis.get('contextual_requirements', {})}")
+            # self.logger.debug(f"Domain Insights: {nlp_analysis.get('domain_insights', {})}")
             
-            THE RESPONSE SHOULD NOT BE MORE THAN 500 WORDS.
-           """
+#             system_message = f"""You are a prompt analysis expert specializing in {ai_type} systems.
+#             Your  task is to perform a COMPLETE analysis of the user's request to communicate it to the {ai_type} LLM in the best possible way.
+#               Your analysis is supposed to provide the llm a high grade understanding of the user's request so that it understands the user's request to 
+#               generate precise and optimized response catering to the user's exact contextual requirement.
+#               Your analysis directly informs prompt construction.
 
-            user_message = f"""Analyze: "{prompt}"
-            System: {ai_type}
-            Style: {style}
-            Your task is to create a concise analysis of the user's requirement in his written prompt,
-              understand what the user needs, create pointers that can explain ths user's intent even more clearly.
-            Include key requirements and context needed for prompt enhancement.
-            Consider whether there are any constraints, uncommon scenarios, or edge cases that might impact prompt effectiveness, and highlight them in your analysis.
-            Return ONLY:
-1. Core intent
-You should breakdown and understand the domain which the user is targeting , and have a deep understanding of 
-all the tools relevant to the domain that are present.
-2. Essential requirements
-3. Critical context needed for {ai_type}
-CRITICAL - 
-Identify any potential ambiguities or missing details in the user’s request. If clarity is lacking, explicitly state the ambiguity and propose at least two follow-up questions to resolve it before proceeding.
-DO NOT ADD ANY EXAMPLES THAT WILL MISLEAD THE PROMPT CREATION PROCESS, DO NOT ADD ANY USER RELATED INFORMATION THAT THE USER HAS NOT MENTIONED. IF NEEDED ONLY USE PLACEHOLDERS.
-Keep analysis focused and factual."""
+#             1.If the user's request is domain-specific, ensure your analysis accounts for domain-relevant terminology, tools, or best practices.
+#             2.  Key requirements
+#             3. Essential context
+#             4. Key constraints specific to {ai_type}'s capabilities
+# NO speculation or assumptions. NO general guidance.
 
-            # Adjust API call parameters
-            response = self.api_handler.make_api_call(
-                system_message=system_message,
-                prompt=user_message,
-                temperature=0.3,
-                max_tokens=1000,  # Ensure enough tokens for complete response 
-                presence_penalty=0.0,
-                frequency_penalty=0.0,
-                stop=None  # Don't use stop tokens that might truncate
+#             CRITICAL - 
+#             ONLY BUILD UPON WHAT THE USER HAS PROVIDED AND DO NOT ASSUME ANYTHING.
+            
+#             THE RESPONSE SHOULD NOT BE MORE THAN 500 WORDS.
+#            """
+
+#             user_message = f"""Analyze: "{prompt}"
+#             System: {ai_type}
+#             Style: {style}
+#             Your task is to create a concise analysis of the user's requirement in his written prompt,
+#               understand what the user needs, create pointers that can explain ths user's intent even more clearly.
+#             Include key requirements and context needed for prompt enhancement.
+#             Consider whether there are any constraints, uncommon scenarios, or edge cases that might impact prompt effectiveness, and highlight them in your analysis.
+#             Return ONLY:
+# 1. Core intent
+# You should breakdown and understand the domain which the user is targeting , and have a deep understanding of 
+# all the tools relevant to the domain that are present.
+# 2. Essential requirements
+# 3. Critical context needed for {ai_type}
+# CRITICAL - 
+# Identify any potential ambiguities or missing details in the user’s request. If clarity is lacking, explicitly state the ambiguity and propose at least two follow-up questions to resolve it before proceeding.
+# DO NOT ADD ANY EXAMPLES THAT WILL MISLEAD THE PROMPT CREATION PROCESS, DO NOT ADD ANY USER RELATED INFORMATION THAT THE USER HAS NOT MENTIONED. IF NEEDED ONLY USE PLACEHOLDERS.
+# Keep analysis focused and factual."""
+
+            system_message = self._create_analysis_system_message(
+                preprocessing_result, ai_type, style
             )
 
-            self.logger.debug(f"Raw API response: {response}")
-            processed_response = self._process_analysis_response(response.get("content", ""), pipeline_context)
-            return self._preserve_context("analysis", processed_response)
+            analysis_prompt = self._create_chain_of_thought_prompt(
+                prompt, preprocessing_result, ai_type, style
+            )
+
+            # Adjust API call parameters
+            response = await self.api_handler.make_api_call(
+                system_message=system_message,
+                prompt=analysis_prompt,
+                temperature=0.3,  # Lower temperature for analysis
+                max_tokens=2000,
+                presence_penalty=0.0,
+                frequency_penalty=0.0
+            )
+
+            processed_response = self._process_analysis_response(
+                response.get("content", ""), 
+                pipeline_context
+            )
+
+            # Update context tracker
+            self.context_tracker.add_stage_result(
+                "analysis",
+                processed_response,
+                {"preprocessing": preprocessing_result}
+            )
+
+            return processed_response
 
         except Exception as e:
-            self.logger.error(f"Analysis failed: {str(e)}", exc_info=True)
+            self.logger.error(f"Analysis stage failed: {str(e)}", exc_info=True)
             return self._create_fallback_analysis(pipeline_context)
 
     def _process_analysis_response(self, content: str, pipeline_context: Dict) -> Dict:
@@ -3625,6 +3626,138 @@ Keep analysis focused and factual."""
         except Exception as e:
             self.logger.error(f"Response processing failed: {str(e)}")
             return self._create_fallback_analysis(pipeline_context)
+
+    async def _execute_preprocessing(self, prompt: str) -> Dict:
+        """Execute preprocessing with proper error handling"""
+        try:
+            return await asyncio.get_event_loop().run_in_executor(
+                None,
+                self.preprocessor.analyze_prompt,
+                prompt
+            )
+        except Exception as e:
+            self.logger.error(f"Preprocessing failed: {str(e)}")
+            return self.preprocessor._create_fallback_preprocessing(prompt)
+
+    def _create_analysis_system_message(self, preprocessing: Dict, ai_type: str, style: str) -> str:
+        """Create dynamic system message based on preprocessing results"""
+        complexity = preprocessing.get("complexity_score", 50)
+        entities = preprocessing.get("named_entities", [])
+        domain_context = preprocessing.get("domain_analysis", {})
+
+        return f"""You are an expert prompt analysis specialist for {ai_type} systems.
+Your task is to perform comprehensive analysis of the user's request using Chain-of-Thought reasoning.
+
+Context Information:
+- Complexity Level: {'High' if complexity > 70 else 'Medium' if complexity > 40 else 'Low'}
+- Domain Context: {domain_context.get('primary_domain', 'General')}
+- Style Requirements: {style}
+
+You must:
+1. Break down the request into clear logical steps
+2. Identify core requirements and constraints
+3. Consider {ai_type}-specific capabilities and limitations
+4. Maintain {style} communication style
+5. Extract domain-specific terminology and context
+
+Return ONLY valid JSON with the following structure:
+{{
+    "chain_of_thought": {{
+        "steps": ["step1", "step2", ...],
+        "reasoning": "explanation of analysis process"
+    }},
+    "analysis_results": {{
+        "core_intent": "main objective",
+        "requirements": ["req1", "req2", ...],
+        "constraints": ["constraint1", "constraint2", ...],
+        "domain_context": {{
+            "terminology": ["term1", "term2", ...],
+            "expertise_level": "level"
+        }}
+    }},
+    "implementation_considerations": {{
+        "critical_factors": ["factor1", "factor2", ...],
+        "potential_challenges": ["challenge1", "challenge2", ...]
+    }}
+}}"""
+
+    def _create_chain_of_thought_prompt(self, prompt: str, preprocessing: Dict, ai_type: str, style: str) -> str:
+        """Generate analysis prompt using Chain-of-Thought approach"""
+        return f"""Analyze this request using step-by-step reasoning:
+
+Original Request: "{prompt}"
+AI System: {ai_type}
+Style: {style}
+
+Consider these preprocessing insights:
+- Complexity Score: {preprocessing.get('complexity_score', 'N/A')}
+- Key Entities: {', '.join(str(e) for e in preprocessing.get('named_entities', [])[:3])}
+- Domain: {preprocessing.get('domain_analysis', {}).get('primary_domain', 'General')}
+
+Let's think through this systematically:
+1. First, understand the core request
+2. Then, identify key requirements
+3. Next, consider {ai_type} capabilities
+4. Finally, align with {style} style
+
+Provide your analysis following the exact JSON structure specified.
+Focus on actionable insights that will inform prompt enhancement."""
+
+    def _process_analysis_response(self, content: str, pipeline_context: Dict) -> Dict:
+        """Process and validate analysis response"""
+        try:
+            if not content:
+                raise ValueError("Empty response content")
+
+            # Clean and parse JSON
+            cleaned_content = self._clean_json_content(content)
+            parsed_response = json.loads(cleaned_content)
+
+            # Validate required fields
+            required_fields = {
+                "chain_of_thought", "analysis_results", "implementation_considerations"
+            }
+            
+            if not all(field in parsed_response for field in required_fields):
+                raise ValueError("Missing required fields in response")
+
+            # Add metadata
+            return {
+                "status": "success",
+                "result": parsed_response,
+                "context": {
+                    "original_prompt": pipeline_context.get("original_prompt"),
+                    "ai_type": pipeline_context.get("ai_type"),
+                    "style": pipeline_context.get("style")
+                },
+                "_metadata": {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "stage": "analysis"
+                }
+            }
+
+        except Exception as e:
+            self.logger.error(f"Response processing failed: {str(e)}")
+            return self._create_fallback_analysis(pipeline_context)
+
+    def _clean_json_content(self, content: str) -> str:
+        """Clean and extract JSON from response content"""
+        try:
+            # Remove any markdown formatting
+            content = re.sub(r'```json\s*|\s*```', '', content)
+            
+            # Find JSON boundaries
+            start = content.find('{')
+            end = content.rfind('}') + 1
+            
+            if start != -1 and end > start:
+                return content[start:end]
+                
+            raise ValueError("No valid JSON found in content")
+            
+        except Exception as e:
+            self.logger.error(f"JSON cleaning failed: {str(e)}")
+            raise
 
     def _create_fallback_analysis(self, pipeline_context: Dict) -> Dict:
         """Create fallback analysis with basic prompt context"""
@@ -4953,7 +5086,8 @@ class EnhancedPromptPipeline:
                 "ai_type": ai_type,
                 "style": style,
                 "timestamp": datetime.datetime.now().isoformat(),
-                "stage_results": {}
+                "stage_results": {},
+                "context_chain": []
             }
             
             self.logger.debug(f"Created base context: {json.dumps(base_context, indent=2)}")
@@ -4968,6 +5102,12 @@ class EnhancedPromptPipeline:
             guidelines_task = asyncio.create_task(
                 self._execute_guidelines(base_context)
             )
+
+            self.logger.info("Executing analysis stage")
+            analysis_task = asyncio.create_task(
+            self._execute_analysis(prompt, ai_type, style)
+            )
+
             
             # Wait for both tasks to complete
             preprocessing_result, guidelines_result = await asyncio.gather(
@@ -4975,6 +5115,9 @@ class EnhancedPromptPipeline:
                 guidelines_task,
                 return_exceptions=True
             )
+
+            analysis_result = await analysis_task
+            self._log_stage_result("analysis", analysis_result)
             
             # Handle potential errors from parallel execution
             if isinstance(preprocessing_result, Exception):
@@ -4986,8 +5129,11 @@ class EnhancedPromptPipeline:
                 guidelines_result = self._create_fallback_guidelines(base_context)
 
             # Update context with results
-            base_context["stage_results"]["preprocessing"] = preprocessing_result
-            base_context["stage_results"]["guidelines"] = guidelines_result
+            base_context["stage_results"].update({
+            "preprocessing": preprocessing_result if not isinstance(preprocessing_result, Exception) else self._create_fallback_preprocessing(prompt),
+            "guidelines": guidelines_result if not isinstance(guidelines_result, Exception) else self._create_fallback_guidelines(base_context),
+            "analysis": analysis_result if not isinstance(analysis_result, Exception) else self._create_fallback_analysis(prompt, ai_type, style)
+        })
             
             self.logger.info("Preprocessing and guidelines generation completed")
             self.logger.debug(f"Updated context: {json.dumps(base_context, indent=2)}")
@@ -4995,6 +5141,7 @@ class EnhancedPromptPipeline:
             # Execute enhancement stage with combined results
             self.logger.info("Starting enhancement stage")
             enhancement_result = await self._execute_enhancement(base_context)
+            self._log_stage_result("enhancement", enhancement_result)
             base_context["stage_results"]["enhancement"] = enhancement_result
             
             self.logger.info("Pipeline execution completed successfully")
@@ -5014,6 +5161,15 @@ class EnhancedPromptPipeline:
                 self.preprocessor.preprocess_prompt,
                 prompt
             )
+
+    def _log_stage_result(self, stage_name: str, result: Any):
+        """Enhanced stage result logging"""
+        if isinstance(result, Exception):
+            self.logger.error(f"{stage_name} stage failed: {str(result)}")
+            self.logger.debug(f"{stage_name} full error: {traceback.format_exc()}")
+        else:
+            self.logger.info(f"{stage_name} stage completed successfully")
+            self.logger.debug(f"{stage_name} result: {json.dumps(result, indent=2)}")
 
     async def _execute_guidelines(self, context: Dict) -> Dict:
         """Execute guidelines stage in thread pool"""
@@ -5050,6 +5206,26 @@ class EnhancedPromptPipeline:
         except Exception as e:
             self.logger.error(f"Error formatting final response: {str(e)}")
             return self._create_error_response(str(e))
+
+    async def _execute_analysis(self, prompt: str, ai_type: str, style: str) -> Dict:
+        """Execute analysis stage with enhanced logging"""
+        try:
+            self.logger.info(f"Starting analysis for prompt: '{prompt[:50]}...'")
+            
+            result = await self.analysis_stage.execute({
+                "original_prompt": prompt,
+                "ai_type": ai_type,
+                "style": style
+            })
+            
+            self.logger.info("Analysis stage completed")
+            self.logger.debug(f"Analysis result: {json.dumps(result, indent=2)}")
+            
+            return result
+        except Exception as e:
+            self.logger.error(f"Analysis stage failed: {str(e)}")
+            self.logger.debug(f"Analysis error details: {traceback.format_exc()}")
+            return self._create_fallback_analysis(prompt, ai_type, style)
 
 
     def _generate_style_metadata(self, style: str, ai_type: str) -> Dict:
@@ -5826,7 +6002,7 @@ class ResponseHandler:
 class PromptEnhancer:
     def __init__(self, logger: Logger):
         self.logger = logger
-        self.preprocessor = PromptPreprocessor()
+        self.preprocessor = EnhancedPromptPreprocessor()
         self.system_message_gen = SystemMessageGenerator()
 
     def generate_guidelines(self, prompt: str, ai_type: str, style: str) -> Dict[str, Any]:
