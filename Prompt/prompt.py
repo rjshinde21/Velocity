@@ -198,6 +198,85 @@ class EnhancedPromptPreprocessor:
                 'coherence_score': 0.0
             }
 
+    def analyze_prompt(self, prompt_input: Union[str, Dict]) -> Dict:
+        """
+        Analyzes prompt to extract key insights using deep NLP processing.
+        
+        Args:
+            prompt_input: Either a string prompt or a dict containing prompt data
+            
+        Returns:
+            Dict containing comprehensive prompt analysis
+        """
+        try:
+            self.logger.info("Starting enhanced prompt analysis")
+            
+            # Extract prompt string if input is dict
+            prompt = prompt_input['original_prompt'] if isinstance(prompt_input, dict) else prompt_input
+            self.logger.debug(f"Processing prompt: {prompt[:100]}...")
+            
+            # Process with spaCy
+            doc = self.nlp(prompt)
+            
+            # Extract linguistic features
+            linguistic_features = {
+                "sentence_count": len(list(doc.sents)),
+                "complexity_metrics": {
+                    "flesch_score": textstat.flesch_reading_ease(prompt),
+                    "grade_level": textstat.coleman_liau_index(prompt)
+                },
+                "structural_features": self._calculate_sentence_complexity(doc),
+                "semantic": self._analyze_semantic_relationships(doc),
+                "discourse": self._analyze_discourse_structure(doc)
+            }
+            
+            # Run sentiment analysis
+            sentiment_result = self.sentiment_analyzer(prompt)[0]
+            
+            # Extract keywords using KeyBERT
+            keywords = self.keyword_model.extract_keywords(
+                prompt,
+                top_n=5,
+                stop_words='english'
+            )
+            
+            # Named Entity Recognition
+            named_entities = [
+                (ent.text, ent.label_, self._calculate_entity_confidence(ent))
+                for ent in doc.ents
+            ]
+            
+            # Technical analysis
+            technical_assessment = self._assess_technical_complexity(doc)
+            
+            # Domain analysis
+            domain_context = self._analyze_domain_context(doc)
+            
+            # Combine all analyses
+            return {
+                "content_analysis": {
+                    "named_entities": named_entities,
+                    "keywords": [kw[0] for kw in keywords],
+                    "sentiment": {
+                        "label": sentiment_result['label'],
+                        "score": sentiment_result['score']
+                    }
+                },
+                "linguistic_features": linguistic_features,
+                "technical_assessment": technical_assessment,
+                "domain_context": domain_context,
+                "complexity_score": linguistic_features["complexity_metrics"]["grade_level"],
+                "sentence_count": linguistic_features["sentence_count"],
+                "_metadata": {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "version": "2.0"
+                }
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Prompt analysis failed: {str(e)}")
+            return self._create_fallback_preprocessing(prompt)
+
     def _determine_relationship_type(self, similarity_score: float) -> str:
         """
         Determine the type of semantic relationship based on similarity score
@@ -208,6 +287,15 @@ class EnhancedPromptPreprocessor:
             return 'moderate_continuation'
         else:
             return 'weak_continuation'
+
+    def _calculate_sentence_complexity(self, doc) -> Dict:
+        """Calculate sentence complexity metrics"""
+        sentences = list(doc.sents)
+        return {
+            "max_depth": max((len(list(sent.rights)) + len(list(sent.lefts))) for sent in sentences) if sentences else 0,
+            "avg_depth": sum((len(list(sent.rights)) + len(list(sent.lefts))) for sent in sentences) / len(sentences) if sentences else 0,
+            "compound_sentences": sum(1 for sent in sentences if "and" in sent.text.lower() or "but" in sent.text.lower() or "or" in sent.text.lower())
+        }
 
     def _analyze_discourse_structure(self, doc) -> Dict:
         """
@@ -1102,22 +1190,23 @@ class APIHandler:
         self.retry_count = 3
         self.base_delay = 1
 
-    def make_api_call(self, system_message: str, prompt: str, **params) -> Dict:
+    async def make_api_call(self, system_message: str, prompt: str, **params) -> Dict:
         try:
-            response = llama.run({
-                "messages": [
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": prompt}
-                ],
-                "model": "llama3.2-1b",
-                "stream": False,
-                **params
-            })
+            response = await asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: llama.run({
+                    "messages": [
+                        {"role": "system", "content": system_message},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "model": "llama3.2-1b",
+                    "stream": False,
+                    **params
+                })
+            )
 
             if hasattr(response, 'json'):
                 response_data = response.json()
-                
-                # Extract content from Llama API response
                 if 'choices' in response_data and len(response_data['choices']) > 0:
                     if 'message' in response_data['choices'][0]:
                         content = response_data['choices'][0]['message'].get('content', '')
@@ -4195,18 +4284,19 @@ class EnhancementStage(PipelineStage):
             # semantic_relationships = nlp_features.get("semantic", {}).get("relationships", [])
             # prompt_patterns = self._extract_prompt_patterns(nlp_features)
             original_prompt = analysis.get("original_prompt", "")
-            nlp_features = analysis.get("linguistic_features", {})
-            semantic_relationships = nlp_features.get("semantic", {}).get("relationships", [])
-            prompt_patterns = self._extract_prompt_patterns(nlp_features)
-            
-            enhanced_prompts = self._generate_semantic_variations(
-                original_prompt,
-                semantic_relationships,
-                prompt_patterns
-            )
-            
             ai_type = analysis.get("ai_type", "")
             style = analysis.get("style", "")
+            # nlp_features = analysis.get("linguistic_features", {})
+            # semantic_relationships = nlp_features.get("semantic", {}).get("relationships", [])
+            # prompt_patterns = self._extract_prompt_patterns(nlp_features)
+            
+            # enhanced_prompts = self._generate_semantic_variations(
+            #     original_prompt,
+            #     semantic_relationships,
+            #     prompt_patterns
+            # )
+            
+            
             
             # Log context details - keeping for debugging
             self.logger.debug(f"Original Prompt: {original_prompt}")
@@ -4307,7 +4397,7 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
             self.logger.debug(f"user message: {user_message}")
 
             # Make API call with increased token limit
-            response = self.api_handler.make_api_call(
+            response = await self.api_handler.make_api_call(
                 system_message=system_message,
                 prompt=user_message,
                 temperature=0.7,

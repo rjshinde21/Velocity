@@ -91,8 +91,9 @@ const applyReferral = async (req, res) => {
         const referrer_id = referralData[0].user_id;
         const REFERRER_BONUS = 50; // Tokens for referrer
         const REFERRED_BONUS = 30; // Tokens for new user
-
+        const PROMO_CODE_BONUS = 100;
         // Create referral record
+        if(referral_code != 'ENHANCE100'){
         await connection.query(
             `INSERT INTO referrals 
              (referrer_id, referred_id, referral_code, tokens_awarded_referrer, tokens_awarded_referred, status) 
@@ -107,7 +108,23 @@ const applyReferral = async (req, res) => {
         );
         await Token.topUpTokens(referrer_id, REFERRER_BONUS, connection);
         await Token.topUpTokens(new_user_id, REFERRED_BONUS, connection);
+    }
+    else{
+        await connection.query(
+            `INSERT INTO referrals 
+             (referrer_id, referred_id, referral_code, tokens_awarded_referrer, tokens_awarded_referred, status) 
+             VALUES (?, ?, ?, ?, ?, 'completed')`,
+            [referrer_id, new_user_id, referral_code, 0, PROMO_CODE_BONUS]
+        );
 
+        // Update referral code usage count
+        await connection.query(
+            'UPDATE referral_codes SET times_used = times_used + 1 WHERE code = ?',
+            [referral_code]
+        );
+        //await Token.topUpTokens(referrer_id, REFERRER_BONUS, connection);
+        await Token.topUpTokens(new_user_id, PROMO_CODE_BONUS, connection);
+    }
         // Top up tokens for both users using the Token model
         // try {
         //     // Update referrer's tokens
