@@ -3511,12 +3511,31 @@ class AnalysisStage(PipelineStage):
         super().__init__(logger, api_handler, context_tracker)
         self.preprocessor = EnhancedPromptPreprocessor(logger)
 
+    def _validate_pipeline_context(self, pipeline_context: Dict) -> Tuple[str, str, str]:
+        """
+        Validate and extract required parameters from pipeline context.
+        Returns tuple of (prompt, ai_type, style) or raises ValueError if missing required fields.
+        """
+        if not isinstance(pipeline_context, dict):
+            raise ValueError(f"Expected dict for pipeline_context, got {type(pipeline_context)}")
+
+        prompt = pipeline_context.get("original_prompt")
+        ai_type = pipeline_context.get("ai_type")
+        style = pipeline_context.get("style")
+
+        if not prompt:
+            raise ValueError("Missing required field: original_prompt")
+        
+        # Provide defaults for optional parameters
+        ai_type = ai_type or "general"
+        style = style or "standard"
+
+        return prompt, ai_type, style
+
     async def execute(self, pipeline_context: Dict) -> Dict:
         try:
             self.logger.info("Starting analysis stage")
-            prompt = pipeline_context.get("original_prompt")
-            ai_type = pipeline_context.get("ai_type")
-            style = pipeline_context.get("style")
+            prompt, ai_type, style = self._validate_pipeline_context(pipeline_context)
 
             preprocessing_result = await self._execute_preprocessing(prompt)
             self.logger.debug(f"Preprocessing result: {preprocessing_result}")
@@ -3585,7 +3604,11 @@ class AnalysisStage(PipelineStage):
 
             processed_response = self._process_analysis_response(
                 response.get("content", ""), 
-                pipeline_context
+                {
+                    "original_prompt": prompt,
+                    "ai_type": ai_type,
+                    "style": style
+                }
             )
 
             # Update context tracker
@@ -5103,10 +5126,8 @@ class EnhancedPromptPipeline:
                 self._execute_guidelines(base_context)
             )
 
-            self.logger.info("Executing analysis stage")
-            analysis_task = asyncio.create_task(
-            self._execute_analysis(prompt, ai_type, style)
-            )
+            analysis_result = await self._execute_analysis(prompt, ai_type, style)
+            base_context["stage_results"]["analysis"] = analysis_result
 
             
             # Wait for both tasks to complete
@@ -5116,7 +5137,7 @@ class EnhancedPromptPipeline:
                 return_exceptions=True
             )
 
-            analysis_result = await analysis_task
+            
             self._log_stage_result("analysis", analysis_result)
             
             # Handle potential errors from parallel execution
@@ -5208,15 +5229,20 @@ class EnhancedPromptPipeline:
             return self._create_error_response(str(e))
 
     async def _execute_analysis(self, prompt: str, ai_type: str, style: str) -> Dict:
-        """Execute analysis stage with enhanced logging"""
         try:
             self.logger.info(f"Starting analysis for prompt: '{prompt[:50]}...'")
             
-            result = await self.analysis_stage.execute({
+            # Get preprocessing results from context
+            preprocessing_result = await self._execute_preprocessing(prompt)
+            
+            analysis_context = {
                 "original_prompt": prompt,
                 "ai_type": ai_type,
-                "style": style
-            })
+                "style": style,
+                "preprocessing_results": preprocessing_result
+            }
+            
+            result = await self.analysis_stage.execute(analysis_context)
             
             self.logger.info("Analysis stage completed")
             self.logger.debug(f"Analysis result: {json.dumps(result, indent=2)}")
@@ -5411,23 +5437,25 @@ class EnhancedPromptPipeline:
         return True
 
     def _validate_stage_result(self, result: Dict, stage_name: str) -> bool:
-        """Validate stage result structure and content"""
         try:
             if not isinstance(result, dict):
                 self.logger.error(f"{stage_name} stage returned invalid result type: {type(result)}")
                 return False
                 
-            if result.get("status") == "error":
-                self.logger.error(f"{stage_name} stage reported error: {result.get('error')}")
-                return False
-                
-            if "result" not in result and "content" not in result:
-                self.logger.error(f"{stage_name} stage missing required content")
+            required_fields = {
+                "analysis": ["content", "analysis_results"],
+                "preprocessing": ["linguistic_features", "basic_analysis"],
+                "guidelines": ["implementation_strategy", "success_indicators"],
+                "enhancement": ["prompts", "context"]
+            }
+            
+            fields = required_fields.get(stage_name, [])
+            if not all(field in result for field in fields):
+                self.logger.error(f"{stage_name} stage missing required fields: {fields}")
                 return False
             
-            self.logger.debug(f"{stage_name} stage result validated successfully")
             return True
-            
+                
         except Exception as e:
             self.logger.error(f"Stage validation failed: {str(e)}")
             return False
