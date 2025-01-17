@@ -3057,6 +3057,25 @@ class PipelineStage:
         self.api_handler = api_handler
         self.context_tracker = context_tracker
 
+    async def _resolve_pipeline_context(self, context: Dict) -> Dict:
+        """Recursively resolve any coroutines in the pipeline context"""
+        resolved_context = {}
+        for key, value in context.items():
+            if asyncio.iscoroutine(value):
+                resolved_context[key] = await value
+            elif isinstance(value, dict):
+                resolved_context[key] = await self._resolve_pipeline_context(value)
+            elif isinstance(value, list):
+                resolved_context[key] = [
+                    await self._resolve_pipeline_context(item) if isinstance(item, dict)
+                    else await value if asyncio.iscoroutine(value)
+                    else item
+                    for item in value
+                ]
+            else:
+                resolved_context[key] = value
+        return resolved_context
+
     def _preserve_stage_context(self, current_stage: str, result: Dict, previous_context: Dict) -> Dict:
         """Enhanced context preservation between stages"""
         try:
@@ -3989,97 +4008,80 @@ class GuidelinesStage(PipelineStage):
     
 
 
-    def execute(self, pipeline_context: Dict) -> Dict:
+    async def execute(self, pipeline_context: Dict) -> Dict:
         try:
             # Enhanced context extraction
             analysis = pipeline_context.get("stage_results", {}).get("analysis", {}).get("analysis_results", {})
-            nlp_insights = analysis.get("linguistic_features", {})
-            domain_concepts = nlp_insights.get("domain_concepts", [])
-            action_patterns = nlp_insights.get("action_verbs", [])
-            analysis_content = analysis.get("content", "")
+            technique_info = analysis.get("technique", {})
             original_prompt = analysis.get("original_prompt", "")
             ai_type = analysis.get("ai_type", "")
             style = analysis.get("style", "professional")
-            complexity_score = nlp_insights.get("complexity_metrics", {}).get("flesch_score", 50)
-            temperature = 0.7 if complexity_score > 50 else 0.5
+
+            system_message = self._create_system_message(analysis, ai_type, style)
 
             # Ultra-Precise System Message
-            system_message = f"""You are a WORLD-CLASS prompt engineering expert specializing in {ai_type} systems.
-Your task is to provide SPECIFIC, FOCUSED GUIDANCE for constructing prompts based on:
-1. The user's specific request and context
-2. {ai_type}'s specific capabilities and interaction patterns,the user is writing the prompts on this specific ai platform.
-3. {style} style requirements
-RETURN ONLY:
-1. Core Prompt Requirements - What MUST be included
-2. Style-Specific Guidelines - How to maintain {style} style,In the "Style-Specific Guidelines" section, include common mistakes or pitfalls to avoid when maintaining the specified style.
-3. AI-Specific Optimizations - Best practices for {ai_type}
-4. Key Considerations - Critical factors for this specific request
-5. Ensure all guidelines are directly tied to the user's intent, as identified in the analysis stage.
-6.Suggest at least one way the user can validate the prompt's effectiveness in meeting their specific needs.
+#             system_message = f"""You are a WORLD-CLASS prompt engineering expert specializing in {ai_type} systems.
+# Your task is to provide SPECIFIC, FOCUSED GUIDANCE for constructing prompts based on:
+# 1. The user's specific request and context
+# 2. {ai_type}'s specific capabilities and interaction patterns,the user is writing the prompts on this specific ai platform.
+# 3. {style} style requirements
+# RETURN ONLY:
+# 1. Core Prompt Requirements - What MUST be included
+# 2. Style-Specific Guidelines - How to maintain {style} style,In the "Style-Specific Guidelines" section, include common mistakes or pitfalls to avoid when maintaining the specified style.
+# 3. AI-Specific Optimizations - Best practices for {ai_type}
+# 4. Key Considerations - Critical factors for this specific request
+# 5. Ensure all guidelines are directly tied to the user's intent, as identified in the analysis stage.
+# 6.Suggest at least one way the user can validate the prompt's effectiveness in meeting their specific needs.
 
-Keep responses CONCISE and ACTIONABLE. 
+# Keep responses CONCISE and ACTIONABLE. 
 
-CRITICAL GUIDELINE COMPOSITION INSTRUCTIONS:
-CRITICAL - 
+# CRITICAL GUIDELINE COMPOSITION INSTRUCTIONS:
+# CRITICAL - 
 
-DO NOT GENERATE ANYTHIN WITHOUT CONFIRMING THE UNDERSTANDING OF MY REQUEST, IF THERE IS ANY CLARITY MISSING , ASK ME FOLLOW UP QUESTIONS BEFORE GENERATING AND ONLY THEN GENERATE.
-1. MAXIMUM response length: 500 words
-2. Provide concise, bullet-pointed strategies for each section.
-3. DO NOT GENERATE ANY EXAMPLES AS IT WILL LEAD TO HALLUCNIATIONS FOR PROMPT CREATION
-FAILURE TO MEET THESE REQUIREMENTS RESULTS IN IMMEDIATE REGENERATION OF THE RESPONSE."""
+# DO NOT GENERATE ANYTHIN WITHOUT CONFIRMING THE UNDERSTANDING OF MY REQUEST, IF THERE IS ANY CLARITY MISSING , ASK ME FOLLOW UP QUESTIONS BEFORE GENERATING AND ONLY THEN GENERATE.
+# 1. MAXIMUM response length: 500 words
+# 2. Provide concise, bullet-pointed strategies for each section.
+# 3. DO NOT GENERATE ANY EXAMPLES AS IT WILL LEAD TO HALLUCNIATIONS FOR PROMPT CREATION
+# FAILURE TO MEET THESE REQUIREMENTS RESULTS IN IMMEDIATE REGENERATION OF THE RESPONSE."""
 
  
             user_message = f"""Generate focused guidelines for constructing prompts for:
 
 CONTEXT:
 Original Request: "{original_prompt}"
-Analysis: {analysis_content} (If the analysis consists of any follow up questions, analyze them and answer them based on the user's requirements. If it adds up to the prompt, answer it. If it doesn't, don't answer it.)
+Selected Technique: {technique_info.get('name')}
+Technique Reasoning: {technique_info.get('reasoning')}
 
 REQUIREMENTS:
 - AI Platform: {ai_type}
 - Response Style: {style}
+- Technique Implementation: {technique_info.get('name')}
 
-Return guidelines in this structure:
-1. CORE REQUIREMENTS:
-   - Essential elements for this specific request
-   - Critical context to include
+Generate comprehensive guidelines that integrate:
+1. {technique_info.get('name')} implementation strategies
+2. {style} style requirements
+3. {ai_type} platform optimization
 
-2. STYLE GUIDELINES:
-   - How to maintain {style} style
-   - Style-specific dos and don'ts
-
-3. {ai_type} OPTIMIZATION:
-   - Platform-specific best practices
-   - Interaction patterns to use/avoid
-
-4. PROMPT CONSTRUCTION:
-   - Structure recommendations
-Emphasise more on STYLE GUIDELINES and {ai_type} OPTIMIZATION
-Keep focused on THIS SPECIFIC REQUEST  No general theory or explanations.
-
-"""
+Focus on creating guidelines that will help generate prompts that:
+1. Follow {technique_info.get('name')} principles correctly
+2. Maintain {style} style consistently
+3. Optimize for {ai_type} capabilities"""
 
             # Enhanced API Call with More Generous Creativity Parameters
-            response = self.api_handler.make_api_call(
-                system_message=system_message,
-                prompt=user_message,
-                temperature=0.7,  # Higher creativity
-                top_p=0.9,        # More diverse sampling
-                max_tokens=4000,  # Increased token limit
-                presence_penalty=0.2  # Slightly more diverse vocabulary
-            )
+            response = await self.api_handler.make_api_call(
+            system_message=system_message,
+            prompt=user_message
+        )
             
             # Advanced Response Processing
             formatted_response = {
-                "content": response.get("content", ""),
-                "context": {
-                    "prompt": original_prompt,
-                    "ai_type": ai_type,
-                    "style": style,
-                    "analysis_depth": len(analysis_content),
-                    "generation_timestamp": datetime.datetime.now().isoformat()
-                }
+            "content": response.get("content", ""),
+            "context": {
+                "prompt": original_prompt,
+                "ai_type": ai_type,
+                "style": style
             }
+        }
             
             return self._preserve_context("guidelines", formatted_response)
 
@@ -4151,26 +4153,49 @@ Keep focused on THIS SPECIFIC REQUEST  No general theory or explanations.
                 
         return clean_params
 
-    def _create_system_message(self, ai_type: str, style: str) -> str:
-        return f"""You are a guidelines expert for {ai_type} systems.
-        Generate comprehensive guidelines and return JSON in this exact structure:
-        {{
-            "guidelines": {{
-                "implementation_approach": "string",
-                "key_considerations": ["string"],
-                "best_practices": ["string"]
-            }},
-            "parameters": {{
-                "temperature": {{"value": 0.7, "reasoning": "string"}},
-                "top_p": {{"value": 0.9, "reasoning": "string"}},
-                "presence_penalty": {{"value": 0.0, "reasoning": "string"}},
-                "frequency_penalty": {{"value": 0.0, "reasoning": "string"}}
-            }},
-            "implementation_notes": {{
-                "critical_considerations": ["string"],
-                "success_criteria": ["string"]
-            }}
-        }}"""
+    def _create_system_message(self, analysis_result: Dict, ai_type: str, style: str) -> str:
+        # Extract prompt engineering technique from analysis
+        technique = analysis_result.get("technique", {})
+        technique_name = technique.get("name", "Chain-of-Thought")
+        technique_reasoning = technique.get("reasoning", "")
+
+        return f"""You are a WORLD-CLASS prompt engineering expert specializing in {ai_type} systems.
+    Your task is to provide SPECIFIC, FOCUSED GUIDANCE for constructing prompts using the {technique_name} technique.
+
+    CONTEXT AND REQUIREMENTS:
+    1. Prompt Engineering Technique: {technique_name}
+    - Reasoning: {technique_reasoning}
+    - Implementation Requirements: Follow {technique_name} specific patterns
+    2. AI System: {ai_type} specific capabilities and interaction patterns
+    3. Style: {style} communication requirements
+
+    GENERATE GUIDELINES COVERING:
+    1. {technique_name} Implementation:
+    - How to structure the prompt following {technique_name} principles
+    - Key elements that must be included
+    - Common pitfalls to avoid
+
+    2. Style-Specific Guidelines:
+    - How to maintain {style} style
+    - Style integration with {technique_name}
+    - Common style-related mistakes to avoid
+
+    3. {ai_type} Optimization:
+    - Platform-specific best practices
+    - Integration with {technique_name}
+    - Key considerations for this AI platform
+
+    4. Success Criteria:
+    - How to validate prompt effectiveness
+    - Quality indicators to check
+    - Implementation validation steps
+
+    CRITICAL GUIDELINES FOR COMPOSITION:
+    1. Maximum response length: 500 words
+    2. Provide concise, actionable strategies
+    3. Focus on practical implementation
+    4. Ensure all guidelines align with {technique_name} principles
+    """
         
     def _create_guidelines_prompt(self, pipeline_context: Dict) -> str:
         guidelines_template = {
@@ -4353,30 +4378,24 @@ class EnhancementStage(PipelineStage):
     async def execute(self, pipeline_context: Dict) -> Dict:
         try:
             self.logger.info("Starting enhancement stage execution")
-            self.logger.debug("Pipeline Context: %s", json.dumps(pipeline_context, indent=2))
             
-            # Extract and log context
-            analysis = pipeline_context.get("stage_results", {}).get("analysis", {}).get("analysis_results", {})
-            # nlp_features = analysis.get("linguistic_features", {})
-            guidelines = pipeline_context.get("stage_results", {}).get("guidelines", {}).get("content", "")
-            # semantic_relationships = nlp_features.get("semantic", {}).get("relationships", [])
-            # prompt_patterns = self._extract_prompt_patterns(nlp_features)
+            # Extract and resolve any coroutines from context
+            analysis = await self._resolve_coroutine(
+                pipeline_context.get("stage_results", {}).get("analysis", {}).get("analysis_results", {})
+            )
+            guidelines = await self._resolve_coroutine(
+                pipeline_context.get("stage_results", {}).get("guidelines", {}).get("content", "")
+            )
+            
+            # Now we can safely log the resolved context
             original_prompt = analysis.get("original_prompt", "")
             ai_type = analysis.get("ai_type", "")
             style = analysis.get("style", "")
 
-            
-            
-            # Log context details - keeping for debugging
             self.logger.debug(f"Original Prompt: {original_prompt}")
             self.logger.debug(f"AI Type: {ai_type}")
             self.logger.debug(f"Style: {style}")
-            self.logger.debug(f"Analysis Content Length: {len(analysis.get('content', ''))}")
-            self.logger.debug(f"guidelines generated: {guidelines}")
-
-            selected_params = self._select_enhancement_parameters(ai_type, style)
-            self.logger.debug("Selected Parameters: %s", json.dumps(selected_params, indent=2))
-
+            self.logger.debug(f"Guidelines: {guidelines}")
             # Enhanced system message with strict JSON requirements
             system_message = f"""You are an expert prompt engineer specializing in crafting highly effective prompts for {ai_type} systems. 
 Your core expertise is understanding user intent and translating it into optimized prompts that generate superior results.
@@ -4478,30 +4497,23 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
 
             # Enhanced response processing
             try:
-                # Extract content and clean any non-JSON text
                 content = response.get("content", "")
                 self.logger.debug(f"Raw response content: {content}")
                 
-                # Find JSON boundaries
                 json_start = content.find('{')
                 json_end = content.rfind('}') + 1
                 
                 if json_start != -1 and json_end > json_start:
                     json_str = content[json_start:json_end]
-                    
-                    # Parse and validate JSON structure
                     parsed = json.loads(json_str)
                     
-                    # Validate prompts array
                     if "prompts" not in parsed or not isinstance(parsed["prompts"], list):
                         raise ValueError("Invalid response structure - missing prompts array")
                     
-                    # Ensure exactly three prompts
                     prompts = parsed["prompts"][:3]
                     while len(prompts) < 3:
                         prompts.append({"prompt": f"Additional enhanced version of: {original_prompt}"})
-                        
-                    # Create final response
+                    
                     formatted_response = {
                         "result": {
                             "prompts": prompts
@@ -4510,7 +4522,6 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
                     
                     self.logger.debug(f"Formatted response: {formatted_response}")
                     return formatted_response
-
                 else:
                     raise ValueError("No valid JSON found in response")
                     
@@ -4536,6 +4547,16 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
             'contextual': nlp_features.get('dependencies', [])
         }
         return patterns
+
+    async def _resolve_coroutine(self, value: Any) -> Any:
+        """Helper method to resolve coroutines and return regular values"""
+        if asyncio.iscoroutine(value):
+            return await value
+        elif isinstance(value, dict):
+            return {k: await self._resolve_coroutine(v) for k, v in value.items()}
+        elif isinstance(value, list):
+            return [await self._resolve_coroutine(item) for item in value]
+        return value
 
     def _determine_perspective(self, version: str) -> str:
         """Determines the perspective/approach used in a prompt version"""
@@ -5227,12 +5248,84 @@ class EnhancedPromptPipeline:
                 "processing_mode": "fallback"
             }
         }
-    async def execute_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
-        """Execute pipeline with parallel preprocessing and guidelines"""
-        try:
-            self.logger.info(f"Starting pipeline execution for AI type: {ai_type}, style: {style}")
+    # async def execute_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
+    #     """Execute pipeline with parallel preprocessing and guidelines"""
+    #     try:
+    #         self.logger.info(f"Starting pipeline execution for AI type: {ai_type}, style: {style}")
             
-            # Create base context
+    #         # Create base context
+    #         base_context = {
+    #             "request_id": str(uuid.uuid4()),
+    #             "original_prompt": prompt,
+    #             "ai_type": ai_type,
+    #             "style": style,
+    #             "timestamp": datetime.datetime.now().isoformat(),
+    #             "stage_results": {},
+    #             "context_chain": []
+    #         }
+            
+    #         self.logger.debug(f"Created base context: {json.dumps(base_context, indent=2)}")
+
+    #         # Create tasks for parallel execution
+    #         self.logger.info("Initiating parallel preprocessing and guidelines generation")
+            
+    #         preprocessing_task = asyncio.create_task(
+    #             self._execute_preprocessing(prompt)
+    #         )
+            
+    #         guidelines_task = asyncio.create_task(
+    #             self._execute_guidelines(base_context)
+    #         )
+
+    #         analysis_result = await self._execute_analysis(prompt, ai_type, style)
+    #         base_context["stage_results"]["analysis"] = analysis_result
+
+            
+    #         # Wait for both tasks to complete
+    #         preprocessing_result, guidelines_result = await asyncio.gather(
+    #             preprocessing_task,
+    #             guidelines_task,
+    #             return_exceptions=True
+    #         )
+
+            
+    #         self._log_stage_result("analysis", analysis_result)
+            
+    #         # Handle potential errors from parallel execution
+    #         if isinstance(preprocessing_result, Exception):
+    #             self.logger.error(f"Preprocessing failed: {str(preprocessing_result)}")
+                
+                
+    #         if isinstance(guidelines_result, Exception):
+    #             self.logger.error(f"Guidelines generation failed: {str(guidelines_result)}")
+    #             guidelines_result = self._create_fallback_guidelines(base_context)
+
+    #         # Update context with results
+    #         base_context["stage_results"].update({
+    #         "preprocessing": preprocessing_result if not isinstance(preprocessing_result, Exception) else self._create_fallback_preprocessing(prompt),
+    #         "guidelines": guidelines_result if not isinstance(guidelines_result, Exception) else self._create_fallback_guidelines(base_context),
+    #         "analysis": analysis_result if not isinstance(analysis_result, Exception) else self._create_fallback_analysis(prompt, ai_type, style)
+    #     })
+            
+    #         self.logger.info("Preprocessing and guidelines generation completed")
+    #         self.logger.debug(f"Updated context: {json.dumps(base_context, indent=2)}")
+
+    #         # Execute enhancement stage with combined results
+    #         self.logger.info("Starting enhancement stage")
+    #         enhancement_result = await self._execute_enhancement(base_context)
+    #         self._log_stage_result("enhancement", enhancement_result)
+    #         base_context["stage_results"]["enhancement"] = enhancement_result
+            
+    #         self.logger.info("Pipeline execution completed successfully")
+    #         return self._format_final_response(base_context)
+
+    #     except Exception as e:
+    #         self.logger.error(f"Pipeline execution failed: {str(e)}")
+    #         self.logger.exception("Full traceback:")
+    #         return self._create_error_response(str(e))
+
+    async def execute_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
+        try:
             base_context = {
                 "request_id": str(uuid.uuid4()),
                 "original_prompt": prompt,
@@ -5242,60 +5335,17 @@ class EnhancedPromptPipeline:
                 "stage_results": {},
                 "context_chain": []
             }
-            
-            self.logger.debug(f"Created base context: {json.dumps(base_context, indent=2)}")
 
-            # Create tasks for parallel execution
-            self.logger.info("Initiating parallel preprocessing and guidelines generation")
-            
-            preprocessing_task = asyncio.create_task(
-                self._execute_preprocessing(prompt)
-            )
-            
-            guidelines_task = asyncio.create_task(
-                self._execute_guidelines(base_context)
-            )
-
+            # Execute stages sequentially and resolve results
             analysis_result = await self._execute_analysis(prompt, ai_type, style)
-            base_context["stage_results"]["analysis"] = analysis_result
-
+            base_context["stage_results"]["analysis"] = await self._resolve_result(analysis_result)
             
-            # Wait for both tasks to complete
-            preprocessing_result, guidelines_result = await asyncio.gather(
-                preprocessing_task,
-                guidelines_task,
-                return_exceptions=True
-            )
-
+            guidelines_result = await self._execute_guidelines(base_context)
+            base_context["stage_results"]["guidelines"] = await self._resolve_result(guidelines_result)
             
-            self._log_stage_result("analysis", analysis_result)
-            
-            # Handle potential errors from parallel execution
-            if isinstance(preprocessing_result, Exception):
-                self.logger.error(f"Preprocessing failed: {str(preprocessing_result)}")
-                
-                
-            if isinstance(guidelines_result, Exception):
-                self.logger.error(f"Guidelines generation failed: {str(guidelines_result)}")
-                guidelines_result = self._create_fallback_guidelines(base_context)
-
-            # Update context with results
-            base_context["stage_results"].update({
-            "preprocessing": preprocessing_result if not isinstance(preprocessing_result, Exception) else self._create_fallback_preprocessing(prompt),
-            "guidelines": guidelines_result if not isinstance(guidelines_result, Exception) else self._create_fallback_guidelines(base_context),
-            "analysis": analysis_result if not isinstance(analysis_result, Exception) else self._create_fallback_analysis(prompt, ai_type, style)
-        })
-            
-            self.logger.info("Preprocessing and guidelines generation completed")
-            self.logger.debug(f"Updated context: {json.dumps(base_context, indent=2)}")
-
-            # Execute enhancement stage with combined results
-            self.logger.info("Starting enhancement stage")
             enhancement_result = await self._execute_enhancement(base_context)
-            self._log_stage_result("enhancement", enhancement_result)
-            base_context["stage_results"]["enhancement"] = enhancement_result
-            
-            self.logger.info("Pipeline execution completed successfully")
+            base_context["stage_results"]["enhancement"] = await self._resolve_result(enhancement_result)
+
             return self._format_final_response(base_context)
 
         except Exception as e:
@@ -5303,6 +5353,15 @@ class EnhancedPromptPipeline:
             self.logger.exception("Full traceback:")
             return self._create_error_response(str(e))
 
+    async def _resolve_result(self, result: Any) -> Any:
+        """Helper method to resolve coroutines in results"""
+        if asyncio.iscoroutine(result):
+            return await result
+        elif isinstance(result, dict):
+            return {k: await self._resolve_result(v) for k, v in result.items()}
+        elif isinstance(result, list):
+            return [await self._resolve_result(item) for item in result]
+        return result
     async def _execute_preprocessing(self, prompt: str) -> Dict:
         """Execute preprocessing in thread pool"""
         self.logger.info("Executing preprocessing stage")
