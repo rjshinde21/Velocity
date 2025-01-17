@@ -2076,46 +2076,7 @@ class PromptPreprocessor:
             'primary_discourse_type': max(structure.items(), key=lambda x: len(x[1]))[0]
         }
 
-    # def analyze_prompt(self, prompt_input: Union[str, Dict]) -> Dict:
-    #     """
-    #     Enhanced prompt analysis with deeper NLP insights
-        
-    #     Extends existing preprocessing with advanced intent and context analysis
-    #     """
-    #     # Log the start of analysis
-    #     self.logger.info(f"Starting enhanced prompt analysis")
-        
-    #     # Extract prompt string if input is dict
-    #     prompt = prompt_input['original_prompt'] if isinstance(prompt_input, dict) else prompt_input
-        
-    #     # Existing preprocessing analysis
-    #     self.logger.debug("Performing base linguistic analysis")
-    #     base_analysis = super().analyze_prompt(prompt_input)
-        
-    #     # Intent Classification Enhancement
-    #     self.logger.info("Classifying prompt intent")
-    #     intent_classification = self._classify_intent(prompt)
-    #     base_analysis['intent_classification'] = intent_classification
-        
-    #     # AI Role/Persona Determination
-    #     self.logger.info("Determining AI persona")
-    #     ai_persona = self._determine_ai_persona(intent_classification, prompt)
-    #     base_analysis['ai_persona'] = ai_persona
-        
-    #     # Contextual Requirement Extraction
-    #     self.logger.info("Extracting contextual requirements")
-    #     contextual_requirements = self._extract_contextual_requirements(prompt)
-    #     base_analysis['contextual_requirements'] = contextual_requirements
-        
-    #     # Domain Identification
-    #     self.logger.info("Identifying domain and expertise level")
-    #     domain_insights = self._identify_domain(prompt)
-    #     base_analysis['domain_insights'] = domain_insights
-        
-    #     # Logging the comprehensive analysis
-    #     self.logger.debug(f"Comprehensive Prompt Analysis: {json.dumps(base_analysis, indent=2)}")
-        
-    #     return base_analysis
+
     def analyze_prompt(self, prompt_input: Union[str, Dict]) -> Dict:
         """
         Enhanced prompt analysis with deeper NLP insights and domain understanding.
@@ -4403,16 +4364,7 @@ class EnhancementStage(PipelineStage):
             original_prompt = analysis.get("original_prompt", "")
             ai_type = analysis.get("ai_type", "")
             style = analysis.get("style", "")
-            # nlp_features = analysis.get("linguistic_features", {})
-            # semantic_relationships = nlp_features.get("semantic", {}).get("relationships", [])
-            # prompt_patterns = self._extract_prompt_patterns(nlp_features)
-            
-            # enhanced_prompts = self._generate_semantic_variations(
-            #     original_prompt,
-            #     semantic_relationships,
-            #     prompt_patterns
-            # )
-            
+
             
             
             # Log context details - keeping for debugging
@@ -4817,36 +4769,7 @@ DO NOT ADD ANY FIELDS OR CONTEXT.
             self.logger.error(f"Enhancement processing failed: {str(e)}")
             return self._create_fallback_enhanced_prompts(ai_type, style)
 
-    # def _process_enhancement_response(self, response: Dict, style: str, ai_type: str) -> Dict:
-    #     try:
-    #         # Add NLP validation of generated prompts
-    #         for prompt in response.get("prompts", []):
-    #             # Validate semantic coherence
-    #             coherence_score = self._validate_semantic_coherence(
-    #                 prompt["prompt"], 
-    #                 original_prompt
-    #             )
-                
-    #             # Check style consistency
-    #             style_adherence = self._check_style_patterns(
-    #                 prompt["prompt"], 
-    #                 style
-    #             )
-                
-    #             # Validate domain terminology
-    #             domain_accuracy = self._validate_domain_terms(
-    #                 prompt["prompt"], 
-    #                 ai_type
-    #             )
-                
-    #             prompt["quality_metrics"] = {
-    #                 "coherence": coherence_score,
-    #                 "style_adherence": style_adherence,
-    #                 "domain_accuracy": domain_accuracy
-    #             }
-    #     except Exception as e:
-    #         self.logger.error(f"Enhancement processing failed: {str(e)}")
-    #         return self._create_fallback_enhanced_prompts(ai_type, style)
+
     def _process_api_response(self, response: Dict) -> Dict:
         try:
             if not isinstance(response, dict) or "content" not in response:
