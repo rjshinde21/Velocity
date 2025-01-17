@@ -3626,108 +3626,58 @@ class AnalysisStage(PipelineStage):
             self.logger.info("Starting analysis stage")
             prompt, ai_type, style = self._validate_pipeline_context(pipeline_context)
 
-            preprocessing_result = await self._execute_preprocessing(prompt)
-            self.logger.debug(f"Preprocessing result: {preprocessing_result}")
+            # preprocessing_result = await self._execute_preprocessing(prompt)
+            # self.logger.debug(f"Preprocessing result: {preprocessing_result}")
 
+            # Create analysis-focused system message
+            system_message = """You are a prompt engineering technique expert.
+            Your task is to analyze user requests and determine the most effective prompt engineering approach.
+            You must identify one primary technique that best suits the user's needs.
             
+            Return ONLY a JSON response with your analysis and selected technique.
+            DO NOT include any explanations or additional text outside the JSON structure."""
 
-            # self.logger.debug("NLP Analysis Insights:")
-            # self.logger.debug(f"Intent Classification: {nlp_analysis.get('intent_classification', {})}")
-            # self.logger.debug(f"AI Persona: {nlp_analysis.get('ai_persona', {})}")
-            # self.logger.debug(f"Contextual Requirements: {nlp_analysis.get('contextual_requirements', {})}")
-            # self.logger.debug(f"Domain Insights: {nlp_analysis.get('domain_insights', {})}")
-            
-#             system_message = f"""You are a prompt analysis expert specializing in {ai_type} systems.
-#             Your  task is to perform a COMPLETE analysis of the user's request to communicate it to the {ai_type} LLM in the best possible way.
-#               Your analysis is supposed to provide the llm a high grade understanding of the user's request so that it understands the user's request to 
-#               generate precise and optimized response catering to the user's exact contextual requirement.
-#               Your analysis directly informs prompt construction.
+            # Create analysis prompt focused on technique selection
+            analysis_prompt = f"""Analyze this request to determine the most suitable prompt engineering technique:
 
-#             1.If the user's request is domain-specific, ensure your analysis accounts for domain-relevant terminology, tools, or best practices.
-#             2.  Key requirements
-#             3. Essential context
-#             4. Key constraints specific to {ai_type}'s capabilities
-# NO speculation or assumptions. NO general guidance.
+Request: "{prompt}"
 
-#             CRITICAL - 
-#             ONLY BUILD UPON WHAT THE USER HAS PROVIDED AND DO NOT ASSUME ANYTHING.
-            
-#             THE RESPONSE SHOULD NOT BE MORE THAN 500 WORDS.
-#            """
 
-#             user_message = f"""Analyze: "{prompt}"
-#             System: {ai_type}
-#             Style: {style}
-#             Your task is to create a concise analysis of the user's requirement in his written prompt,
-#               understand what the user needs, create pointers that can explain ths user's intent even more clearly.
-#             Include key requirements and context needed for prompt enhancement.
-#             Consider whether there are any constraints, uncommon scenarios, or edge cases that might impact prompt effectiveness, and highlight them in your analysis.
-#             Return ONLY:
-# 1. Core intent
-# You should breakdown and understand the domain which the user is targeting , and have a deep understanding of 
-# all the tools relevant to the domain that are present.
-# 2. Essential requirements
-# 3. Critical context needed for {ai_type}
-# CRITICAL - 
-# Identify any potential ambiguities or missing details in the user’s request. If clarity is lacking, explicitly state the ambiguity and propose at least two follow-up questions to resolve it before proceeding.
-# DO NOT ADD ANY EXAMPLES THAT WILL MISLEAD THE PROMPT CREATION PROCESS, DO NOT ADD ANY USER RELATED INFORMATION THAT THE USER HAS NOT MENTIONED. IF NEEDED ONLY USE PLACEHOLDERS.
-# Keep analysis focused and factual."""
+Select ONE technique from:
+1. Chain-of-Thought (CoT): Best for complex reasoning, step-by-step problem solving
+2. Tree of Thoughts (ToT): For creative tasks, multiple solution paths
+3. Auto-CoT: For automated reasoning chain generation
+4. Few-shot: For tasks needing examples
+5. Zero-shot: For straightforward, clear instructions
 
-            system_message = self._create_analysis_system_message(
-                preprocessing_result, ai_type, style
-            )
+Return in this EXACT format:
+{{
+    "selected_technique": "technique_name",
+    "reasoning": "brief explanation of selection",
+    "request_characteristics": ["characteristic1", "characteristic2"],
+    "technique_requirements": {{
+        "primary_factors": ["factor1", "factor2"],
+        "constraints": ["constraint1", "constraint2"]
+    }}
+}}"""
 
-            analysis_prompt = self._create_chain_of_thought_prompt(
-                prompt, preprocessing_result, ai_type, style
-            )
-
-            # Adjust API call parameters
             response = await self.api_handler.make_api_call(
                 system_message=system_message,
                 prompt=analysis_prompt,
-                temperature=0.3,  # Lower temperature for analysis
-                max_tokens=2000,
-                presence_penalty=0.0,
-                frequency_penalty=0.0
+                temperature=0.3,
+                max_tokens=1000
             )
 
-            processed_response = self._process_analysis_response(
-                response.get("content", ""), 
-                {
+            # processed_response = self._process_analysis_response(response.get("content", ""), pipeline_context)
+            technique_info = self._process_technique_selection(response.get("content", ""))
+
+            return {
+                "analysis_results": {
+                    
+                    "technique": technique_info,
                     "original_prompt": prompt,
                     "ai_type": ai_type,
                     "style": style
-                }
-            )
-
-            # Update context tracker
-            self.context_tracker.add_stage_result(
-                "analysis",
-                processed_response,
-                {"preprocessing": preprocessing_result}
-            )
-
-            return processed_response
-
-        except Exception as e:
-            self.logger.error(f"Analysis stage failed: {str(e)}", exc_info=True)
-            return self._create_fallback_analysis(pipeline_context)
-
-    def _process_analysis_response(self, content: str, pipeline_context: Dict) -> Dict:
-        """Process free-form analysis response into structured format"""
-        try:
-            if not content:
-                return self._create_fallback_analysis(pipeline_context)
-
-            # Remove markdown formatting but preserve content
-            cleaned_content = re.sub(r'\*\*|\#\#\#|\n\n+', '\n', content)
-            
-            return {
-                "analysis_results": {
-                    "content": cleaned_content,
-                    "original_prompt": pipeline_context.get("original_prompt"),
-                    "ai_type": pipeline_context.get("ai_type"),
-                    "style": pipeline_context.get("style"),
                 },
                 "_metadata": {
                     "timestamp": datetime.datetime.now().isoformat(),
@@ -3736,8 +3686,210 @@ class AnalysisStage(PipelineStage):
             }
 
         except Exception as e:
-            self.logger.error(f"Response processing failed: {str(e)}")
+            self.logger.error(f"Analysis stage failed: {str(e)}", exc_info=True)
             return self._create_fallback_analysis(pipeline_context)
+
+    def _process_technique_selection(self, content: str) -> Dict:
+        """Process and validate technique selection from API response"""
+        try:
+            cleaned_content = self._clean_json_content(content)
+            parsed = json.loads(cleaned_content)
+            
+            if "selected_technique" not in parsed:
+                raise ValueError("Missing technique selection")
+                
+            valid_techniques = {"Chain-of-Thought", "Tree of Thoughts", "Auto-CoT", "Few-shot", "Zero-shot"}
+            
+            if parsed["selected_technique"] not in valid_techniques:
+                raise ValueError("Invalid technique selected")
+                
+            return {
+                "name": parsed["selected_technique"],
+                "reasoning": parsed.get("reasoning", ""),
+                "request_type": parsed.get("request_type", "general"),
+                "requirements": parsed.get("implementation_requirements", [])
+            }
+        except Exception as e:
+            self.logger.error(f"Technique selection processing failed: {str(e)}")
+            return {
+                "name": "Zero-shot",
+                "reasoning": "Fallback selection due to processing error",
+                "request_type": "general",
+                "requirements": ["clear instructions", "direct execution"]
+            }
+
+    def _extract_technique_info(self, analysis_response: Dict) -> Dict:
+        """Extract and validate selected prompt engineering technique"""
+        try:
+            if not isinstance(analysis_response, dict):
+                raise ValueError("Invalid analysis response format")
+
+            technique = analysis_response.get("selected_technique")
+            if not technique:
+                raise ValueError("No technique selected in analysis")
+
+            # Validate selected technique
+            valid_techniques = {
+                "Chain-of-Thought", "Tree of Thoughts", 
+                "Auto-CoT", "Few-shot", "Zero-shot"
+            }
+            
+            if technique not in valid_techniques:
+                self.logger.warning(f"Invalid technique selected: {technique}")
+                technique = self._get_fallback_technique()
+
+            return {
+                "name": technique,
+                "reasoning": analysis_response.get("reasoning", ""),
+                "requirements": analysis_response.get("technique_requirements", {}),
+                "characteristics": analysis_response.get("request_characteristics", [])
+            }
+        except Exception as e:
+            self.logger.error(f"Error extracting technique info: {str(e)}")
+            return self._get_fallback_technique()
+
+    def _get_fallback_technique(self) -> Dict:
+        """Provide fallback technique when selection fails"""
+        return {
+            "name": "Chain-of-Thought",
+            "reasoning": "Fallback to CoT for structured approach",
+            "requirements": {
+                "primary_factors": ["step-by-step breakdown"],
+                "constraints": ["clear reasoning chain"]
+            },
+            "characteristics": ["requires structured thinking"]
+        }
+
+    def _process_analysis_response(self, content: str, pipeline_context: Dict) -> Dict:
+        """Process and validate analysis response"""
+        try:
+            if not content:
+                raise ValueError("Empty response content")
+
+            # Clean JSON content
+            cleaned_content = self._clean_json_content(content)
+            parsed_content = json.loads(cleaned_content)
+
+            # Determine appropriate prompt engineering technique based on analysis
+            request_type = self._analyze_request_type(
+                parsed_content, 
+                pipeline_context.get("original_prompt", "")
+            )
+            
+            technique = self._determine_technique(request_type)
+
+            # Create structured response
+            return {
+                "selected_technique": technique["name"],
+                "reasoning": technique["reasoning"],
+                "request_characteristics": request_type["characteristics"],
+                "technique_requirements": technique["requirements"]
+            }
+
+        except Exception as e:
+            self.logger.error(f"Response processing failed: {str(e)}")
+            return self._create_fallback_technique_selection(pipeline_context)
+
+    def _analyze_request_type(self, content: Dict, original_prompt: str) -> Dict:
+        """Analyze request type from content and original prompt"""
+        characteristics = []
+        
+        # Check for task indicators in the prompt
+        prompt_lower = original_prompt.lower()
+        
+        # Task type analysis
+        if any(word in prompt_lower for word in ['help', 'how to', 'guide', 'explain']):
+            characteristics.append("instructional")
+        if any(word in prompt_lower for word in ['create', 'make', 'write', 'design']):
+            characteristics.append("creative")
+        if any(word in prompt_lower for word in ['analyze', 'compare', 'evaluate']):
+            characteristics.append("analytical")
+        if any(word in prompt_lower for word in ['solve', 'calculate', 'compute']):
+            characteristics.append("problem-solving")
+        
+        # Complexity analysis
+        if len(original_prompt.split()) > 20:
+            characteristics.append("complex")
+        else:
+            characteristics.append("straightforward")
+            
+        return {
+            "characteristics": characteristics,
+            "complexity": "complex" if "complex" in characteristics else "straightforward"
+        }
+
+    def _determine_technique(self, request_type: Dict) -> Dict:
+        """Select appropriate prompt engineering technique based on request type"""
+        characteristics = request_type["characteristics"]
+        
+        # Technique selection logic
+        if "problem-solving" in characteristics or "analytical" in characteristics:
+            return {
+                "name": "Chain-of-Thought",
+                "reasoning": "Task requires structured analytical thinking and step-by-step problem solving",
+                "requirements": {
+                    "primary_factors": ["sequential reasoning", "explicit steps"],
+                    "constraints": ["logical progression", "clear explanations"]
+                }
+            }
+        elif "creative" in characteristics:
+            return {
+                "name": "Tree of Thoughts",
+                "reasoning": "Task involves creative elements with multiple possible approaches",
+                "requirements": {
+                    "primary_factors": ["divergent thinking", "multiple perspectives"],
+                    "constraints": ["coherent flow", "creative freedom"]
+                }
+            }
+        elif "instructional" in characteristics:
+            return {
+                "name": "Auto-CoT",
+                "reasoning": "Task requires clear guidance and structured explanation",
+                "requirements": {
+                    "primary_factors": ["clear instructions", "step-by-step guidance"],
+                    "constraints": ["user-friendly", "comprehensive"]
+                }
+            }
+        else:
+            return {
+                "name": "Zero-shot",
+                "reasoning": "Straightforward task with clear objectives",
+                "requirements": {
+                    "primary_factors": ["direct approach", "clear instructions"],
+                    "constraints": ["concise", "specific"]
+                }
+            }
+
+    def _create_fallback_technique_selection(self, pipeline_context: Dict) -> Dict:
+        """Create fallback technique selection"""
+        return {
+            "selected_technique": "Zero-shot",
+            "reasoning": "Fallback to basic approach for reliable execution",
+            "request_characteristics": ["straightforward", "basic"],
+            "technique_requirements": {
+                "primary_factors": ["clear instructions", "direct approach"],
+                "constraints": ["simple execution", "reliable output"]
+            }
+        }
+
+    def _clean_json_content(self, content: str) -> str:
+        """Clean and extract JSON from response content"""
+        try:
+            # Remove any markdown formatting
+            content = re.sub(r'```json\s*|\s*```', '', content)
+            
+            # Find JSON boundaries
+            start = content.find('{')
+            end = content.rfind('}') + 1
+            
+            if start != -1 and end > start:
+                return content[start:end]
+                
+            raise ValueError("No valid JSON found in content")
+            
+        except Exception as e:
+            self.logger.error(f"JSON cleaning failed: {str(e)}")
+            raise
 
     async def _execute_preprocessing(self, prompt: str) -> Dict:
         """Execute preprocessing with proper error handling"""
@@ -3815,61 +3967,26 @@ Let's think through this systematically:
 Provide your analysis following the exact JSON structure specified.
 Focus on actionable insights that will inform prompt enhancement."""
 
-    def _process_analysis_response(self, content: str, pipeline_context: Dict) -> Dict:
-        """Process and validate analysis response"""
-        try:
-            if not content:
-                raise ValueError("Empty response content")
+    
 
-            # Clean and parse JSON
-            cleaned_content = self._clean_json_content(content)
-            parsed_response = json.loads(cleaned_content)
-
-            # Validate required fields
-            required_fields = {
-                "chain_of_thought", "analysis_results", "implementation_considerations"
-            }
+    # def _clean_json_content(self, content: str) -> str:
+    #     """Clean and extract JSON from response content"""
+    #     try:
+    #         # Remove any markdown formatting
+    #         content = re.sub(r'```json\s*|\s*```', '', content)
             
-            if not all(field in parsed_response for field in required_fields):
-                raise ValueError("Missing required fields in response")
-
-            # Add metadata
-            return {
-                "status": "success",
-                "result": parsed_response,
-                "context": {
-                    "original_prompt": pipeline_context.get("original_prompt"),
-                    "ai_type": pipeline_context.get("ai_type"),
-                    "style": pipeline_context.get("style")
-                },
-                "_metadata": {
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "stage": "analysis"
-                }
-            }
-
-        except Exception as e:
-            self.logger.error(f"Response processing failed: {str(e)}")
-            return self._create_fallback_analysis(pipeline_context)
-
-    def _clean_json_content(self, content: str) -> str:
-        """Clean and extract JSON from response content"""
-        try:
-            # Remove any markdown formatting
-            content = re.sub(r'```json\s*|\s*```', '', content)
+    #         # Find JSON boundaries
+    #         start = content.find('{')
+    #         end = content.rfind('}') + 1
             
-            # Find JSON boundaries
-            start = content.find('{')
-            end = content.rfind('}') + 1
-            
-            if start != -1 and end > start:
-                return content[start:end]
+    #         if start != -1 and end > start:
+    #             return content[start:end]
                 
-            raise ValueError("No valid JSON found in content")
+    #         raise ValueError("No valid JSON found in content")
             
-        except Exception as e:
-            self.logger.error(f"JSON cleaning failed: {str(e)}")
-            raise
+    #     except Exception as e:
+    #         self.logger.error(f"JSON cleaning failed: {str(e)}")
+    #         raise
 
     def _create_fallback_analysis(self, pipeline_context: Dict) -> Dict:
         """Create fallback analysis with basic prompt context"""

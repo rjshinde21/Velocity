@@ -6,9 +6,9 @@ from flask import Flask, jsonify
 from flask import Flask, jsonify, request
 from flask import Flask, request, jsonify
 from flask.testing import FlaskClient
-from prompt import app, EnhancedPromptPipeline
-from prompt import app, process_request
-from prompt import process_request
+from Prompt.prompt import app, EnhancedPromptPipeline
+from Prompt.prompt import app, process_request
+from Prompt.prompt import process_request
 from unittest.mock import patch, MagicMock
 import datetime
 import json
