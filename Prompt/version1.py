@@ -3606,97 +3606,73 @@ class AnalysisStage(PipelineStage):
             self.logger.info("Starting analysis stage")
             prompt, ai_type, style = self._validate_pipeline_context(pipeline_context)
 
-            # Create analysis-focused system message with enhancement capabilities
-            system_message = f"""You are an expert in prompt engineering and analysis.
-Your task is to first analyse the user's request done towards getting the most efficient response from {ai_type}'s LLM.
-You have to understand what does the user's prompt lack in terms of getting the most efficient response from {ai_type}. You have to then use this understanding to enhance the user's input
-into a well formatted {style} prompt that will lead the user to getting the best possible response.
+            # preprocessing_result = await self._execute_preprocessing(prompt)
+            # self.logger.debug(f"Preprocessing result: {preprocessing_result}")
 
-You have THREE key responsibilities:
-1. Analyze the core request and determine the most effective prompt engineering technique
-2. Generate detailed analysis of requirements and context
-3. Create THREE enhanced versions of the original prompt
+            # Create analysis-focused system message
+            system_message = """You are a prompt engineering technique expert.
+Your task is to analyze user requests and determine the most effective prompt engineering approach.
+You must identify one primary technique that best suits the user's needs.
 
-CRITICAL: Return ONLY a JSON response with both your analysis and enhanced prompts.
+IMPORTANT: You must provide detailed technique requirements including both primary factors and constraints.
+
+Return ONLY a JSON response with your analysis and selected technique.
 DO NOT include any explanations or additional text outside the JSON structure."""
 
-            analysis_prompt = f"""Analyze this request and generate enhanced prompts:
+            analysis_prompt = f"""Analyze this request to determine the most suitable prompt engineering technique:
 
 Request: "{prompt}"
-AI Type: {ai_type}
-Style: {style}
 
-Follow these steps:
-1. Analyze the request using prompt engineering best practices
-2. Select the most appropriate technique (Chain-of-Thought, Tree of Thoughts, Auto-CoT, etc.)
-3. Generate three distinct enhanced {style} versions of the prompt that will lead {ai_type}'s LLM to generate the most efficient response in manner.
+Select ONE technique from:
+1. Chain-of-Thought (CoT): Best for complex reasoning, step-by-step problem solving
+2. Tree of Thoughts (ToT): For creative tasks, multiple solution paths
+3. Auto-CoT: For automated reasoning chain generation
+4. Few-shot: For tasks needing examples
+5. Zero-shot: For straightforward, clear instructions
+
+CRITICAL: You must provide comprehensive technique requirements.
 
 Return in this EXACT format:
 {{
-    "analysis": {{
-        "selected_technique": "technique_name",
-        "reasoning": "brief explanation of selection",
-        "request_characteristics": ["characteristic1", "characteristic2"],
-        "requirements": {{
-            "primary_factors": ["factor1", "factor2"],
-            "constraints": ["constraint1", "constraint2"]
-        }}
-    }},
-    "enhanced_prompts": [
-        {{
-            "prompt": "first enhanced version"
-        }},
-        {{
-            "prompt": "second enhanced version"
-        }},
-        {{
-            "prompt": "third enhanced version",
-        }}
-    ],
-    "implementation_notes": {{
-        "ai_specific_considerations": ["consideration1", "consideration2"],
-        "style_guidelines": ["guideline1", "guideline2"],
-        "user's prompt analysis" : ["analysis of what the user's prompt lacked and how it was made better"]
+    "selected_technique": "technique_name",
+    "reasoning": "brief explanation of selection",
+    "request_characteristics": ["characteristic1", "characteristic2"],
+    "technique_requirements": {{
+        "primary_factors": [
+            "specific implementation requirement 1",
+            "specific implementation requirement 2"
+        ],
+        "constraints": [
+            "specific constraint 1",
+            "specific constraint 2"
+        ]
     }}
 }}"""
+           
 
             response = await self.api_handler.make_api_call(
                 system_message=system_message,
                 prompt=analysis_prompt,
                 temperature=0.3,
-                max_tokens=2000
+                max_tokens=1000
             )
 
-            # Process and validate response
-            try:
-                content = response.get("content", "")
-                self.logger.debug(f"Raw API Response: {content}")
-                
-                cleaned_content = self._clean_json_content(content)
-                parsed_response = json.loads(cleaned_content)
-                
-                # Validate required sections
-                if not all(k in parsed_response for k in ["analysis", "enhanced_prompts", "implementation_notes"]):
-                    raise ValueError("Missing required sections in response")
+            # processed_response = self._process_analysis_response(response.get("content", ""), pipeline_context)
+            technique_info = self._process_technique_selection(response.get("content", ""))
 
-                return {
-                    "analysis_results": {
-                        "technique": parsed_response["analysis"],
-                        "original_prompt": prompt,
-                        "ai_type": ai_type,
-                        "style": style
-                    },
-                    "enhanced_prompts": parsed_response["enhanced_prompts"],
-                    "implementation_notes": parsed_response["implementation_notes"],
-                    "_metadata": {
-                        "timestamp": datetime.datetime.now().isoformat(),
-                        "stage": "analysis"
-                    }
+            return {
+                "analysis_results": {
+                    
+                    "technique": technique_info,
+                    "original_prompt": prompt,
+                    "ai_type": ai_type,
+                    "style": style
+                },
+                "_metadata": {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "stage": "analysis"
                 }
-
-            except Exception as e:
-                self.logger.error(f"Response processing failed: {str(e)}")
-                return self._create_fallback_analysis(pipeline_context)
+            }
 
         except Exception as e:
             self.logger.error(f"Analysis stage failed: {str(e)}", exc_info=True)
@@ -4021,49 +3997,26 @@ Focus on actionable insights that will inform prompt enhancement."""
     #         raise
 
     def _create_fallback_analysis(self, pipeline_context: Dict) -> Dict:
-        """Create robust fallback with both analysis and enhanced prompts"""
+        """Create fallback analysis with basic prompt context"""
         prompt = pipeline_context.get("original_prompt", "")
         ai_type = pipeline_context.get("ai_type", "general")
-        style = pipeline_context.get("style", "professional")
+        style = pipeline_context.get("style", "standard")
+
+        fallback_content = f"""
+        Basic Analysis:
+        - Request: {prompt}
+        - System: {ai_type} 
+        - Style: {style}
+        - Core Intent: Understanding the request
+        - Key Requirements: Clear explanation needed
+        """
 
         return {
             "analysis_results": {
-                "technique": {
-                    "selected_technique": "Chain-of-Thought",
-                    "reasoning": "Fallback to basic structured approach",
-                    "request_characteristics": ["requires clear structure"],
-                    "requirements": {
-                        "primary_factors": ["clear communication", "step-by-step approach"],
-                        "constraints": ["maintain professional tone", "ensure clarity"]
-                    }
-                },
+                "content": fallback_content,
                 "original_prompt": prompt,
                 "ai_type": ai_type,
                 "style": style
-            },
-            "enhanced_prompts": [
-                {
-                    "prompt": f"Develop a comprehensive {style} approach for: {prompt}",
-                    "focus": "Structure and Organization"
-                },
-                {
-                    "prompt": f"Create a detailed {style} implementation of: {prompt}",
-                    "focus": "Implementation Details"
-                },
-                {
-                    "prompt": f"Design an optimized {style} solution for: {prompt}",
-                    "focus": "Optimization and Efficiency"
-                }
-            ],
-            "implementation_notes": {
-                "ai_specific_considerations": [
-                    f"Optimized for {ai_type}",
-                    "Maintains clear structure"
-                ],
-                "style_guidelines": [
-                    f"Follows {style} communication style",
-                    "Ensures professional tone"
-                ]
             },
             "_metadata": {
                 "timestamp": datetime.datetime.now().isoformat(),
@@ -5133,8 +5086,8 @@ class EnhancedPromptPipeline:
         self.preprocessor = EnhancedPromptPreprocessor(logger)  # Use new preprocessor
         self.context_tracker = ContextTracker()
         self.analysis_stage = AnalysisStage(logger, self.api_handler, self.context_tracker)
-        # self.guidelines_stage = GuidelinesStage(logger, self.api_handler, self.context_tracker)
-        # self.enhancement_stage = EnhancementStage(logger, self.api_handler, self.context_tracker)
+        self.guidelines_stage = GuidelinesStage(logger, self.api_handler, self.context_tracker)
+        self.enhancement_stage = EnhancementStage(logger, self.api_handler, self.context_tracker)
 
     def _enrich_context(self, base_context: Dict, new_data: Dict) -> Dict:
         """Enrich context with new stage data"""
@@ -5399,35 +5352,6 @@ class EnhancedPromptPipeline:
     #         self.logger.exception("Full traceback:")
     #         return self._create_error_response(str(e))
 
-    # async def execute_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
-    #     try:
-    #         base_context = {
-    #             "request_id": str(uuid.uuid4()),
-    #             "original_prompt": prompt,
-    #             "ai_type": ai_type,
-    #             "style": style,
-    #             "timestamp": datetime.datetime.now().isoformat(),
-    #             "stage_results": {},
-    #             "context_chain": []
-    #         }
-
-    #         # Execute stages sequentially and resolve results
-    #         analysis_result = await self._execute_analysis(prompt, ai_type, style)
-    #         base_context["stage_results"]["analysis"] = await self._resolve_result(analysis_result)
-            
-    #         guidelines_result = await self._execute_guidelines(base_context)
-    #         base_context["stage_results"]["guidelines"] = await self._resolve_result(guidelines_result)
-            
-    #         enhancement_result = await self._execute_enhancement(base_context)
-    #         base_context["stage_results"]["enhancement"] = await self._resolve_result(enhancement_result)
-
-    #         return self._format_final_response(base_context)
-
-    #     except Exception as e:
-    #         self.logger.error(f"Pipeline execution failed: {str(e)}")
-    #         self.logger.exception("Full traceback:")
-    #         return self._create_error_response(str(e))
-
     async def execute_pipeline(self, prompt: str, ai_type: str, style: str) -> Dict:
         try:
             base_context = {
@@ -5440,12 +5364,15 @@ class EnhancedPromptPipeline:
                 "context_chain": []
             }
 
-            # Execute only preprocessing and analysis stages
-            preprocessing_result = await self._execute_preprocessing(prompt)
-            base_context["stage_results"]["preprocessing"] = preprocessing_result
-
+            # Execute stages sequentially and resolve results
             analysis_result = await self._execute_analysis(prompt, ai_type, style)
-            base_context["stage_results"]["analysis"] = analysis_result
+            base_context["stage_results"]["analysis"] = await self._resolve_result(analysis_result)
+            
+            guidelines_result = await self._execute_guidelines(base_context)
+            base_context["stage_results"]["guidelines"] = await self._resolve_result(guidelines_result)
+            
+            enhancement_result = await self._execute_enhancement(base_context)
+            base_context["stage_results"]["enhancement"] = await self._resolve_result(enhancement_result)
 
             return self._format_final_response(base_context)
 
@@ -5498,11 +5425,10 @@ class EnhancedPromptPipeline:
         return await self.enhancement_stage.execute(context)
 
     def _format_final_response(self, context: Dict) -> Dict:
-        """Format the final pipeline response focusing on analysis results"""
+        """Format the final pipeline response"""
+        self.logger.info("Formatting final response")
         try:
-            analysis_results = context["stage_results"]["analysis"]
-            
-            return {
+            response = {
                 "status": "success",
                 "request_id": context["request_id"],
                 "metadata": {
@@ -5510,10 +5436,11 @@ class EnhancedPromptPipeline:
                     "ai_type": context["ai_type"],
                     "style": context["style"]
                 },
-                "analysis": analysis_results.get("analysis_results", {}),
-                "enhanced_prompts": analysis_results.get("enhanced_prompts", []),
-                "implementation_notes": analysis_results.get("implementation_notes", {})
+                "stages": context["stage_results"],
+                "enhancement_result": context["stage_results"].get("enhancement", {}).get("result", {})
             }
+            self.logger.debug(f"Final response: {json.dumps(response, indent=2)}")
+            return response
         except Exception as e:
             self.logger.error(f"Error formatting final response: {str(e)}")
             return self._create_error_response(str(e))
