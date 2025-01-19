@@ -1,3 +1,4 @@
+import random
 import traceback
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
@@ -3572,6 +3573,146 @@ class PipelineStage:
         """
         return []
 
+class FallbackGenerator:
+    def __init__(self, logger: Logger):
+        self.logger = logger
+        # Style-specific templates for different prompt aspects
+        self.style_templates = {
+            "professional": {
+                "prefix": ["Develop a comprehensive", "Create a detailed", "Design a structured"],
+                "connector": ["approach for", "solution for", "implementation of"],
+                "suffix": ["ensuring professional standards", "maintaining industry best practices", "following established guidelines"]
+            },
+            "creative": {
+                "prefix": ["Imagine an innovative", "Design a unique", "Create an engaging"],
+                "connector": ["version of", "interpretation of", "approach to"],
+                "suffix": ["with creative elements", "incorporating novel ideas", "with imaginative aspects"]
+            },
+            "technical": {
+                "prefix": ["Implement a robust", "Develop a technical", "Engineer a systematic"],
+                "connector": ["solution for", "architecture for", "framework for"],
+                "suffix": ["following technical specifications", "using best practices", "with optimal performance"]
+            },
+            "descriptive": {
+                "prefix": ["Provide a detailed", "Create a comprehensive", "Develop an in-depth"],
+                "connector": ["description of", "explanation of", "breakdown of"],
+                "suffix": ["with thorough details", "covering all aspects", "with complete information"]
+            }
+        }
+
+        # AI-specific enhancement patterns
+        self.ai_patterns = {
+            "ChatGPT": {
+                "focus_areas": ["conversational flow", "natural language", "interactive elements"],
+                "special_features": ["context awareness", "dialogue structure", "user engagement"]
+            },
+            "Claude": {
+                "focus_areas": ["detailed analysis", "logical structure", "comprehensive coverage"],
+                "special_features": ["step-by-step breakdown", "thorough explanations", "academic style"]
+            },
+            "Gemini": {
+                "focus_areas": ["multimodal integration", "creative synthesis", "innovative approaches"],
+                "special_features": ["visual considerations", "cross-domain connections", "integrated solutions"]
+            },
+            "Midjourney": {
+                "focus_areas": ["visual elements", "creative direction", "artistic composition"],
+                "special_features": ["aesthetic considerations", "style guidelines", "visual hierarchy"]
+            }
+        }
+
+    def generate_enhanced_prompts(self, original_prompt: str, ai_type: str, style: str) -> List[Dict]:
+        """Generate enhanced prompt variations using fallback patterns"""
+        try:
+            self.logger.info(f"Generating fallback prompts for {ai_type} with {style} style")
+            
+            # Get style templates, defaulting to professional if style not found
+            style_temps = self.style_templates.get(style.lower(), self.style_templates["professional"])
+            ai_patterns = self.ai_patterns.get(ai_type, self.ai_patterns["ChatGPT"])
+            
+            # Extract key terms from original prompt
+            key_terms = self._extract_key_terms(original_prompt)
+            
+            # Generate variations using different patterns
+            variations = []
+            
+            # First variation: Focus on structure and organization
+            variations.append({
+                "prompt": self._create_structured_prompt(
+                    original_prompt, style_temps, ai_patterns, 
+                    focus="structure and organization"
+                )
+            })
+            
+            # Second variation: Focus on implementation details
+            variations.append({
+                "prompt": self._create_implementation_prompt(
+                    original_prompt, style_temps, ai_patterns,
+                    key_terms=key_terms
+                )
+            })
+            
+            # Third variation: Focus on optimization and special features
+            variations.append({
+                "prompt": self._create_optimized_prompt(
+                    original_prompt, style_temps, ai_patterns,
+                    special_features=ai_patterns["special_features"]
+                )
+            })
+            
+            return variations
+            
+        except Exception as e:
+            self.logger.error(f"Fallback generation failed: {str(e)}")
+            return self._create_emergency_fallback(original_prompt, style)
+
+    def _extract_key_terms(self, prompt: str) -> List[str]:
+        """Extract important terms from the prompt"""
+        # Remove common stop words and punctuation
+        stop_words = set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with'])
+        words = prompt.lower().split()
+        key_terms = [word.strip('.,!?()[]{}') for word in words if word not in stop_words]
+        return list(set(key_terms))  # Remove duplicates
+
+    def _create_structured_prompt(self, original_prompt: str, style_temps: Dict, 
+                                ai_patterns: Dict, focus: str) -> str:
+        """Create a structure-focused prompt variation"""
+        prefix = random.choice(style_temps["prefix"])
+        connector = random.choice(style_temps["connector"])
+        focus_area = random.choice(ai_patterns["focus_areas"])
+        
+        return f"{prefix} {connector} {original_prompt}, focusing on {focus_area} and {focus}"
+
+    def _create_implementation_prompt(self, original_prompt: str, style_temps: Dict,
+                                    ai_patterns: Dict, key_terms: List[str]) -> str:
+        """Create an implementation-focused prompt variation"""
+        prefix = random.choice(style_temps["prefix"])
+        key_focus = random.choice(ai_patterns["focus_areas"])
+        relevant_terms = ', '.join(key_terms[:3])  # Use up to 3 key terms
+        
+        return f"{prefix} implementation of {original_prompt}, emphasizing {key_focus} and incorporating {relevant_terms}"
+
+    def _create_optimized_prompt(self, original_prompt: str, style_temps: Dict,
+                                ai_patterns: Dict, special_features: List[str]) -> str:
+        """Create an optimization-focused prompt variation"""
+        prefix = random.choice(style_temps["prefix"])
+        feature = random.choice(special_features)
+        suffix = random.choice(style_temps["suffix"])
+        
+        return f"{prefix} solution for {original_prompt}, optimized for {feature}, {suffix}"
+
+    def _create_emergency_fallback(self, prompt: str, style: str) -> List[Dict]:
+        """Create very basic fallback prompts when main generation fails"""
+        return [
+            {
+                "prompt": f"Create a {style} version of: {prompt}",
+            },
+            {
+                "prompt": f"Develop a detailed {style} approach to: {prompt}"
+            },
+            {
+                "prompt": f"Design a structured {style} solution for: {prompt}"
+            }
+        ]
 
 
 
@@ -3579,6 +3720,36 @@ class AnalysisStage(PipelineStage):
     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
         super().__init__(logger, api_handler, context_tracker)
         self.preprocessor = EnhancedPromptPreprocessor(logger)
+        self.fallback_generator = FallbackGenerator(logger)
+
+    def _get_ai_format_requirements(self, ai_type: str) -> str:
+        requirements = {
+        "Midjourney": """
+- Image parameters: --ar (aspect ratio), --q (quality), --s (style), --c (chaos)
+- Must include clear style descriptions
+- Should specify composition details""",
+        
+        "Claude": """
+- Code must be in ```language blocks
+- Use proper markdown formatting where needed
+- Can utilize XML tags for structure""",
+        
+        "Gamma": """
+- Should include clear structural indicators
+- Can specify layout requirements
+- Supports presentation formatting""",
+        
+        "Gemini": """
+- Supports combined text and visual descriptions
+- Can handle structured data formats
+- Accepts mathematical notation""",
+        
+        "ChatGPT": """
+- Can define clear system roles
+- Supports function calling formats
+- Handles conversation context"""
+    }
+        return requirements.get(ai_type, "")
 
     def _validate_pipeline_context(self, pipeline_context: Dict) -> Tuple[str, str, str]:
         """
@@ -3612,10 +3783,22 @@ Your task is to first analyse the user's request done towards getting the most e
 You have to understand what does the user's prompt lack in terms of getting the most efficient response from {ai_type}. You have to then use this understanding to enhance the user's input
 into a well formatted {style} prompt that will lead the user to getting the best possible response.
 
+CRITICAL - For {ai_type}, you must be aware of:
+{self._get_ai_format_requirements(ai_type)}.
+
 You have THREE key responsibilities:
 1. Analyze the core request and determine the most effective prompt engineering technique
-2. Generate detailed analysis of requirements and context
-3. Create THREE enhanced versions of the original prompt
+2. Deeply analyze the user's request to understand:
+   - What they're trying to achieve
+   - What type of output they need
+   - What their request currently lacks
+
+3. Based on this analysis, enhance their prompt by:
+   - Adding necessary format requirements for {ai_type}
+   - Structuring it optimally for {ai_type}'s processing
+   - Including any required parameters or formatting
+   - Maintaining {style} communication style
+4. Create THREE enhanced versions of the original prompt
 
 CRITICAL: Return ONLY a JSON response with both your analysis and enhanced prompts.
 DO NOT include any explanations or additional text outside the JSON structure."""
@@ -3659,6 +3842,7 @@ Return in this EXACT format:
         "user's prompt analysis" : ["analysis of what the user's prompt lacked and how it was made better"]
     }}
 }}"""
+            
 
             response = await self.api_handler.make_api_call(
                 system_message=system_message,
@@ -4021,48 +4205,40 @@ Focus on actionable insights that will inform prompt enhancement."""
     #         raise
 
     def _create_fallback_analysis(self, pipeline_context: Dict) -> Dict:
-        """Create robust fallback with both analysis and enhanced prompts"""
+        """Enhanced fallback with reliable prompt generation"""
         prompt = pipeline_context.get("original_prompt", "")
         ai_type = pipeline_context.get("ai_type", "general")
         style = pipeline_context.get("style", "professional")
+
+        # Generate enhanced prompts using fallback generator
+        enhanced_prompts = self.fallback_generator.generate_enhanced_prompts(
+            prompt, ai_type, style
+        )
 
         return {
             "analysis_results": {
                 "technique": {
                     "selected_technique": "Chain-of-Thought",
-                    "reasoning": "Fallback to basic structured approach",
-                    "request_characteristics": ["requires clear structure"],
+                    "reasoning": "Fallback to structured approach due to analysis failure",
+                    "request_characteristics": ["requires structured approach", "needs clear steps"],
                     "requirements": {
-                        "primary_factors": ["clear communication", "step-by-step approach"],
-                        "constraints": ["maintain professional tone", "ensure clarity"]
+                        "primary_factors": ["clear communication", "systematic approach"],
+                        "constraints": [f"maintain {style} tone", "ensure clarity"]
                     }
                 },
                 "original_prompt": prompt,
                 "ai_type": ai_type,
                 "style": style
             },
-            "enhanced_prompts": [
-                {
-                    "prompt": f"Develop a comprehensive {style} approach for: {prompt}",
-                    "focus": "Structure and Organization"
-                },
-                {
-                    "prompt": f"Create a detailed {style} implementation of: {prompt}",
-                    "focus": "Implementation Details"
-                },
-                {
-                    "prompt": f"Design an optimized {style} solution for: {prompt}",
-                    "focus": "Optimization and Efficiency"
-                }
-            ],
+            "enhanced_prompts": enhanced_prompts,
             "implementation_notes": {
                 "ai_specific_considerations": [
                     f"Optimized for {ai_type}",
-                    "Maintains clear structure"
+                    "Maintains consistent structure"
                 ],
                 "style_guidelines": [
-                    f"Follows {style} communication style",
-                    "Ensures professional tone"
+                    f"Adheres to {style} communication style",
+                    "Ensures appropriate tone and format"
                 ]
             },
             "_metadata": {
