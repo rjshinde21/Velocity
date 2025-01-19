@@ -3611,17 +3611,17 @@ class AnalysisStage(PipelineStage):
 
             # Create analysis-focused system message
             system_message = """You are a prompt engineering technique expert.
-            Your task is to analyze user requests and determine the most effective prompt engineering approach.
-            You must identify one primary technique that best suits the user's needs.
-            
-            Return ONLY a JSON response with your analysis and selected technique.
-            DO NOT include any explanations or additional text outside the JSON structure."""
+Your task is to analyze user requests and determine the most effective prompt engineering approach.
+You must identify one primary technique that best suits the user's needs.
 
-            # Create analysis prompt focused on technique selection
+IMPORTANT: You must provide detailed technique requirements including both primary factors and constraints.
+
+Return ONLY a JSON response with your analysis and selected technique.
+DO NOT include any explanations or additional text outside the JSON structure."""
+
             analysis_prompt = f"""Analyze this request to determine the most suitable prompt engineering technique:
 
 Request: "{prompt}"
-
 
 Select ONE technique from:
 1. Chain-of-Thought (CoT): Best for complex reasoning, step-by-step problem solving
@@ -3630,16 +3630,25 @@ Select ONE technique from:
 4. Few-shot: For tasks needing examples
 5. Zero-shot: For straightforward, clear instructions
 
+CRITICAL: You must provide comprehensive technique requirements.
+
 Return in this EXACT format:
 {{
     "selected_technique": "technique_name",
     "reasoning": "brief explanation of selection",
     "request_characteristics": ["characteristic1", "characteristic2"],
     "technique_requirements": {{
-        "primary_factors": ["factor1", "factor2"],
-        "constraints": ["constraint1", "constraint2"]
+        "primary_factors": [
+            "specific implementation requirement 1",
+            "specific implementation requirement 2"
+        ],
+        "constraints": [
+            "specific constraint 1",
+            "specific constraint 2"
+        ]
     }}
 }}"""
+           
 
             response = await self.api_handler.make_api_call(
                 system_message=system_message,
@@ -3675,6 +3684,7 @@ Return in this EXACT format:
             cleaned_content = self._clean_json_content(content)
             parsed = json.loads(cleaned_content)
             
+            # Validate required fields
             if "selected_technique" not in parsed:
                 raise ValueError("Missing technique selection")
                 
@@ -3682,12 +3692,29 @@ Return in this EXACT format:
             
             if parsed["selected_technique"] not in valid_techniques:
                 raise ValueError("Invalid technique selected")
+            
+            # Extract requirements from technique_requirements structure
+            requirements = []
+            if "technique_requirements" in parsed:
+                tech_reqs = parsed["technique_requirements"]
                 
+                # Add primary factors to requirements
+                if "primary_factors" in tech_reqs:
+                    requirements.extend(tech_reqs["primary_factors"])
+                    
+                # Add constraints to requirements
+                if "constraints" in tech_reqs:
+                    requirements.extend(tech_reqs["constraints"])
+                
+            # Extract request characteristics
+            characteristics = parsed.get("request_characteristics", [])
+                    
             return {
                 "name": parsed["selected_technique"],
                 "reasoning": parsed.get("reasoning", ""),
                 "request_type": parsed.get("request_type", "general"),
-                "requirements": parsed.get("implementation_requirements", [])
+                "requirements": requirements,  # Now populated from technique_requirements
+                "characteristics": characteristics  # Added for additional context
             }
         except Exception as e:
             self.logger.error(f"Technique selection processing failed: {str(e)}")
@@ -3695,7 +3722,8 @@ Return in this EXACT format:
                 "name": "Zero-shot",
                 "reasoning": "Fallback selection due to processing error",
                 "request_type": "general",
-                "requirements": ["clear instructions", "direct execution"]
+                "requirements": ["clear instructions", "direct execution"],
+                "characteristics": ["basic task"]
             }
 
     def _extract_technique_info(self, analysis_response: Dict) -> Dict:
