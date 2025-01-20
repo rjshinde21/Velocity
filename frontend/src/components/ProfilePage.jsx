@@ -323,9 +323,9 @@ const ProfilePage = ({ pricingRef }) => {
             });
 
             const orderData = await orderResponse.json();
-
+            //change the key, if you want to change the razorpay account, anytime in future
             const options = {
-                key: "rzp_test_99YnTAFGwSDddP",
+                key: "rzp_live_wUdGK1kHxZKCDS",
                 amount: amountInINR * 100,
                 currency: "INR",
                 name: "Velocity AI",
@@ -500,7 +500,7 @@ const ProfilePage = ({ pricingRef }) => {
             />
 
             {/* Credits section for desktop only */}
-            <div className="hidden absolute items-end md:flex md:w-[485px] flex-shrink-0 bg-[#008ACB] h-full justify-center">
+            <div className="hidden absolute items-end md:flex md:w-[485px] flex-shrink-0 bg-black h-full justify-center">
                 <CreditsSection />
             </div>
 

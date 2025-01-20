@@ -267,7 +267,7 @@ const PromptGrid = () => {
         buttonName:"Create"
       })
       setCreateClicked(prev => !prev)}}
-    className="glowing-button hidden sm:flex w-full sm:w-auto justify-center items-center gap-2 sm:mt-4 mt-6 mb-4"
+    className="glowing-button hidden sm:flex w-full sm:w-auto justify-center items-center gap-2 sm:mt-2 mt-2 mb-2"
   >
     <span>Create{prompts.length > 0 ? " More" : ""}</span>
     <img src={star} alt="Star" />
