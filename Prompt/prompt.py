@@ -1188,45 +1188,56 @@ class ContextTracker:
 class APIHandler:
     def __init__(self, logger: Logger):
         self.logger = logger
-        self.retry_count = 3
+        self.max_retries = 3
         self.base_delay = 1
 
     async def make_api_call(self, system_message: str, prompt: str, **params) -> Dict:
+        """Make API call with structured error handling and response validation"""
+        attempt = 0
+        while attempt < self.max_retries:
+            try:
+                # Format request with strict structure
+                request_data = self._format_request(system_message, prompt, params)
+                
+                # Log request for debugging
+                self.logger.debug(f"API Request (Attempt {attempt + 1}):\n{json.dumps(request_data, indent=2)}")
+                
+                # Make API call
+                response = llama.run(request_data)
+                
+                # Validate and process response
+                processed_response = await self._process_response(response)
+                
+                # Verify response structure
+                if self._verify_response_structure(processed_response):
+                    return processed_response
+                else:
+                    raise ValueError("Invalid response structure")
+                    
+            except Exception as e:
+                self.logger.error(f"API call attempt {attempt + 1} failed: {str(e)}")
+                if attempt == self.max_retries - 1:
+                    return self._create_fallback_response(str(e))
+                    
+                await asyncio.sleep(self.base_delay * (2 ** attempt))
+                attempt += 1
+
+    def _verify_response_structure(self, response: Dict) -> bool:
+        """Verify the response has the correct structure"""
         try:
-            response = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: llama.run({
-                    "messages": [
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "model": "llama3.2-1b",
-                    "stream": False,
-                    **params
-                })
-            )
-
-            if hasattr(response, 'json'):
-                response_data = response.json()
-                if 'choices' in response_data and len(response_data['choices']) > 0:
-                    if 'message' in response_data['choices'][0]:
-                        content = response_data['choices'][0]['message'].get('content', '')
-                    else:
-                        content = response_data['choices'][0].get('text', '')
-                        
-                    return {
-                        "content": content,
-                        "_metadata": {
-                            "timestamp": datetime.datetime.now().isoformat(),
-                            "response_type": "message"
-                        }
-                    }
-
-            raise ValueError("Invalid response structure from API")
+            if not isinstance(response, dict):
+                return False
+                
+            if 'content' not in response:
+                return False
+                
+            content = response['content']
+            required_fields = ["analysis", "enhanced_prompts", "implementation_notes"]
             
-        except Exception as e:
-            self.logger.error(f"API call failed: {str(e)}")
-            return {"error": str(e)}
+            return all(field in content for field in required_fields)
+            
+        except Exception:
+            return False
 
     def _extract_clean_parameters(self, params: Dict) -> Dict:
         default = {
@@ -1344,43 +1355,108 @@ class APIHandler:
         
         return response_data
 
-    def _process_response(self, response_data: Dict) -> Dict:
-        """Enhanced response processing with proper Llama API response handling"""
+    async def _process_response(self, response) -> Dict:
+        """Process and validate API response"""
         try:
-            # Check if it's a raw API response object
-            if hasattr(response_data, 'json'):
-                response_data = response_data.json()
-
-            if not isinstance(response_data, dict):
-                raise ValueError("Response is not a dictionary")
+            # Verify response object
+            if not hasattr(response, 'json'):
+                raise ValueError("Invalid response object")
                 
-            content = None
-            # Handle Llama API response structure
-            if 'choices' in response_data:
-                first_choice = response_data['choices'][0]
-                if 'message' in first_choice:
-                    content = first_choice['message'].get('content', '')
-                elif 'text' in first_choice:
-                    content = first_choice['text']
+            # Parse response JSON
+            response_data = response.json()
+            self.logger.debug(f"Raw API Response:\n{json.dumps(response_data, indent=2)}")
             
-            if not content:
-                raise ValueError("No content in response")
+            # Extract content from response
+            if 'choices' in response_data and len(response_data['choices']) > 0:
+                choice = response_data['choices'][0]
+                
+                # Handle different response formats
+                if 'message' in choice and 'content' in choice['message']:
+                    content = choice['message']['content']
+                elif 'text' in choice:
+                    content = choice['text']
+                else:
+                    raise ValueError("No content found in response")
+                    
+                # Parse and validate content structure
+                return self._parse_content(content)
+                
+            raise ValueError("No choices in response")
             
-            # Clean and validate JSON structure
-            cleaned_content = self._clean_content(content)
-            try:
-                # First attempt to parse as pure JSON
-                parsed_json = json.loads(cleaned_content)
-                return self._validate_and_structure_json(parsed_json)
-                
-            except json.JSONDecodeError:
-                # If not valid JSON, convert markdown/text to structured JSON
-                structured_content = self._convert_to_json_structure(cleaned_content)
-                return self._validate_and_structure_json(structured_content)
-                
         except Exception as e:
             self.logger.error(f"Response processing failed: {str(e)}")
-            return self._create_error_response(str(e))
+            return self._create_fallback_response(str(e))
+        
+    def _create_fallback_response(self, error: str) -> Dict:
+        """Create a structured fallback response"""
+        return {
+            "content": {
+                "analysis": {
+                    "status": "fallback",
+                    "error": error
+                },
+                "enhanced_prompts": [
+                    {"prompt": "Fallback prompt 1"},
+                    {"prompt": "Fallback prompt 2"},
+                    {"prompt": "Fallback prompt 3"}
+                ],
+                "implementation_notes": {
+                    "note": "Fallback response due to API error"
+                }
+            },
+            "_metadata": {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "response_type": "fallback"
+            }
+        }
+        
+    def _parse_content(self, content: str) -> Dict:
+        """Parse and validate content structure"""
+        try:
+            # Clean content
+            cleaned_content = self._clean_json_content(content)
+            
+            # Parse JSON
+            parsed_content = json.loads(cleaned_content)
+            
+            # Validate required fields
+            required_fields = ["analysis", "enhanced_prompts", "implementation_notes"]
+            if not all(field in parsed_content for field in required_fields):
+                raise ValueError(f"Missing required fields in response: {required_fields}")
+                
+            return {
+                "content": parsed_content,
+                "_metadata": {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "response_type": "structured"
+                }
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Content parsing failed: {str(e)}")
+            raise
+
+    def _clean_json_content(self, content: str) -> str:
+        """Clean and extract JSON from content"""
+        try:
+            # Remove any markdown formatting
+            content = re.sub(r'```json\s*|\s*```', '', content.strip())
+            
+            # Find JSON boundaries
+            start = content.find('{')
+            end = content.rfind('}') + 1
+            
+            if start != -1 and end > start:
+                potential_json = content[start:end]
+                # Verify it's valid JSON
+                json.loads(potential_json)  # This will raise JSONDecodeError if invalid
+                return potential_json
+                
+            raise ValueError("No valid JSON found in content")
+            
+        except Exception as e:
+            self.logger.error(f"JSON cleaning failed: {str(e)}")
+            raise
         
     def _enhance_system_message(self, system_message: str, style: str, ai_type: str) -> str:
         """Enhance system message with style and AI type requirements"""
@@ -1652,6 +1728,33 @@ class APIHandler:
                 "presence_penalty": 0.0,
                 "frequency_penalty": 0.0
             }
+        
+    def _format_request(self, system_message: str, prompt: str, params: Dict) -> Dict:
+        """Format API request with consistent structure"""
+        # Define default parameters
+        default_params = {
+            "temperature": 0.3,
+            "max_tokens": 2000,
+            "stream": False,
+            "model": "llama3.2-1b"
+        }
+        
+        # Merge with provided parameters
+        request_params = {**default_params, **params}
+        
+        return {
+            "messages": [
+                {
+                    "role": "system",
+                    "content": system_message
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            **request_params
+        }
 
 
 class PromptPreprocessor:
@@ -3777,6 +3880,12 @@ class AnalysisStage(PipelineStage):
             self.logger.info("Starting analysis stage")
             prompt, ai_type, style = self._validate_pipeline_context(pipeline_context)
 
+            self.context_tracker.add_context("analysis", {
+            "original_prompt": prompt,
+            "ai_type": ai_type,
+            "style": style
+        })
+
             # Create analysis-focused system message with enhancement capabilities
             system_message = f"""You are an expert in prompt engineering and analysis.
 Your task is to first analyse the user's request done towards getting the most efficient response from {ai_type}'s LLM.
@@ -3789,7 +3898,36 @@ You have THREE key responsibilities:
 3. Create THREE enhanced versions of the original prompt
 
 CRITICAL: Return ONLY a JSON response with both your analysis and enhanced prompts.
-DO NOT include any explanations or additional text outside the JSON structure."""
+DO NOT include any explanations or additional text outside the JSON structure.
+Return in this EXACT format:
+Return in this EXACT format:
+{{
+    "analysis": {{
+        "selected_technique": "technique_name",
+        "reasoning": "brief explanation of selection",
+        "request_characteristics": ["characteristic1", "characteristic2"],
+        "requirements": {{
+            "primary_factors": ["factor1", "factor2"],
+            "constraints": ["constraint1", "constraint2"]
+        }}
+    }},
+    "enhanced_prompts": [
+        {{
+            "prompt": "first enhanced version"
+        }},
+        {{
+            "prompt": "second enhanced version"
+        }},
+        {{
+            "prompt": "third enhanced version",
+        }}
+    ],
+    "implementation_notes": {{
+        "ai_specific_considerations": ["consideration1", "consideration2"],
+        "style_guidelines": ["guideline1", "guideline2"],
+        "user's prompt analysis" : ["analysis of what the user's prompt lacked and how it was made better"]
+    }}
+}}"""
 
             analysis_prompt = f"""Analyze this request and generate enhanced prompts:
 
@@ -3837,41 +3975,93 @@ Return in this EXACT format:
                 temperature=0.3,
                 max_tokens=2000
             )
+            self.logger.debug(response)
 
-            # Process and validate response
-            try:
-                content = response.get("content", "")
-                self.logger.debug(f"Raw API Response: {content}")
-                
-                cleaned_content = self._clean_json_content(content)
-                parsed_response = json.loads(cleaned_content)
-                
-                # Validate required sections
-                if not all(k in parsed_response for k in ["analysis", "enhanced_prompts", "implementation_notes"]):
-                    raise ValueError("Missing required sections in response")
-
-                return {
-                    "analysis_results": {
-                        "technique": parsed_response["analysis"],
-                        "original_prompt": prompt,
-                        "ai_type": ai_type,
-                        "style": style
-                    },
-                    "enhanced_prompts": parsed_response["enhanced_prompts"],
-                    "implementation_notes": parsed_response["implementation_notes"],
-                    "_metadata": {
-                        "timestamp": datetime.datetime.now().isoformat(),
-                        "stage": "analysis"
-                    }
-                }
-
-            except Exception as e:
-                self.logger.error(f"Response processing failed: {str(e)}")
+            if "error" in response:
                 return self._create_fallback_analysis(pipeline_context)
-
+                
+            formatted_response = self._format_analysis_response(response["content"])
+        
+            # Log successful analysis
+            self.logger.info("Analysis stage completed successfully")
+            self.logger.debug(f"Analysis response: {json.dumps(formatted_response, indent=2)}")
+            
+            return formatted_response
+            
         except Exception as e:
             self.logger.error(f"Analysis stage failed: {str(e)}", exc_info=True)
             return self._create_fallback_analysis(pipeline_context)
+
+            # Process and validate response
+        #     try:
+        #         content = response.get("content", "")
+        #         self.logger.debug(f"Raw API Response: {content}")
+                
+        #         cleaned_content = self._clean_json_content(content)
+        #         parsed_response = json.loads(cleaned_content)
+                
+        #         # Validate required sections
+        #         if not all(k in parsed_response for k in ["analysis", "enhanced_prompts", "implementation_notes"]):
+        #             raise ValueError("Missing required sections in response")
+
+        #         return {
+        #             "analysis_results": {
+        #                 "technique": parsed_response["analysis"],
+        #                 "original_prompt": prompt,
+        #                 "ai_type": ai_type,
+        #                 "style": style
+        #             },
+        #             "enhanced_prompts": parsed_response["enhanced_prompts"],
+        #             "implementation_notes": parsed_response["implementation_notes"],
+        #             "_metadata": {
+        #                 "timestamp": datetime.datetime.now().isoformat(),
+        #                 "stage": "analysis"
+        #             }
+        #         }
+
+        #     except Exception as e:
+        #         self.logger.error(f"Response processing failed: {str(e)}")
+        #         return self._create_fallback_analysis(pipeline_context)
+
+        # except Exception as e:
+        #     self.logger.error(f"Analysis stage failed: {str(e)}", exc_info=True)
+        #     return self._create_fallback_analysis(pipeline_context)
+
+    def _format_analysis_response(self, content: Dict) -> Dict:
+        """Format the analysis response into the expected structure"""
+        try:
+            # Validate content structure
+            if not isinstance(content, dict):
+                raise ValueError("Invalid content structure")
+
+            # Extract required components
+            analysis = content.get("analysis", {})
+            enhanced_prompts = content.get("enhanced_prompts", [])
+            implementation_notes = content.get("implementation_notes", {})
+
+            # Format the response with consistent structure
+            return {
+                "analysis_results": {
+                    "technique": analysis,
+                    "original_prompt": self.context_tracker.get_latest_context().get("original_prompt", ""),
+                    "ai_type": self.context_tracker.get_latest_context().get("ai_type", ""),
+                    "style": self.context_tracker.get_latest_context().get("style", "")
+                },
+                "enhanced_prompts": enhanced_prompts,
+                "implementation_notes": implementation_notes,
+                "_metadata": {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "stage": "analysis"
+                }
+            }
+
+        except Exception as e:
+            self.logger.error(f"Response formatting failed: {str(e)}")
+            return self._create_fallback_analysis({
+                "original_prompt": self.context_tracker.get_latest_context().get("original_prompt", ""),
+                "ai_type": self.context_tracker.get_latest_context().get("ai_type", ""),
+                "style": self.context_tracker.get_latest_context().get("style", "")
+            })
 
     def _process_technique_selection(self, content: str) -> Dict:
         """Process and validate technique selection from API response"""
