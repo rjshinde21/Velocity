@@ -838,7 +838,7 @@ async function sendRequest() {
     creditsDeducted = true;
 
     // Handle the response with scroll indication
-    if (data && data.stages?.enhancement?.result) {
+    if (data && data.enhanced_prompts) {
       const responseContainer = document.querySelector('.responses-wrapper');
       if (!responseContainer) {
         throw new Error('Response container not found');
@@ -1404,34 +1404,47 @@ function handleParsedResponse(parsedResponse) {
   responsesGrid.innerHTML = '';
 
   try {
-    const response = parsedResponse.stages?.enhancement?.result?.result || {};
-    const prompts = response.prompts || [];
-    
-    if (!prompts.length) {
-      throw new Error('No prompts received from server');
-    }
-
-    prompts.forEach((promptObj, index) => {
-      const responseElement = createResponseElement(promptObj);
-      if (responseElement) {
-        responseElement.style.animationDelay = `${index * 100}ms`;
-        responsesGrid.appendChild(responseElement);
+      // Extract prompts from the new response structure
+      const prompts = parsedResponse.enhanced_prompts || [];
+      
+      if (!prompts.length) {
+          throw new Error('No prompts received from server');
       }
-    });
 
-    mainContent.classList.add('hidden');
-    responsesWrapper.classList.remove('hidden');
-    
-    setTimeout(() => {
-      responsesWrapper.classList.add('visible');
-    }, 50);
+      // Create and append response elements with animation
+      prompts.forEach((promptObj, index) => {
+          const responseElement = createResponseElement({
+              prompt: promptObj.prompt,
+              metadata: parsedResponse._metadata,
+              technique: parsedResponse.analysis_results?.technique,
+              style: parsedResponse.analysis_results?.style
+          });
+
+          if (responseElement) {
+              responseElement.style.animationDelay = `${index * 100}ms`;
+              responsesGrid.appendChild(responseElement);
+          }
+      });
+
+      // Handle UI transitions
+      mainContent.classList.add('hidden');
+      responsesWrapper.classList.remove('hidden');
+      
+      // Add visible class after a short delay for smooth animation
+      setTimeout(() => {
+          responsesWrapper.classList.add('visible');
+      }, 50);
+
+      // Log additional information if available
+      if (parsedResponse.implementation_notes) {
+          console.log('Implementation notes:', parsedResponse.implementation_notes);
+      }
 
   } catch (error) {
-    console.error('Error displaying responses:', error);
-    showError('Failed to display responses');
+      console.error('Error displaying responses:', error);
+      showError('Failed to display responses');
   }
 }
-
 function createResponseElement(promptObj) {
   const card = document.createElement('div');
   card.className = 'response-card';

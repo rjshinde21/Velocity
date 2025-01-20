@@ -1328,6 +1328,8 @@
     // Function to handle prompt enhancement
     async function enhancePrompt(originalText) {
       console.log("Starting prompt enhancement");
+      let lastSavedPromptId;
+      let lastTokensUsed;
       
       try {
           const state = getState();
@@ -1382,32 +1384,26 @@
           console.log("Received server response:", data);
   
           // Enhanced response parsing with proper validation
-          let parsedPrompts;
-          if (data.stages && data.stages.enhancement && data.stages.enhancement.result) {
-            const enhancementResult = data.stages.enhancement.result;
-            if (enhancementResult.result && Array.isArray(enhancementResult.result.prompts)) {
-                parsedPrompts = enhancementResult.result.prompts;
-            } else {
-                throw new Error('Invalid prompts structure in response');
-            }
-        } else {
-            throw new Error('Invalid response format from server');
-        }
+          let enhancedPrompt;
+          if (data.enhanced_prompts) {
+              if (Array.isArray(data.enhanced_prompts) && data.enhanced_prompts.length > 0) {
+                  // Take the first enhanced prompt from the array
+                  enhancedPrompt = data.enhanced_prompts[0].prompt;
+              } else {
+                  throw new Error('No valid prompts in response');
+              }
+          } else {
+              throw new Error('Invalid response format from server');
+          }
   
-          // Validate we have valid prompts
-          if (!parsedPrompts || !parsedPrompts.length) {
-            throw new Error('No valid prompts received from server');
-        }
           // Process successful response
           await deductCredits(state, creditValidation.requiredCredits);
   
           trackEvent('Response Generated', {
               location: "Enhance Button",
-              length: parsedPrompts.length
+              length: data.enhanced_prompts.length
           });
   
-          const enhancedPrompt = parsedPrompts[0].prompt;
-          
           // Save the response to history
           await saveResponseToHistory(
               enhancedPrompt,
@@ -1415,6 +1411,16 @@
               state.platform,
               lastTokensUsed
           );
+  
+          // Log additional metadata if available
+          if (data._metadata) {
+              console.log("Enhancement metadata:", data._metadata);
+          }
+  
+          // Log implementation notes if available
+          if (data.implementation_notes) {
+              console.log("Implementation notes:", data.implementation_notes);
+          }
   
           return enhancedPrompt;
   
@@ -1431,7 +1437,8 @@
           // Re-throw the error for the UI layer to handle
           throw error;
       }
-  } // Function to create and attach enhance button
+  }
+  // Function to create and attach enhance button
     function calculatePopupPosition(button, popup) {
       const buttonRect = button.getBoundingClientRect();
       const popupHeight = popup.offsetHeight;
