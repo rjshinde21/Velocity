@@ -3783,22 +3783,10 @@ Your task is to first analyse the user's request done towards getting the most e
 You have to understand what does the user's prompt lack in terms of getting the most efficient response from {ai_type}. You have to then use this understanding to enhance the user's input
 into a well formatted {style} prompt that will lead the user to getting the best possible response.
 
-CRITICAL - For {ai_type}, you must be aware of:
-{self._get_ai_format_requirements(ai_type)}.
-
 You have THREE key responsibilities:
 1. Analyze the core request and determine the most effective prompt engineering technique
-2. Deeply analyze the user's request to understand:
-   - What they're trying to achieve
-   - What type of output they need
-   - What their request currently lacks
-
-3. Based on this analysis, enhance their prompt by:
-   - Adding necessary format requirements for {ai_type}
-   - Structuring it optimally for {ai_type}'s processing
-   - Including any required parameters or formatting
-   - Maintaining {style} communication style
-4. Create THREE enhanced versions of the original prompt
+2. Generate detailed analysis of requirements and context
+3. Create THREE enhanced versions of the original prompt
 
 CRITICAL: Return ONLY a JSON response with both your analysis and enhanced prompts.
 DO NOT include any explanations or additional text outside the JSON structure."""
@@ -3842,7 +3830,6 @@ Return in this EXACT format:
         "user's prompt analysis" : ["analysis of what the user's prompt lacked and how it was made better"]
     }}
 }}"""
-            
 
             response = await self.api_handler.make_api_call(
                 system_message=system_message,
