@@ -1,2 +1,2 @@
 # Velocity
-An extension to make image processing easier
+Your very-own Prompt Copilot.
