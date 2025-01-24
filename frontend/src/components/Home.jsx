@@ -121,14 +121,42 @@ const Home = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#008ACB_0%,_transparent_40%)] opacity-30 animate-gradient-move" />
         
         <div className="font-[Amenti] relative z-10 flex flex-col items-center justify-center">
-          <h1 className="bg-gradient-text pt-10 text-4xl sm:text-6xl pb-4 text-center">
-            Makes AI Work <br />
-            <span className="block text-center">Smarter for You</span>
-          </h1>
-          <p className="text-[#999999] font-[Inter] text-base sm:text-xl">
-            Redefine the way you generate AI-driven ideas
-          </p>
-        </div>
+  <h1 className="bg-gradient-text pt-10 text-4xl sm:text-6xl pb-4 text-center">
+    Makes AI Work <br />
+    <span className="block text-center">Smarter for You</span>
+  </h1>
+  <p className="text-[#999999] font-[Inter] text-base sm:text-xl mb-8">
+    Redefine the way you generate AI-driven ideas
+  </p>
+  <div className="flex flex-row items-center gap-4 mb-12 pr-4 pl-4">
+    <a 
+      href="[EXTERNAL_URL_PLACEHOLDER]" 
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => {
+        Analytics.track('Button Clicked', {
+          buttonName: 'Get Free Access'
+        });
+      }}
+      className="glowing-button px-6 py-2.5 text-sm whitespace-nowrap"
+    >
+      Get Free Access
+    </a>
+    <a 
+      href="https://www.producthunt.com/posts/velocity-prompt-co-pilot?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-velocity&#0045;prompt&#0045;co&#0045;pilot" 
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <img 
+        src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=775176&theme=light&t=1737379153153" 
+        alt="Velocity: Prompt Co-Pilot" 
+        width="200" 
+        height="54"
+        className="w-[200px] h-[54px] sm:w-[250px] sm:h-[80px]"
+      />
+    </a>
+  </div>
+</div>
 
         <HomeCards />
         

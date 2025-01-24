@@ -60,9 +60,9 @@ const HowItWorks = () => {
             {/* Mobile Video - Shows first on mobile, hidden on desktop */}
             <div className="lg:hidden w-full">
               <div className="w-full max-w-2xl mx-auto pt-4">
-                <div className="relative rounded-lg overflow-hidden bg-transparent aspect-[1578/1080]">
+                <div className="relative rounded-lg overflow-hidden bg-transparent aspect-[2000/1080]">
                   <video
-                    src="https://toteminteractive.in/velosty/Demo%20Draft%209_2_prob3.webm"
+                    src="https://toteminteractive.in/velosty/demo2.mp4"
                     className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
                     autoPlay
                     loop
@@ -107,11 +107,10 @@ const HowItWorks = () => {
     <div className="w-full max-w-5xl">
         <div className="relative rounded-lg overflow-hidden bg-transparent aspect-[1600/1080] w-full">
             <video
-                src="https://toteminteractive.in/velosty/Demo%20Draft%209_2_prob3.webm"
+                src="https://toteminteractive.in/velosty/demo2.mp4"
                 className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
                 autoPlay
                 loop
-                muted
                 playsInline
                 disablePictureInPicture
                 controlsList="nodownload nofullscreen noremoteplayback"
