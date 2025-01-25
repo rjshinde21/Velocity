@@ -7,6 +7,7 @@ import HomeCards from "./HomeCards";
 import { Link } from "react-router-dom";
 import supabase from '../config/supabaseClient';
 import Analytics from '../config/analytics';
+import PromptBox from './PromptBox';
 
 const Home = () => {
   // useEffect(() => {
@@ -117,7 +118,7 @@ const Home = () => {
       <div className="absolute right-20 top-0 h-full w-[2px] bg-gradient-to-b from-[#1E1E1E] to-[#6ACFFF] opacity-20 hidden sm:block z-10" />
 
       {/* Content layer above particles */}
-      <div className="relative flex items-center justify-center flex-col pt-40 lg:pt-56 z-10">
+      <div className="relative flex items-center justify-center flex-col pt-40 lg:pt-56 z-10 pointer-events-auto">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#008ACB_0%,_transparent_40%)] opacity-30 animate-gradient-move" />
         
         <div className="font-[Amenti] relative z-10 flex flex-col items-center justify-center">
@@ -157,6 +158,7 @@ const Home = () => {
     </a>
   </div>
 </div>
+<PromptBox />
 
         <HomeCards />
         

@@ -4647,6 +4647,7 @@ Focus on creating guidelines that will help generate prompts that:
             "presence_penalty": {"value": 0.0, "reasoning": "Default"},
             "frequency_penalty": {"value": 0.0, "reasoning": "Default"}
         }
+    
 class EnhancementStage(PipelineStage):
     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
         super().__init__(logger, api_handler, context_tracker)
