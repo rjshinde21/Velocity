@@ -1192,35 +1192,86 @@ class APIHandler:
         self.base_delay = 1
 
     async def make_api_call(self, system_message: str, prompt: str, **params) -> Dict:
-        """Make API call with structured error handling and response validation"""
         attempt = 0
         while attempt < self.max_retries:
             try:
-                # Format request with strict structure
-                request_data = self._format_request(system_message, prompt, params)
+                response = llama.run({
+                    "messages": [
+                        {"role": "system", "content": system_message},
+                        {"role": "user", "content": prompt}
+                    ],
+                    **params
+                })
                 
-                # Log request for debugging
-                self.logger.debug(f"API Request (Attempt {attempt + 1}):\n{json.dumps(request_data, indent=2)}")
-                
-                # Make API call
-                response = llama.run(request_data)
-                
-                # Validate and process response
-                processed_response = await self._process_response(response)
-                
-                # Verify response structure
-                if self._verify_response_structure(processed_response):
-                    return processed_response
+                if isinstance(response, str):
+                    raw_content = response
                 else:
-                    raise ValueError("Invalid response structure")
-                    
+                    try:
+                        raw_content = response.json()
+                    except (AttributeError, json.JSONDecodeError):
+                        raw_content = str(response)
+
+                self.logger.debug(f"Raw response type: {type(raw_content)}")
+                self.logger.debug(f"Raw response content: {raw_content}")
+
+                if isinstance(raw_content, dict):
+                    return raw_content
+                else:
+                    return await self._format_unstructured_response(raw_content)
+
             except Exception as e:
                 self.logger.error(f"API call attempt {attempt + 1} failed: {str(e)}")
                 if attempt == self.max_retries - 1:
                     return self._create_fallback_response(str(e))
-                    
+                
                 await asyncio.sleep(self.base_delay * (2 ** attempt))
                 attempt += 1
+
+    async def _process_raw_response(self, raw_response: str) -> Dict:
+        try:
+            return json.loads(raw_response)
+        except json.JSONDecodeError:
+            # Use await here
+            return await self._format_unstructured_response(raw_response)
+
+    async def _format_unstructured_response(self, raw_text: str) -> Dict:
+        system_message = """You are a response formatter. Convert the given text into a valid JSON structure.
+        Return ONLY valid JSON with this structure:
+        {
+            "analysis": {
+                "selected_technique": "string",
+                "reasoning": "string",
+                "metrics": {
+                    "clarity": "string",
+                    "context": "string",
+                    "specificity": "string"
+                }
+            },
+            "enhanced_prompts": [
+                {"prompt": "string"},
+                {"prompt": "string"},
+                {"prompt": "string"}
+            ],
+            "implementation_notes": {
+                "platform_specific": ["string"],
+                "style_adherence": ["string"],
+                "prompt_analysis": ["string"]
+            }
+        }"""
+
+        format_prompt = f"Format this response into valid JSON:\n{raw_text}"
+
+        try:
+            # Use await here
+            formatting_response = await self.make_api_call(
+                system_message=system_message,
+                prompt=format_prompt,
+                temperature=0.3
+            )
+            return json.loads(formatting_response['content'])
+        except Exception as e:
+            self.logger.error(f"Formatting failed: {str(e)}")
+            return self._create_fallback_response(str(e))
 
     def _verify_response_structure(self, response: Dict) -> bool:
         """Verify the response has the correct structure"""
@@ -3927,7 +3978,14 @@ Return in this EXACT format:
         "style_guidelines": ["guideline1", "guideline2"],
         "user's prompt analysis" : ["analysis of what the user's prompt lacked and how it was made better"]
     }}
-}}"""
+}}
+Key Requirements:
+1. DO NOT answer the user's request
+2. Only transform the request into better prompts
+3. Ensure each prompt follows {ai_type} best practices
+4. Maintain {style} communication style
+5. Apply selected prompt engineering technique consistently
+"""
 
             analysis_prompt = f"""Analyze this request and generate enhanced prompts:
 
@@ -3979,8 +4037,10 @@ Return in this EXACT format:
 
             if "error" in response:
                 return self._create_fallback_analysis(pipeline_context)
+
+            content = response['choices'][0]['message']['content']
                 
-            formatted_response = self._format_analysis_response(response["content"])
+            formatted_response = self._format_analysis_response(json.loads(content))
         
             # Log successful analysis
             self.logger.info("Analysis stage completed successfully")
