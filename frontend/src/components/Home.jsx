@@ -141,7 +141,7 @@ const Home = () => {
       }}
       className="glowing-button px-6 py-2.5 text-sm whitespace-nowrap"
     >
-      Get Free Access
+      Try for Free
     </a>
     <a 
       href="https://www.producthunt.com/posts/velocity-prompt-co-pilot?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-velocity&#0045;prompt&#0045;co&#0045;pilot" 
@@ -158,9 +158,9 @@ const Home = () => {
     </a>
   </div>
 </div>
-<PromptBox />
+{/* <PromptBox /> */}
 
-        <HomeCards />
+        {/* <HomeCards /> */}
         
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent via-[12%] bottom-0" />
       </div>

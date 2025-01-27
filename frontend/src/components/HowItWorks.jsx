@@ -1,5 +1,6 @@
 import React from 'react';
 import cardbg from "../assets/howitworkscard.png";
+import PromptBox from './PromptBox';
 
 const HowItWorks = () => {
   const steps = [
@@ -111,6 +112,7 @@ const HowItWorks = () => {
                 className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
                 autoPlay
                 loop
+                muted
                 playsInline
                 disablePictureInPicture
                 controlsList="nodownload nofullscreen noremoteplayback"
@@ -120,7 +122,9 @@ const HowItWorks = () => {
         </div>
     </div>
 </div>
+
         </div>
+        <PromptBox />
       </div>
     </div>
   );
