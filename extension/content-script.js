@@ -1332,112 +1332,111 @@
       let lastTokensUsed;
       
       try {
-          const state = getState();
-          let styleTransform = null;
-          console.log("Current state configuration:", {
-              style: state.styleType,
-              platform: state.platform
+        const state = getState();
+        let styleTransform = null;
+        console.log("Current state configuration:", {
+          style: state.styleType,
+          platform: state.platform
+        });
+    
+        // Track enhancement attempt
+        trackEvent('Enhance Button clicked', {
+          platform: state.platform,
+          style: state.styleType,
+          promptLength: originalText.length
+        });
+    
+        // Validate credits first
+        const creditValidation = await validateCredits(state);
+    
+        // Get style transformation logic
+        if (state.styleType && state.styleTransformations[state.styleType.toLowerCase()]) {
+          styleTransform = state.styleTransformations[state.styleType.toLowerCase()];
+        }
+    
+        // Save prompt history first to ensure tracking
+        const promptData = await savePromptToHistory(originalText, state.platform);
+        lastSavedPromptId = promptData.data.history_id;
+    
+        // Prepare request data for background script
+        const requestData = {
+          prompt: styleTransform ? styleTransform.modifier(originalText) : originalText,
+          style: state.styleType || 'professional',
+          AIType: state.platform || 'General',
+          singlePrompt: true
+        };
+    
+        // Use chrome runtime message to send request through background script
+        const response = await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage({
+            action: 'enhancePrompt',
+            ...requestData
+          }, (response) => {
+            if (response.success) {
+              resolve(response.data);
+            } else {
+              reject(new Error(response.error || 'Enhancement failed'));
+            }
           });
-  
-          // Track enhancement attempt
-          trackEvent('Enhance Button clicked', {
-              platform: state.platform,
-              style: state.styleType,
-              promptLength: originalText.length
-          });
-  
-          // Validate credits first
-          const creditValidation = await validateCredits(state);
-  
-          // Get style transformation logic
-          if (state.styleType && state.styleTransformations[state.styleType.toLowerCase()]) {
-              styleTransform = state.styleTransformations[state.styleType.toLowerCase()];
-          }
-  
-          // Save prompt history first to ensure tracking
-          const promptData = await savePromptToHistory(originalText, state.platform);
-          lastSavedPromptId = promptData.data.history_id;
-  
-          // Prepare request with proper JSON structure
-          const requestData = {
-              prompt: styleTransform ? styleTransform.modifier(originalText) : originalText,
-              style: state.styleType,
-              AIType: state.platform,
-              singlePrompt: true
-          };
-  
-          // Make API request with JSON content type
-          const response = await fetch('https://thinkvelocity.in/python-api/process', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(requestData)
-          });
-  
-          // Check for response status before proceeding
-          if (!response.ok) {
-              throw new Error(`Server responded with status ${response.status}: ${await response.text()}`);
-          }
-  
-          const data = await response.json();
-          console.log("Received server response:", data);
-  
-          // Enhanced response parsing with proper validation
-          let enhancedPrompt;
-          if (data.enhanced_prompts) {
-              if (Array.isArray(data.enhanced_prompts) && data.enhanced_prompts.length > 0) {
-                  // Take the first enhanced prompt from the array
-                  enhancedPrompt = data.enhanced_prompts[0].prompt;
-              } else {
-                  throw new Error('No valid prompts in response');
-              }
+        });
+    
+        console.log("Received server response:", response);
+    
+        // Enhanced response parsing with proper validation
+        let enhancedPrompt;
+        if (response.enhanced_prompts) {
+          if (Array.isArray(response.enhanced_prompts) && response.enhanced_prompts.length > 0) {
+            // Take the first enhanced prompt from the array
+            enhancedPrompt = response.enhanced_prompts[0].prompt;
           } else {
-              throw new Error('Invalid response format from server');
+            throw new Error('No valid prompts in response');
           }
-  
-          // Process successful response
-          await deductCredits(state, creditValidation.requiredCredits);
-  
-          trackEvent('Response Generated', {
-              location: "Enhance Button",
-              length: data.enhanced_prompts.length
-          });
-  
-          // Save the response to history
-          await saveResponseToHistory(
-              enhancedPrompt,
-              lastSavedPromptId,
-              state.platform,
-              lastTokensUsed
-          );
-  
-          // Log additional metadata if available
-          if (data._metadata) {
-              console.log("Enhancement metadata:", data._metadata);
-          }
-  
-          // Log implementation notes if available
-          if (data.implementation_notes) {
-              console.log("Implementation notes:", data.implementation_notes);
-          }
-  
-          return enhancedPrompt;
-  
+        } else {
+          throw new Error('Invalid response format from server');
+        }
+    
+        // Process successful response
+        await deductCredits(state, creditValidation.requiredCredits);
+    
+        trackEvent('Response Generated', {
+          location: "Enhance Button",
+          length: response.enhanced_prompts.length
+        });
+    
+        // Save the response to history
+        await saveResponseToHistory(
+          enhancedPrompt,
+          lastSavedPromptId,
+          state.platform,
+          lastTokensUsed
+        );
+    
+        // Log additional metadata if available
+        if (response._metadata) {
+          console.log("Enhancement metadata:", response._metadata);
+        }
+    
+        // Log implementation notes if available
+        if (response.implementation_notes) {
+          console.log("Implementation notes:", response.implementation_notes);
+        }
+    
+        return response; // Return full response for details visualization
+    
       } catch (error) {
-          console.error('Enhancement failed:', error);
-          
-          trackEvent('Generate Error', {
-              error: error.message,
-              platform: getState().platform,
-              style: getState().styleType,
-              location: "Enhance Button"
-          });
-  
-          // Re-throw the error for the UI layer to handle
-          throw error;
+        console.error('Enhancement failed:', error);
+        
+        trackEvent('Generate Error', {
+          error: error.message,
+          platform: getState().platform,
+          style: getState().styleType,
+          location: "Enhance Button"
+        });
+    
+        // Re-throw the error for the UI layer to handle
+        throw error;
       }
-  }
+    }
   // Function to create and attach enhance button
     function calculatePopupPosition(button, popup) {
       const buttonRect = button.getBoundingClientRect();
@@ -2795,7 +2794,8 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
     try {
       showLoading();
       const textToEnhance = selectedText || fullText;
-      const enhancedText = await enhancePrompt(textToEnhance);
+      const enhancedResponse = await enhancePrompt(textToEnhance);
+      const enhancedText = enhancedResponse.enhanced_prompts[0].prompt;
   
       // Handle different input types
       if (selectedText) {
@@ -2803,24 +2803,24 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
           const selectionStart = inputElement.selectionStart;
           const selectionEnd = inputElement.selectionEnd;
           inputElement.value = fullText.substring(0, selectionStart) + 
-                             enhancedText + 
+                             enhancedResponse.enhanced_prompts[0].prompt + 
                              fullText.substring(selectionEnd);
           inputElement.selectionStart = selectionStart;
-          inputElement.selectionEnd = selectionStart + enhancedText.length;
+          inputElement.selectionEnd = selectionStart + enhancedResponse.enhanced_prompts[0].prompt.length;
         } else {
           const selection = window.getSelection();
           if (selection.rangeCount > 0) {
             const range = selection.getRangeAt(0);
             range.deleteContents();
-            range.insertNode(document.createTextNode(enhancedText));
+            range.insertNode(document.createTextNode(enhancedResponse.enhanced_prompts[0].prompt));
           }
         }
       } else {
         if (inputElement.value !== undefined) {
-          inputElement.value = enhancedText;
+          inputElement.value = enhancedResponse.enhanced_prompts[0].prompt;
         } else {
           // Handle contenteditable
-          inputElement.textContent = enhancedText;
+          inputElement.textContent = enhancedResponse.enhanced_prompts[0].prompt;
         }
       }
   
@@ -2846,6 +2846,69 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
           inputElement.dispatchEvent(keyEvent);
         }
       }
+
+      // Update popup with details visualization
+      const detailsContainer = document.createElement('div');
+      detailsContainer.className = 'velocity-details-popup';
+      
+      // Technique Section
+      const techniqueSection = document.createElement('div');
+      techniqueSection.innerHTML = `
+        <h4>Prompt Engineering Technique</h4>
+        <p><strong>Technique:</strong> ${enhancedResponse.analysis.technique.selected_technique}</p>
+        <p><strong>Reasoning:</strong> ${enhancedResponse.analysis.technique.reasoning}</p>
+        <p><strong>Request Characteristics:</strong> 
+          ${enhancedResponse.analysis.technique.request_characteristics.join(', ')}
+        </p>
+      `;
+      
+      // Analysis Details Section
+      const analysisSection = document.createElement('div');
+      analysisSection.innerHTML = `
+        <h4>Analysis Details</h4>
+        <p><strong>AI Type:</strong> ${enhancedResponse.analysis.ai_type}</p>
+        <p><strong>Original Prompt:</strong> ${enhancedResponse.analysis.original_prompt}</p>
+        <p><strong>Style:</strong> ${enhancedResponse.analysis.style}</p>
+        <p><strong>Constraints:</strong> 
+          ${enhancedResponse.analysis.technique.requirements.constraints.join(', ')}
+        </p>
+        <p><strong>Primary Factors:</strong> 
+          ${enhancedResponse.analysis.technique.requirements.primary_factors.join(', ')}
+        </p>
+      `;
+      
+      // Implementation Notes Section
+      const implementationSection = document.createElement('div');
+      implementationSection.innerHTML = `
+        <h4>Implementation Notes</h4>
+        <div>
+          <strong>AI Considerations:</strong>
+          <ul>
+            ${enhancedResponse.implementation_notes.ai_specific_considerations
+              .map(note => `<li>${note}</li>`).join('')}
+          </ul>
+          <strong>Style Guidelines:</strong>
+          <ul>
+            ${enhancedResponse.implementation_notes.style_guidelines
+              .map(note => `<li>${note}</li>`).join('')}
+          </ul>
+          <strong>Prompt Analysis:</strong>
+          <ul>
+            ${enhancedResponse.implementation_notes['user\'s prompt analysis']
+              .map(note => `<li>${note}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+      
+      // Append sections to container
+      detailsContainer.appendChild(techniqueSection);
+      detailsContainer.appendChild(analysisSection);
+      detailsContainer.appendChild(implementationSection);
+      
+      // Update popup
+      popup.innerHTML = '';
+      popup.appendChild(detailsContainer);
+      popup.classList.add('show');
   
     } catch (error) {
       console.error('Enhancement failed:', error);
@@ -2863,6 +2926,34 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
       updateButtonAnimations(button, inputElement);
     }
   });
+
+// Add CSS for details popup (can be added to existing styles)
+const detailsStyles = document.createElement('style');
+detailsStyles.textContent = `
+  .velocity-details-popup {
+    max-width: 300px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+  .velocity-details-popup h4 {
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #e0e0e0;
+    color: #333;
+  }
+  .velocity-details-popup p, 
+  .velocity-details-popup ul {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 10px;
+  }
+  .velocity-details-popup ul {
+    padding-left: 15px;
+  }
+`;
+document.head.appendChild(detailsStyles);
   
   // Helper function to get selected text
   function getSelectedText(element) {

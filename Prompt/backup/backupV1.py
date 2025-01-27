@@ -1184,214 +1184,43 @@ class ContextTracker:
         )
         return self.context_chain[:stage_index]
 
-class CircuitBreaker:
-    def __init__(self, failure_threshold: int = 5, reset_timeout: int = 60):
-        self.failure_threshold = failure_threshold
-        self.reset_timeout = reset_timeout
-        self.failures = 0
-        self.last_failure_time = None
-        self.state = 'closed'  # closed, open, half-open
-        self.lock = asyncio.Lock()
-
-    async def is_open(self) -> bool:
-        async with self.lock:
-            if self.state == 'open':
-                if time.time() - self.last_failure_time > self.reset_timeout:
-                    self.state = 'half-open'
-                    return False
-                return True
-            return False
-
-    async def record_failure(self):
-        async with self.lock:
-            self.failures += 1
-            self.last_failure_time = time.time()
-            if self.failures >= self.failure_threshold:
-                self.state = 'open'
-
-    async def record_success(self):
-        async with self.lock:
-            self.failures = 0
-            self.state = 'closed'
-
 
 class APIHandler:
     def __init__(self, logger: Logger):
         self.logger = logger
-        self.timeout = (3.0, 5.0)
         self.max_retries = 3
         self.base_delay = 1
-        self.circuit_breaker = CircuitBreaker()
-
-    async def make_concurrent_api_calls(self, system_message: str, prompt: str, **params) -> Dict:
-        tasks = [self._single_api_call(system_message, prompt, **params) for _ in range(self.max_retries)]
-        
-        try:
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            
-            for result in results:
-                if not isinstance(result, Exception):
-                    await self.circuit_breaker.record_success()
-                    return result
-            
-            raise Exception("All concurrent API calls failed")
-        
-        except Exception as e:
-            self.logger.error(f"Concurrent API calls failed: {str(e)}")
-            raise
 
     async def make_api_call(self, system_message: str, prompt: str, **params) -> Dict:
-        """Main API call method with circuit breaker"""
-        start_time = time.time()
-        self.logger.info(f"Starting API call - Timestamp: {datetime.datetime.now().isoformat()}")
-        
-        # Check circuit breaker
-        if await self.circuit_breaker.is_open():
-            self.logger.warning("Circuit breaker is open, failing fast")
-            return self._create_fallback_response("Circuit breaker is open")
-        
-        try:
-            # Try concurrent API calls
-            response = await self.make_concurrent_api_calls(system_message, prompt, **params)
-            self.logger.info(f"API call completed in {time.time() - start_time:.2f}s")
-            return response
-            
-        except Exception as e:
-            await self.circuit_breaker.record_failure()
-            self.logger.error(f"API call failed after {time.time() - start_time:.2f}s: {str(e)}")
-            return self._create_fallback_response(str(e))
-        
-
-    async def _single_api_call(self, system_message: str, prompt: str, **params) -> Union[Dict, Exception]:
-        try:
-            # Remove timeout if not supported
-            params.pop('timeout', None)
-            
-            response = llama.run({
-                "messages": [
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": prompt}
-                ],
-                **params
-            })
-            
-            self.logger.debug(f"Raw response received: {response}")
-            
-            # Check if response is a Response object
-            if hasattr(response, 'json'):
-                try:
-                    # Attempt to parse JSON
-                    raw_content = response.json()
-                    self.logger.debug(f"Parsed JSON response: {raw_content}")
-
-                    if hasattr(response, 'json'):
-                        try:
-                            raw_content = response.json()
-                            self.logger.debug(f"Full JSON Response Structure: {json.dumps(raw_content, indent=2)}")
-                        except Exception as e:
-                            self.logger.error(f"Error extracting JSON: {e}")
-                    
-                    # Extract content based on typical API response structures
-                    if 'choices' in raw_content and raw_content['choices']:
-                        content = raw_content['choices'][0].get('message', {}).get('content')
-                    elif 'content' in raw_content:
-                        content = raw_content['content']
-                    else:
-                        content = str(raw_content)
-                    
-                    return await self._format_unstructured_response(content)
-                
-                except ValueError as json_error:
-                    self.logger.error(f"JSON parsing failed: {json_error}")
-                    return await self._format_unstructured_response(str(response))
-            
-            # If not a Response object, try to process as is
-            return await self._format_unstructured_response(str(response))
-            
-        except Exception as e:
-            self.logger.error(f"Single API call failed: {str(e)}")
-            return e
-
-    def _create_fallback_response(self, error: str) -> Dict:
-        """Create a fallback response when API calls fail"""
-        return {
-            "status": "error",
-            "error": error,
-            "fallback": True,
-            "timestamp": datetime.datetime.now().isoformat(),
-            "content": {
-                "analysis": {
-                    "status": "fallback",
-                    "error": error
-                },
-                "enhanced_prompts": [
-                    {"prompt": "We are experiencing temporary issues. Please try again in a few moments."}
-                ],
-                "implementation_notes": {
-                    "note": f"Fallback response due to API error: {error}"
-                }
-            }
-        }
-
-    async def _process_raw_response(self, raw_response: str) -> Dict:
-        try:
-            return json.loads(raw_response)
-        except json.JSONDecodeError:
-            # Use await here
-            return await self._format_unstructured_response(raw_response)
-
-    async def _format_unstructured_response(self, raw_text: str) -> Dict:
-        system_message = """You are a response formatter. Convert the given text into a valid JSON structure.
-        Return ONLY valid JSON with this structure:
-        {
-            "analysis": {
-                "selected_technique": "string",
-                "reasoning": "string",
-                "metrics": {
-                    "clarity": "string",
-                    "context": "string",
-                    "specificity": "string"
-                }
-            },
-            "enhanced_prompts": [
-                {"prompt": "string"},
-                {"prompt": "string"},
-                {"prompt": "string"}
-            ],
-            "implementation_notes": {
-                "platform_specific": ["string"],
-                "style_adherence": ["string"],
-                "prompt_analysis": ["string"]
-            }
-        }
-        CRITICAL - DO NOT RETURN ANY OTHER STRUCTURE OR ANYTHING EXTRA IN YOUR RESPONSE , I ONLY NEED THE RESPONSE IN THE ABOVE STRUCTURE. NO EXTRA DECLARATIONS, NO EXTRA TEXT MESSAGE, NOTHING AT ALL.
-        """
-
-        format_prompt = f"Format this response into valid JSON:\n{raw_text}"
-
-        try:
-            # Use await here
-            formatting_response = await self.make_api_call(
-                system_message=system_message,
-                prompt=format_prompt,
-                temperature=0.3
-            )
-            
-            # Additional error handling and content extraction
-            if not formatting_response or 'content' not in formatting_response:
-                raise ValueError("Invalid formatting response")
-            
-            # Try to parse the content
+        """Make API call with structured error handling and response validation"""
+        attempt = 0
+        while attempt < self.max_retries:
             try:
-                parsed_content = json.loads(formatting_response['content'])
-                return parsed_content
-            except json.JSONDecodeError:
-                # If JSON parsing fails, use fallback
-                return self._create_fallback_response("Unable to parse formatted response")
-            
-        except Exception as e:
-            self.logger.error(f"Formatting failed: {str(e)}")
-            return self._create_fallback_response(str(e))
+                # Format request with strict structure
+                request_data = self._format_request(system_message, prompt, params)
+                
+                # Log request for debugging
+                self.logger.debug(f"API Request (Attempt {attempt + 1}):\n{json.dumps(request_data, indent=2)}")
+                
+                # Make API call
+                response = llama.run(request_data)
+                
+                # Validate and process response
+                processed_response = await self._process_response(response)
+                
+                # Verify response structure
+                if self._verify_response_structure(processed_response):
+                    return processed_response
+                else:
+                    raise ValueError("Invalid response structure")
+                    
+            except Exception as e:
+                self.logger.error(f"API call attempt {attempt + 1} failed: {str(e)}")
+                if attempt == self.max_retries - 1:
+                    return self._create_fallback_response(str(e))
+                    
+                await asyncio.sleep(self.base_delay * (2 ** attempt))
+                attempt += 1
 
     def _verify_response_structure(self, response: Dict) -> bool:
         """Verify the response has the correct structure"""
@@ -1527,26 +1356,33 @@ class APIHandler:
         return response_data
 
     async def _process_response(self, response) -> Dict:
+        """Process and validate API response"""
         try:
-            # Handle different response types
-            if isinstance(response, dict):
-                return response
-            elif hasattr(response, 'json'):
-                response_data = response.json()
-            elif isinstance(response, str):
-                response_data = json.loads(response)
-            else:
-                raise ValueError("Unsupported response type")
-
-            # Extract content flexibly
-            content = (
-                response_data.get('choices', [{}])[0].get('message', {}).get('content') or
-                response_data.get('content') or
-                str(response_data)
-            )
-
-            return await self._format_unstructured_response(content)
-        
+            # Verify response object
+            if not hasattr(response, 'json'):
+                raise ValueError("Invalid response object")
+                
+            # Parse response JSON
+            response_data = response.json()
+            self.logger.debug(f"Raw API Response:\n{json.dumps(response_data, indent=2)}")
+            
+            # Extract content from response
+            if 'choices' in response_data and len(response_data['choices']) > 0:
+                choice = response_data['choices'][0]
+                
+                # Handle different response formats
+                if 'message' in choice and 'content' in choice['message']:
+                    content = choice['message']['content']
+                elif 'text' in choice:
+                    content = choice['text']
+                else:
+                    raise ValueError("No content found in response")
+                    
+                # Parse and validate content structure
+                return self._parse_content(content)
+                
+            raise ValueError("No choices in response")
+            
         except Exception as e:
             self.logger.error(f"Response processing failed: {str(e)}")
             return self._create_fallback_response(str(e))
@@ -4091,14 +3927,7 @@ Return in this EXACT format:
         "style_guidelines": ["guideline1", "guideline2"],
         "user's prompt analysis" : ["analysis of what the user's prompt lacked and how it was made better"]
     }}
-}}
-Key Requirements:
-1. DO NOT answer the user's request
-2. Only transform the request into better prompts
-3. Ensure each prompt follows {ai_type} best practices
-4. Maintain {style} communication style
-5. Apply selected prompt engineering technique consistently
-"""
+}}"""
 
             analysis_prompt = f"""Analyze this request and generate enhanced prompts:
 
@@ -4150,10 +3979,8 @@ Return in this EXACT format:
 
             if "error" in response:
                 return self._create_fallback_analysis(pipeline_context)
-
-            content = response['choices'][0]['message']['content']
                 
-            formatted_response = self._format_analysis_response(json.loads(content))
+            formatted_response = self._format_analysis_response(response["content"])
         
             # Log successful analysis
             self.logger.info("Analysis stage completed successfully")
@@ -4820,7 +4647,6 @@ Focus on creating guidelines that will help generate prompts that:
             "presence_penalty": {"value": 0.0, "reasoning": "Default"},
             "frequency_penalty": {"value": 0.0, "reasoning": "Default"}
         }
-    
 class EnhancementStage(PipelineStage):
     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
         super().__init__(logger, api_handler, context_tracker)

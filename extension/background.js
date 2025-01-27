@@ -447,6 +447,42 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
       });
     }
+    
+    if (message.action === 'enhancePrompt') {
+      // Proxy the enhance prompt request
+      fetch('https://thinkvelocity.in/python-api/process', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authState?.token || ''}`
+          },
+          body: JSON.stringify({
+              prompt: message.prompt,
+              style: message.style,
+              AIType: message.aiType,
+              singlePrompt: true
+          })
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw new Error('Network response was not ok');
+          }
+          return response.json();
+      })
+      .then(data => {
+          sendResponse({ success: true, data });
+      })
+      .catch(error => {
+          console.error('Enhance prompt error:', error);
+          sendResponse({ 
+              success: false, 
+              error: error.message 
+          });
+      });
+
+      return true; // Indicates we'll send response asynchronously
+  }
+
     if (message.action === 'updateTabs') {
       // First check authentication and tokens
       chrome.storage.local.get(['token', 'isAuthenticated', 'userId'], async (result) => {
