@@ -1029,12 +1029,6 @@ class ResponseValidator:
 
 
 
-
-    
-
-
-
-
 class PipelineStage:
     """Base class for pipeline stages with common functionality"""
     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
@@ -1789,11 +1783,7 @@ Return in this EXACT format:
     "analysis": {{
         "selected_technique": "technique_name",
         "reasoning": "brief explanation of selection",
-        "request_characteristics": ["characteristic1", "characteristic2"],
-        "requirements": {{
-            "primary_factors": ["factor1", "factor2"],
-            "constraints": ["constraint1", "constraint2"]
-        }}
+        "LLM": "Suggested LLM platform to use",
     }},
     "enhanced_prompts": [
         {{
@@ -1807,8 +1797,6 @@ Return in this EXACT format:
         }}
     ],
     "implementation_notes": {{
-        "ai_specific_considerations": ["consideration1", "consideration2"],
-        "style_guidelines": ["guideline1", "guideline2"],
         "user's prompt analysis" : ["analysis of what the user's prompt lacked and how it was made better"]
     }}
 }}
@@ -1836,11 +1824,7 @@ Return in this EXACT format:
     "analysis": {{
         "selected_technique": "technique_name",
         "reasoning": "brief explanation of selection",
-        "request_characteristics": ["characteristic1", "characteristic2"],
-        "requirements": {{
-            "primary_factors": ["factor1", "factor2"],
-            "constraints": ["constraint1", "constraint2"]
-        }}
+        "LLM": "Suggested LLM platform to use",
     }},
     "enhanced_prompts": [
         {{
@@ -1854,8 +1838,6 @@ Return in this EXACT format:
         }}
     ],
     "implementation_notes": {{
-        "ai_specific_considerations": ["consideration1", "consideration2"],
-        "style_guidelines": ["guideline1", "guideline2"],
         "user's prompt analysis" : ["analysis of what the user's prompt lacked and how it was made better"]
     }}
 }}"""
