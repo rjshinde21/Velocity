@@ -1772,7 +1772,6 @@ into a well formatted {style} prompt that will lead the user to getting the best
 
 You have THREE key responsibilities:
 1. Analyze the core request and determine the most effective prompt engineering technique
-2. Generate detailed analysis of requirements and context
 3. Create THREE enhanced versions of the original prompt
 
 CRITICAL: Return ONLY a JSON response with both your analysis and enhanced prompts.
@@ -1783,7 +1782,7 @@ Return in this EXACT format:
     "analysis": {{
         "selected_technique": "technique_name",
         "reasoning": "brief explanation of selection",
-        "LLM": "Suggested LLM platform to use",
+        "LLM": "Suggested LLM platform that fulfills user's request in the most efficient way.",
     }},
     "enhanced_prompts": [
         {{
@@ -1797,7 +1796,7 @@ Return in this EXACT format:
         }}
     ],
     "implementation_notes": {{
-        "user's prompt analysis" : ["analysis of what the user's prompt lacked and how it was made better"]
+        "user's prompt analysis" : ["analysis of what the user's prompt lacked and how it was made better"],
     }}
 }}
 Key Requirements:
@@ -1840,7 +1839,14 @@ Return in this EXACT format:
     "implementation_notes": {{
         "user's prompt analysis" : ["analysis of what the user's prompt lacked and how it was made better"]
     }}
-}}"""
+}}
+Key Requirements:
+1. DO NOT answer the user's request
+2. Only transform the request into better prompts
+3. Ensure each prompt follows {ai_type} best practices
+4. Maintain {style} communication style
+5. Apply selected prompt engineering technique consistently
+"""
             self.logger.info('now here')
             response = await self.api_handler.make_api_call(
             system_message=system_message,

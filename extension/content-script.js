@@ -556,19 +556,19 @@
       styleTransformations: {
         descriptive: {
           instruction: "Expand this into a detailed, vivid description",
-          modifier: (text) => `Create a detailed and descriptive version of: ${text}`
+          modifier: (text) => `${text}`
         },
         creative: {
           instruction: "Transform this into a creative and unique perspective",
-          modifier: (text) => `Generate a creative and innovative version of: ${text}`
+          modifier: (text) => `${text}`
         },
         professional: {
           instruction: "Make this more formal and business-appropriate",
-          modifier: (text) => `Develop a professional and polished version of: ${text}`
+          modifier: (text) => `${text}`
         },
         concise: {
           instruction: "Make this more concise while maintaining clarity",
-          modifier: (text) => `Create a concise and clear version of: ${text}`
+          modifier: (text) => `${text}`
         }
       }
     };
@@ -591,7 +591,7 @@
   async function detectPlatform() {
     try {
       const url = window.location.href;
-      //console.log('Checking URL:', url);
+      console.log('Checking URL:', url);
       
       // Early return if not a valid platform
       const isPlatformValid = Object.values(PLATFORM_CONFIG).some(config => 
@@ -612,7 +612,14 @@
       // Rest of your existing platform detection logic
       for (const [platform, config] of Object.entries(PLATFORM_CONFIG)) {
         if (config.urlPattern.test(url)) {
-         // console.log('Platform detected:', platform);
+          window.velocityState = {
+            ...window.velocityState,
+            platformInfo: {
+              isSupported: true,
+              platform: config.name,  // Use the platform name directly
+              config: config
+            }
+          };
           return {
             isSupported: true,
             platform: platform,
@@ -628,7 +635,6 @@
       };
     } catch (error) {
       console.error('Error in platform detection:', error);
-      isValidPlatform = false;
       return {
         isSupported: false,
         platform: null,
@@ -1333,15 +1339,13 @@
       
       try {
         const state = getState();
+        const platformInfo = state.platformInfo;
         let styleTransform = null;
-        console.log("Current state configuration:", {
-          style: state.styleType,
-          platform: state.platform
-        });
+        
     
         // Track enhancement attempt
         trackEvent('Enhance Button clicked', {
-          platform: state.platform,
+          platform: platformInfo?.platform || 'General',
           style: state.styleType,
           promptLength: originalText.length
         });
@@ -1360,9 +1364,9 @@
     
         // Prepare request data for background script
         const requestData = {
-          prompt: styleTransform ? styleTransform.modifier(originalText) : originalText,
-          style: state.styleType || 'professional',
-          AIType: state.platform || 'General',
+          prompt: originalText,
+          style: state.styleType || 'descriptive',
+          AIType: platformInfo?.platform || 'ChatGPT',
           singlePrompt: true
         };
     
@@ -1375,7 +1379,7 @@
             if (response.success) {
               resolve(response.data);
             } else {
-              reject(new Error(response.error || 'Enhancement failed'));
+              reject(new Error(response.error || 'We are encountering high traffic right now. Please try again later.'));
             }
           });
         });
@@ -2086,9 +2090,11 @@ function getSelectedText(element) {
     position: fixed !important;
     background: white !important;
     color: #1a1a1a !important;
-    padding: 12px 16px !important;
+    padding: 16px !important;
     border-radius: 12px !important;
+    line-height: 1.5 !important;
     font-size: 14px !important;
+    word-wrap: break-word !important;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
     border: 1px solid rgba(0, 0, 0, 0.1) !important;
     z-index: 9999999 !important;
@@ -2126,9 +2132,11 @@ function getSelectedText(element) {
   }
   
     .velocity-message {
-      margin-bottom: 12px !important;
-      font-size:14px;
-    }
+    padding: 8px 0 !important;
+    font-size: 14px !important;
+    color: #333 !important;
+    margin: 0 !important;
+  }
 
   
     .settings-section {
@@ -2156,7 +2164,10 @@ function getSelectedText(element) {
       border: 1px solid #3B82F6 !important;
     }
 
-    
+    .velocity-popup .settings-section {
+    margin-top: 12px !important;
+    padding: 0 !important;
+  }
   
     .velocity-toggle-container {
       display: flex !important;
@@ -2234,18 +2245,24 @@ function getSelectedText(element) {
   
   // Add breathing effect CSS
   const breathingStyles = document.createElement('style');
-  breathingStyles.textContent = `
-    @keyframes breathe {
-      0% { transform: scale(1); }
-      50% { transform:  scale(1.1); }
-      100% { transform:  scale(1); }
+breathingStyles.textContent = `
+  @keyframes softBreathe {
+    0%, 100% { 
+      transform: scale(1); 
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    
-    .velocity-enhance-button.breathing {
-      animation: breathe 2s infinite ease-in-out !important;
+    50% { 
+      transform: scale(1.03); 
+      box-shadow: 0 4px 8px rgba(0, 138, 203, 0.2);
     }
-  `;
-  document.head.appendChild(breathingStyles);
+  }
+  
+  .velocity-enhance-button.breathing {
+    animation: softBreathe 2.5s ease-in-out infinite !important;
+    transition: all 0.3s ease !important;
+  }
+`;
+document.head.appendChild(breathingStyles);
   
   try {
     const authState = await checkAuthState();
@@ -2411,10 +2428,17 @@ function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSect
   };
 }
 function updateButtonAnimations(button, inputElement) {
+  if (!button || !inputElement) return;
+
   const hasContent = (inputElement.value || inputElement.textContent || '').trim().length > 0;
+  
   button.classList.remove('breathing', 'spin');
-  if (hasContent && !button.matches(':hover')) {
+  
+  if (hasContent && 
+      !button.matches(':hover') && 
+      !button.classList.contains('loading')) {
     button.classList.add('breathing');
+    console.log('Breathing effect applied');
   }
 }
 

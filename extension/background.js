@@ -459,7 +459,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           body: JSON.stringify({
               prompt: message.prompt,
               style: message.style,
-              AIType: message.aiType,
+              AIType: message.AIType,
               singlePrompt: true
           })
       })
