@@ -28,7 +28,7 @@
         if (response?.status === 'success') {
             console.log('Event tracked:', eventName);
         } else {
-            console.error('Failed to track event:', eventName);
+            // console.error('Failed to track event:', eventName);
         }
     });
   }
@@ -51,6 +51,8 @@
       userName: localStorage.getItem('userName'),
       userEmail: localStorage.getItem('userEmail')
     };
+
+    
   
     // Only send message if auth state has changed
     if (JSON.stringify(authData) !== JSON.stringify(lastAuthState) && 
@@ -90,7 +92,7 @@
         styleElement.textContent = baseStyles + platformStyles;
         document.head.appendChild(styleElement);
       } catch (error) {
-        console.error('Error injecting styles:', error);
+        // console.error('Error injecting styles:', error);
       }
     }
   }
@@ -98,6 +100,27 @@
     const buttonRect = button.getBoundingClientRect();
     const popupHeight = popup.offsetHeight;
     const viewportHeight = window.innerHeight;
+    const platformInfo = window.velocityState.platformInfo;
+
+    if (platformInfo?.platform === 'gemini') {
+      popup.style.position = 'fixed';
+      popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+      popup.style.transform = 'translateX(-50%)';
+      
+      // Check if there's more space above or below
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      const spaceAbove = buttonRect.top;
+      
+      if (spaceBelow >= popupHeight || spaceBelow > spaceAbove) {
+        popup.style.top = `${buttonRect.bottom + 10}px`;
+        popup.style.bottom = 'auto';
+        return 'bottom';
+      } else {
+        popup.style.bottom = `${viewportHeight - buttonRect.top + 10}px`;
+        popup.style.top = 'auto';
+        return 'top';
+      }
+    }
     
     // Check if we're on Claude
     if (window.velocityState.platformInfo?.platform === 'claude') {
@@ -131,6 +154,7 @@
       //popup.style.transform = 'translateX(-50%)';
       return 'top'; // Default position for non-Claude platforms
     }
+    
   }
   function setupMessageSendDetection(inputElement, button, popup, messageEl) {
     // Track if enhance button was used
@@ -321,7 +345,7 @@
               return;
             }
           } catch (error) {
-            console.error('Error checking tokens:', error);
+            // console.error('Error checking tokens:', error);
             sendResponse({
               success: false,
               error: 'Error checking token balance',
@@ -331,7 +355,7 @@
           }
   
           // If all checks pass, proceed with the update
-          console.log('Updating enhancement parameters:', message);
+          // console.log('Updating enhancement parameters:', message);
           const platformInfo = await detectPlatform();
           
           const currentState = window.velocityState || {};
@@ -357,7 +381,7 @@
             isSupported: platformInfo.isSupported
           });
         } catch (error) {
-          console.error('Error updating enhancement parameters:', error);
+          // console.error('Error updating enhancement parameters:', error);
           sendResponse({ 
             success: false, 
             error: error.message,
@@ -460,7 +484,24 @@
     gemini: {
       urlPattern: /^https:\/\/gemini\.google\.com/,
       selectors: '.ql-editor[contenteditable="true"][role="textbox"], .textarea[contenteditable="true"]',
-      name: 'Gemini'
+      name: 'Gemini',
+      customStyles: `
+        .velocity-wrapper {
+          position: relative !important;
+          display: block !important;
+          width: 100% !important;
+        }
+        
+        .velocity-wrapper [role="textbox"] {
+          padding-right: 50px !important;
+        }
+    
+        .velocity-enhance-button {
+          top: 1px !important; // Update this line
+          right: 12px !important;
+          z-index: 999999 !important;
+        }
+      `
     },
     discord: {
       urlPattern: /^https:\/\/(www\.)?discord\.com\/channels/,
@@ -591,7 +632,7 @@
   async function detectPlatform() {
     try {
       const url = window.location.href;
-      console.log('Checking URL:', url);
+      // console.log('Checking URL:', url);
       
       // Early return if not a valid platform
       const isPlatformValid = Object.values(PLATFORM_CONFIG).some(config => 
@@ -634,7 +675,7 @@
         config: null
       };
     } catch (error) {
-      console.error('Error in platform detection:', error);
+      // console.error('Error in platform detection:', error);
       return {
         isSupported: false,
         platform: null,
@@ -767,7 +808,7 @@
     // Helper function to update button visibility
     function updateButtonVisibility() {
       document.querySelectorAll('.velocity-enhance-button').forEach(button => {
-        console.log("already enabled:"+window.velocityState.isEnabled);
+        // console.log("already enabled:"+window.velocityState.isEnabled);
         if (window.velocityState.isEnabled) {
           button.classList.add('visible');
           if (!button.disabled) {
@@ -842,7 +883,7 @@
           availableTokens: availableTokens
         };
       } catch (error) {
-        console.error('Credit validation failed:', error);
+        // console.error('Credit validation failed:', error);
         throw error;
       }
     }
@@ -1196,7 +1237,7 @@
     
         return data;
       } catch (error) {
-        console.error('Error saving prompt to history:', error);
+        // console.error('Error saving prompt to history:', error);
         throw error;
       }
     }
@@ -1229,7 +1270,7 @@
     
         return data;
       } catch (error) {
-        console.error('Error updating prompt tokens:', error);
+        // console.error('Error updating prompt tokens:', error);
         throw error;
       }
     }
@@ -1268,7 +1309,7 @@
     
         return data;
       } catch (error) {
-        console.error('Error saving response to history:', error);
+        // console.error('Error saving response to history:', error);
         throw error;
       }
     }
@@ -1304,13 +1345,13 @@
             opacity: 1 !important;
             color: #FF0000 !important;
           `;
-          console.log('Setting red color', charCounter.style.color); // Debug log
+          // console.log('Setting red color', charCounter.style.color); // Debug log
         } else if (length > CHAR_THRESHOLD) {
           charCounter.style.cssText += `
             opacity: 1 !important;
             color: #FFA500 !important;
           `;
-          console.log('Setting orange color', charCounter.style.color); // Debug log
+          // console.log('Setting orange color', charCounter.style.color); // Debug log
         } else {
           charCounter.style.cssText += `
             opacity: 0 !important;
@@ -1333,14 +1374,16 @@
   
     // Function to handle prompt enhancement
     async function enhancePrompt(originalText) {
-      console.log("Starting prompt enhancement");
+      
       let lastSavedPromptId;
       let lastTokensUsed;
       
       try {
         const state = getState();
+        // console.log("Starting prompt enhancement");
         const platformInfo = state.platformInfo;
-        let styleTransform = null;
+        // console.log(`Detected platform: ${platformInfo.platform}`);
+        
         
     
         // Track enhancement attempt
@@ -1366,7 +1409,7 @@
         const requestData = {
           prompt: originalText,
           style: state.styleType || 'descriptive',
-          AIType: platformInfo?.platform || 'ChatGPT',
+          AIType: platformInfo.platform || 'ChatGPT',
           singlePrompt: true
         };
     
@@ -1377,14 +1420,15 @@
             ...requestData
           }, (response) => {
             if (response.success) {
+              // console.log("Raw response:", response.data);
               resolve(response.data);
             } else {
-              reject(new Error(response.error || 'We are encountering high traffic right now. Please try again later.'));
+              reject(new Error(response.error || 'We are experiencing high traffic right now. Please try again later.'));
             }
           });
         });
     
-        console.log("Received server response:", response);
+        // console.log("Received server response:", response);
     
         // Enhanced response parsing with proper validation
         let enhancedPrompt;
@@ -1396,8 +1440,10 @@
             throw new Error('No valid prompts in response');
           }
         } else {
-          throw new Error('Invalid response format from server');
+          throw new Error('We are experiencing high traffic right now. Please try again later.');
         }
+
+        // console.log("Enhanced prompt:", enhancedPrompt);
     
         // Process successful response
         await deductCredits(state, creditValidation.requiredCredits);
@@ -1417,20 +1463,20 @@
     
         // Log additional metadata if available
         if (response._metadata) {
-          console.log("Enhancement metadata:", response._metadata);
+          // console.log("Enhancement metadata:", response._metadata);
         }
     
         // Log implementation notes if available
         if (response.implementation_notes) {
-          console.log("Implementation notes:", response.implementation_notes);
+          // console.log("Implementation notes:", response.implementation_notes);
         }
     
         return response; // Return full response for details visualization
     
       } catch (error) {
-        console.error('Enhancement failed:', error);
+        // console.error('Enhancement failed:', error);
         
-        trackEvent('Generate Error', {
+        trackEvent('We are experiencing high traffic right now. Please try again later.', {
           error: error.message,
           platform: getState().platform,
           style: getState().styleType,
@@ -1772,11 +1818,12 @@ if (window.velocityState.platformInfo?.platform === 'chatgpt') {
   setupTextareaResizing(inputElement);
 }
 
-      else if(platformInfo.platform=='gemini'){
-        button.style.cssText += `
-        bottom: 32px !important;
-      `;
-      }
+else if(platformInfo.platform == 'gemini') {
+  button.style.cssText += `
+    bottom: calc(100% - ${inputElement.offsetHeight}px - 32px) !important;
+    right: 12px !important;
+  `;
+}
       else if(platformInfo.platform == 'discord')
       {
         button.style.cssText += `
@@ -1827,7 +1874,7 @@ if (window.velocityState.platformInfo?.platform === 'chatgpt') {
             button.title = 'Insufficient tokens. Please purchase more tokens to continue.';
           }
         } catch (error) {
-          console.error('Error checking tokens:', error);
+          // console.error('Error checking tokens:', error);
           button.disabled = true;
           button.title = 'Error checking token balance';
         }
@@ -1967,8 +2014,6 @@ if (window.velocityState.platformInfo?.platform === 'chatgpt') {
   //       const changeEvent = new Event('change', { bubbles: true });
   //       inputElement.dispatchEvent(changeEvent);
         
-  //       // Trigger focus if needed
-  //       inputElement.focus();
         
   //       // Force Claude's internal update
   //       if (inputElement.getAttribute('contenteditable') === 'true') {
@@ -1999,6 +2044,82 @@ if (window.velocityState.platformInfo?.platform === 'chatgpt') {
   // });
 
 // Add helper function for getting selected text
+
+button.addEventListener('click', async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (!platformInfo?.isSupported) return;
+
+  const selectedText = getSelectedText(inputElement);
+  const fullText = inputElement.value || inputElement.textContent || '';
+  
+  if (!selectedText && !fullText) return;
+
+  try {
+    showLoading(); // Make sure this function is defined and works correctly
+    const textToEnhance = selectedText || fullText;
+    const enhancedResponse = await enhancePrompt(textToEnhance);
+    const enhancedText = enhancedResponse.enhanced_prompts[0].prompt;
+
+    // Replace text handling
+    if (selectedText) {
+      if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
+        const selectionStart = inputElement.selectionStart;
+        const selectionEnd = inputElement.selectionEnd;
+        inputElement.value = fullText.substring(0, selectionStart) + 
+                           enhancedText + 
+                           fullText.substring(selectionEnd);
+        inputElement.selectionStart = selectionStart;
+        inputElement.selectionEnd = selectionStart + enhancedText.length;
+      } else {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          range.deleteContents();
+          range.insertNode(document.createTextNode(enhancedText));
+        }
+      }
+    } else {
+      if (inputElement.value !== undefined) {
+        inputElement.value = enhancedText;
+      } else {
+        // Handle contenteditable
+        inputElement.textContent = enhancedText;
+      }
+    }
+
+    // Trigger Claude-specific events
+    const inputEvent = new Event('input', { bubbles: true });
+    inputElement.dispatchEvent(inputEvent);
+    
+    const changeEvent = new Event('change', { bubbles: true });
+    inputElement.dispatchEvent(changeEvent);
+    
+    inputElement.focus();
+    
+    if (inputElement.getAttribute('contenteditable') === 'true') {
+      const keyEvent = new KeyboardEvent('keyup', {
+        bubbles: true,
+        key: 'Space',
+        keyCode: 32
+      });
+      inputElement.dispatchEvent(keyEvent);
+    }
+
+  } catch (error) {
+    console.error('Enhancement failed:', error);
+    // Show error message
+    messageEl.textContent = 'Enhancement failed. Please try again.';
+    messageEl.style.color = '#ff4444';
+    setTimeout(() => {
+      messageEl.style.color = '';
+    }, 3000);
+  } finally {
+    hideLoading();
+    updateButtonAnimations(button, inputElement);
+  }
+});
 function getSelectedText(element) {
   if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
     return element.value.substring(element.selectionStart, element.selectionEnd);
@@ -2098,7 +2219,9 @@ function getSelectedText(element) {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
     border: 1px solid rgba(0, 0, 0, 0.1) !important;
     z-index: 9999999 !important;
-    width: 275px !important;
+    width: 280px !important; /* Fixed width */
+    max-height: 320px !important;
+    overflow-y: auto !important;
     opacity: 0 !important;
     pointer-events: auto !important;
     transition: all 0.2s ease !important;
@@ -2112,8 +2235,6 @@ function getSelectedText(element) {
   }
 
 
-
-  
 
   
   /* Prevent hover conflicts */
@@ -2275,7 +2396,7 @@ document.head.appendChild(breathingStyles);
       }
     }
   } catch (error) {
-    console.error('Error getting username:', error);
+    // console.error('Error getting username:', error);
   }
   const storage = await chrome.storage.local.get(['userName']);
  
@@ -2438,7 +2559,7 @@ function updateButtonAnimations(button, inputElement) {
       !button.matches(':hover') && 
       !button.classList.contains('loading')) {
     button.classList.add('breathing');
-    console.log('Breathing effect applied');
+    // console.log('Breathing effect applied');
   }
 }
 
@@ -2495,11 +2616,11 @@ const interactions = handleButtonAndPopupInteractions(
     const textContainer = document.createElement('div');
     textContainer.className = 'velocity-style-text';
     
-    const titleSpan = document.createElement('span');
-    titleSpan.className = 'velocity-style-button-title';
-    titleSpan.textContent = style.name;
+    // const titleSpan = document.createElement('span');
+    // titleSpan.className = 'velocity-style-button-title';
+    // titleSpan.textContent = style.name;
     
-    textContainer.appendChild(titleSpan);
+    // textContainer.appendChild(titleSpan);
     
     gridContainer.appendChild(imageContainer);
     gridContainer.appendChild(textContainer);
@@ -2663,7 +2784,7 @@ const interactions = handleButtonAndPopupInteractions(
           await chrome.storage.local.set({ selectedStyle: currentStyle });
     
         } catch (error) {
-          console.error('Enhancement failed:', error);
+          // console.error('Enhancement failed:', error);
           const storage = await chrome.storage.local.get(['userName']);
           messageEl.textContent = 'Enhancement failed. Please try again.';
           messageEl.style.color = '#ff4444';
@@ -2733,36 +2854,39 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
   button.addEventListener('mouseenter', async() => {
     // Clear any existing hide timeout
     clearTimeout(hideTimeout);
-    
+    if (popup.querySelector('.velocity-details-popup')) {
     const buttonRect = button.getBoundingClientRect();
     // Position the popup relative to the button
     if (window.velocityState.platformInfo?.platform != 'claude') {
       popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
     popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
     }
-    else{
+    else {
     const position = calculatePopupPosition(button, popup);
     popup.classList.remove('top', 'bottom');
     popup.classList.add(position);
     }
-    styleButtonsContainer.querySelectorAll('.velocity-style-button').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    window.velocityState.styleType = '';
-    hasStyleSelected = false;
-    messageEl.style.display = 'none';
+  }
+    // styleButtonsContainer.querySelectorAll('.velocity-style-button').forEach(btn => {
+    //   btn.classList.remove('active');
 
-  //   const storage = await chrome.storage.local.get(['userName']);
-    
-  
-  //   // Show appropriate message based on style selection
-  // messageEl.textContent = `Hey ${storage.userName}, select a style that best matches your needs`;
-    
-  //   // Show both message and settings
-  //   messageEl.style.display = 'block';
-    settingsSection.classList.add('show');
-    popup.classList.add('show');
-  });
+  window.velocityState.styleType = '';
+  hasStyleSelected = false;
+
+  // Show style selection
+  popup.innerHTML = '';
+  const storage = await chrome.storage.local.get(['userName']);
+  messageEl.textContent = `Hey ${storage.userName}, let me help you prompt better`;
+  messageEl.style.display = 'block';
+  settingsSection.classList.add('show');
+  popup.appendChild(messageEl);
+  // popup.appendChild(settingsSection);
+  popup.classList.add('show');
+  const existingSettingsSection = popup.querySelector('.settings-section');
+if (existingSettingsSection) {
+  existingSettingsSection.remove();
+}
+});
   
   function cleanupAndReenhance() {
   cleanupEnhanceButtons();
@@ -2794,15 +2918,22 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
   
   // Add popup mouseleave handler
   popup.addEventListener('mouseleave', (e) => {
-    // Only hide if not moving to button
-    if (!button.matches(':hover')) {
-      hideTimeout = setTimeout(() => {
-        popup.classList.remove('show');
-        settingsSection.classList.remove('show');
-        messageEl.style.display = 'block';
-      }, HIDE_DELAY);
+    // Only hide if not showing analysis details
+    if (!popup.querySelector('.velocity-details-popup')) {
+      if (!button.matches(':hover')) {
+        hideTimeout = setTimeout(() => {
+          popup.classList.remove('show');
+          settingsSection.classList.remove('show');
+          messageEl.style.display = 'block';
+        }, HIDE_DELAY);
+      }
     }
   });
+
+  function safeGet(obj, path, defaultValue = 'Not specified') {
+    return path.split('.').reduce((acc, key) => 
+      acc && acc[key] !== undefined ? acc[key] : defaultValue, obj);
+  }
 
   button.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -2874,69 +3005,95 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
       // Update popup with details visualization
       const detailsContainer = document.createElement('div');
       detailsContainer.className = 'velocity-details-popup';
+      const popupStyles = document.createElement('style');
+    popupStyles.textContent = `
+      .velocity-details-popup {
+    width: 100% !important;
+    max-height: 280px !important;
+    padding: 12px !important;
+    font-size: 12px !important;
+    overflow-y: auto !important; /* Enable vertical scrolling */
+  }
+
+      .velocity-section-title {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    margin: 0 0 12px 0 !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    word-wrap: break-word !important; /* Add word wrapping */
+  }
+
+      .velocity-analysis-item {
+    margin-bottom: 12px !important;
+    word-wrap: break-word !important; /* Add word wrapping */
+  }
+
+      .velocity-label {
+    display: block !important;
+    font-weight: 500 !important;
+    margin-bottom: 4px !important;
+    color: #4b5563 !important;
+  }
+
+  .velocity-value {
+    display: block !important;
+    color: #1f2937 !important;
+    word-wrap: break-word !important; /* Add word wrapping */
+    white-space: normal !important; /* Allow text to wrap */
+    line-height: 1.4 !important; /* Improve readability */
+  }
+    `;
+    document.head.appendChild(popupStyles);
+
+    // popup.addEventListener('mouseenter', async () => {
+    //   const storage = await chrome.storage.local.get(['userName']);
+    //   popup.innerHTML = ''; // Clear analysis
       
-      // Technique Section
-      const techniqueSection = document.createElement('div');
-      techniqueSection.innerHTML = `
-        <h4>Prompt Engineering Technique</h4>
-        <p><strong>Technique:</strong> ${enhancedResponse.analysis.technique.selected_technique}</p>
-        <p><strong>Reasoning:</strong> ${enhancedResponse.analysis.technique.reasoning}</p>
-        <p><strong>Request Characteristics:</strong> 
-          ${enhancedResponse.analysis.technique.request_characteristics.join(', ')}
-        </p>
-      `;
+    //   // Show style selection
+    //   const messageEl = document.createElement('div');
+    //   messageEl.className = 'velocity-message';
+    //   messageEl.textContent = `Hey ${storage.userName}, select a style that best matches your needs`;
+    //   messageEl.style.display = 'block';
       
-      // Analysis Details Section
-      const analysisSection = document.createElement('div');
-      analysisSection.innerHTML = `
-        <h4>Analysis Details</h4>
-        <p><strong>AI Type:</strong> ${enhancedResponse.analysis.ai_type}</p>
-        <p><strong>Original Prompt:</strong> ${enhancedResponse.analysis.original_prompt}</p>
-        <p><strong>Style:</strong> ${enhancedResponse.analysis.style}</p>
-        <p><strong>Constraints:</strong> 
-          ${enhancedResponse.analysis.technique.requirements.constraints.join(', ')}
-        </p>
-        <p><strong>Primary Factors:</strong> 
-          ${enhancedResponse.analysis.technique.requirements.primary_factors.join(', ')}
-        </p>
-      `;
+    //   settingsSection.classList.add('show');
       
-      // Implementation Notes Section
-      const implementationSection = document.createElement('div');
-      implementationSection.innerHTML = `
-        <h4>Implementation Notes</h4>
-        <div>
-          <strong>AI Considerations:</strong>
-          <ul>
-            ${enhancedResponse.implementation_notes.ai_specific_considerations
-              .map(note => `<li>${note}</li>`).join('')}
-          </ul>
-          <strong>Style Guidelines:</strong>
-          <ul>
-            ${enhancedResponse.implementation_notes.style_guidelines
-              .map(note => `<li>${note}</li>`).join('')}
-          </ul>
-          <strong>Prompt Analysis:</strong>
-          <ul>
-            ${enhancedResponse.implementation_notes['user\'s prompt analysis']
-              .map(note => `<li>${note}</li>`).join('')}
-          </ul>
-        </div>
-      `;
-      
-      // Append sections to container
-      detailsContainer.appendChild(techniqueSection);
-      detailsContainer.appendChild(analysisSection);
-      detailsContainer.appendChild(implementationSection);
+    //   popup.appendChild(messageEl);
+    //   popup.appendChild(settingsSection);
+    // });
+
+      detailsContainer.innerHTML = `
+  <div class="velocity-analysis-section">
+    <h4 class="velocity-section-title">Prompt Analysis</h4>
+    
+    <div class="velocity-analysis-item">
+      <span class="velocity-label">Technique:</span>
+      <span class="velocity-value">${safeGet(enhancedResponse, 'analysis.technique.selected_technique')}</span>
+    </div>
+    
+    
+    <div class="velocity-analysis-item">
+      <span class="velocity-label">Analysis:</span>
+      <span class="velocity-value">${safeGet(enhancedResponse, "implementation_notes.user's prompt analysis")}</span>
+    </div>
+  </div>
+`;
+
       
       // Update popup
+      if (!document.querySelector('#velocity-popup-styles')) {
+        const styleElement = document.createElement('style');
+        styleElement.id = 'velocity-popup-styles';
+        styleElement.textContent = popupStyles;
+        document.head.appendChild(styleElement);
+      }
+
       popup.innerHTML = '';
       popup.appendChild(detailsContainer);
       popup.classList.add('show');
   
     } catch (error) {
       console.error('Enhancement failed:', error);
-      // Show error message in popup
       const messageEl = document.querySelector('.velocity-message');
       if (messageEl) {
         messageEl.textContent = 'Enhancement failed. Please try again.';
@@ -2955,8 +3112,9 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
 const detailsStyles = document.createElement('style');
 detailsStyles.textContent = `
   .velocity-details-popup {
-    max-width: 300px;
-    padding: 15px;
+    width: 100% !important;
+    max-height: 250px !important; // Control height
+    padding: 12px !important; // Reduced padding
     background: white;
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -3065,7 +3223,7 @@ document.head.appendChild(detailsStyles);
   async function findAndEnhanceInputs() {
     const platformInfo = await detectPlatform();
     if (!platformInfo.isSupported) {
-      console.log('Not a supported platform, skipping enhancement');
+      // console.log('Not a supported platform, skipping enhancement');
       cleanupEnhanceButtons();
       return;
     }
@@ -3082,7 +3240,7 @@ document.head.appendChild(detailsStyles);
     }
   
     const inputs = document.querySelectorAll(platformInfo.config.selectors);
-    console.log(`Found ${inputs.length} matching inputs for ${platformInfo.platform}`);
+    // console.log(`Found ${inputs.length} matching inputs for ${platformInfo.platform}`);
     inputs.forEach(input => {
       if (shouldEnhanceInput(input)) {
         const existingWrapper = input.closest('.velocity-wrapper');
@@ -3144,23 +3302,26 @@ document.head.appendChild(detailsStyles);
 }
 function setupChatGPTObserver() {
   const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (mutation.addedNodes.length) {
-        mutation.addedNodes.forEach(node => {
-          if (node.nodeType === 1) {
-            const promptArea = node.matches('#prompt-textarea') ? 
-              node : node.querySelector('#prompt-textarea');
-            
-            if (promptArea && !promptArea.closest('.velocity-wrapper')) {
-              //console.log("creating button");
+  for (const mutation of mutations) {
+    if (mutation.addedNodes.length) {
+      mutation.addedNodes.forEach(async node => {
+        if (node.nodeType === 1) {
+          const promptArea = node.matches('#prompt-textarea') ? 
+            node : node.querySelector('#prompt-textarea');
+          
+          if (promptArea && !promptArea.closest('.velocity-wrapper')) {
+            // Check auth state before creating button
+            const storage = await chrome.storage.local.get(['token', 'userId']);
+            if (storage.token && storage.userId) {
               createEnhanceButton(promptArea);
               setupTextareaResizing(promptArea);
             }
           }
-        });
-      }
+        }
+      });
     }
-  });
+  }
+});
 
   observer.observe(document.body, { 
     childList: true,
@@ -3184,7 +3345,7 @@ function setupChatGPTObserver() {
       const existingWrapper = document.querySelector('.velocity-wrapper');
       
       if (promptArea && !existingWrapper) {
-        console.log('No existing button found, creating new one');
+        // console.log('No existing button found, creating new one');
         createEnhanceButton(promptArea);
       }
     }
@@ -3235,7 +3396,7 @@ function setupTextareaResizing(textarea) {
     try {
       const platformInfo = await detectPlatform();
       if (!platformInfo.isSupported) {
-        console.log('Unsupported platform, stopping initialization');
+        // console.log('Unsupported platform, stopping initialization');
         return;
       }
     
@@ -3244,7 +3405,8 @@ function setupTextareaResizing(textarea) {
         ...currentState,
         isEnabled: false,
         platformInfo: platformInfo,
-        styleType: ''
+        styleType: '',
+        platform: platformInfo.platform
       };
     
       // if (platformInfo.isSupported) {
@@ -3276,7 +3438,7 @@ function setupTextareaResizing(textarea) {
       }
   
     } catch (error) {
-      console.error('Initialization error:', error);
+      // console.error('Initialization error:', error);
     }
   })();
   

@@ -1,3 +1,6 @@
+#this was left because multiple API calls are made here, use prompt.py, only 1 API call is made there
+
+
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -284,30 +287,55 @@ class APIHandler:
         self.logger = logger
         self.retry_count = 3
         self.base_delay = 1
+        self.response_processors = {
+            "enhancement": self._process_enhancement_response
+        }
 
-    def make_api_call(self, system_message: str, prompt: str, context: Dict = None, **params) -> Dict:
-        messages = [
-            {"role": "system", "content": system_message}
-        ]
-        
-        if context:
-            messages.append({
-                "role": "system",
-                "content": f"Context: {json.dumps(context, indent=2)}"
-            })
-        
-        messages.append({"role": "user", "content": prompt})
-        
-        response = llama.run({
-            "messages": messages,
-            "model": "llama3.2-1b",
-            "max_tokens": 2000,
-            "stream": False,
-            **params
-        })
-        
-        return self._process_response(response)
-                
+    def make_api_call(self, system_message: str, prompt: str, context: Dict = None, stage: str = None,**params) -> Dict:
+        self.logger.info("Starting API call")
+        self.logger.debug(f"System message: {system_message}")
+        self.logger.debug(f"Prompt: {prompt}")
+        self.logger.debug(f"Context: {json.dumps(context, indent=2) if context else 'None'}")
+        self.logger.debug(f"Additional params: {json.dumps(params, indent=2)}")
+
+        try:
+            messages = [
+                {"role": "system", "content": system_message}
+            ]
+            
+            if context:
+                messages.append({
+                    "role": "system",
+                    "content": f"Context: {json.dumps(context, indent=2)}"
+                })
+            
+            messages.append({"role": "user", "content": prompt})
+            
+            self.logger.debug(f"Final messages array: {json.dumps(messages, indent=2)}")
+            
+            request_data = {
+                "messages": messages,
+                "model": "llama3.2-1b",
+                "max_tokens": 12000,
+                "stream": False,
+                **params
+            }
+            
+            self.logger.info("Executing Llama API call")
+            response = llama.run(request_data)
+            self.logger.info("API call completed")
+            self.logger.debug(f"Raw response: {response}")
+            
+            if stage and stage in self.response_processors:
+                self.logger.info(f"Using {stage}-specific response processor")
+                return self.response_processors[stage](response)
+            return self._process_response(response)
+
+
+        except Exception as e:
+            self.logger.error(f"API call failed: {str(e)}", exc_info=True)
+            raise
+  
     def _format_context(self, context: Dict) -> str:
         """
         Format context dictionary into a clear string representation.
@@ -408,69 +436,97 @@ class APIHandler:
         
         return response_data
 
-    def _process_response(self, response_data: Dict) -> Dict:
-        """Enhanced response processing with proper Llama API response handling"""
+    def _process_response(self, response_data: Any) -> Dict:
+        """Process API response with support for both list and dict responses"""
+        self.logger.info("Starting response processing")
         try:
             # Check if it's a raw API response object
             if hasattr(response_data, 'json'):
+                self.logger.debug("Converting response to JSON")
                 response_data = response_data.json()
 
+            self.logger.debug(f"Response data type: {type(response_data)}")
+            self.logger.debug(f"Response data: {json.dumps(response_data, indent=2)}")
+
+            # Handle list response
+            if isinstance(response_data, list):
+                self.logger.info("Converting list response to dictionary")
+                # Take first message if it's a list of messages
+                if response_data and isinstance(response_data[0], dict):
+                    content = response_data[0].get('content') or response_data[0].get('text', '')
+                    response_data = {"content": content}
+                else:
+                    # Convert simple list to dictionary
+                    response_data = {"content": str(response_data)}
+
             if not isinstance(response_data, dict):
-                raise ValueError("Response is not a dictionary")
-                
-            content = None
-            # Handle Llama API response structure
-            if 'choices' in response_data:
-                first_choice = response_data['choices'][0]
-                if 'message' in first_choice:
-                    content = first_choice['message'].get('content', '')
-                elif 'text' in first_choice:
-                    content = first_choice['text']
-            
-            if not content:
-                raise ValueError("No content in response")
-            
-            # Clean and validate JSON structure
-            cleaned_content = self._clean_content(content)
-            try:
-                # First attempt to parse as pure JSON
-                parsed_json = json.loads(cleaned_content)
-                return self._validate_and_structure_json(parsed_json)
-                
-            except json.JSONDecodeError:
-                # If not valid JSON, convert markdown/text to structured JSON
-                structured_content = self._convert_to_json_structure(cleaned_content)
-                return self._validate_and_structure_json(structured_content)
-                
+                error_msg = f"Invalid response type: {type(response_data)}"
+                self.logger.error(error_msg)
+                raise ValueError(error_msg)
+
+            return response_data
+
         except Exception as e:
-            self.logger.error(f"Response processing failed: {str(e)}")
+            self.logger.error(f"Response processing failed: {str(e)}", exc_info=True)
             return self._create_error_response(str(e))
+    def _extract_content(self, response_data: Dict) -> str:
+        self.logger.debug("Extracting content from response")
+        content = None
+        
+        if 'choices' in response_data:
+            first_choice = response_data['choices'][0]
+            if 'message' in first_choice:
+                content = first_choice['message'].get('content', '')
+            elif 'text' in first_choice:
+                content = first_choice['text']
+
+        if not content:
+            error_msg = "No content found in response"
+            self.logger.error(error_msg)
+            raise ValueError(error_msg)
+            
+        self.logger.debug(f"Extracted content: {content}")
+        return content
+
+
         
     def _validate_and_structure_json(self, content: Dict) -> Dict:
-        """Ensure response follows required JSON structure"""
-        if not isinstance(content, dict):
-            content = {"content": content}
+        self.logger.debug("Validating and structuring JSON")
+        try:
+            if not isinstance(content, dict):
+                content = {"content": content}
+                
+            content["_metadata"] = {
+                "processed_timestamp": datetime.datetime.now().isoformat(),
+                "processing_stage": "api_response",
+                "format_version": "2.0"
+            }
             
-        # Add required metadata
-        content["_metadata"] = {
-            "processed_timestamp": datetime.datetime.now().isoformat(),
-            "processing_stage": "api_response",
-            "format_version": "2.0"
-        }
-        
-        # Convert any non-JSON-compliant values
-        return self._ensure_json_compliance(content)
+            result = self._ensure_json_compliance(content)
+            self.logger.debug(f"Structured result: {json.dumps(result, indent=2)}")
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"JSON validation failed: {str(e)}", exc_info=True)
+            raise
+
 
     def _ensure_json_compliance(self, obj: Any) -> Any:
-        """Recursively ensure all values are JSON-compliant"""
-        if isinstance(obj, dict):
-            return {k: self._ensure_json_compliance(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [self._ensure_json_compliance(v) for v in obj]
-        elif isinstance(obj, (str, int, float, bool)) or obj is None:
-            return obj
-        else:
-            return str(obj)
+        self.logger.debug(f"Ensuring JSON compliance for: {type(obj)}")
+        try:
+            if isinstance(obj, dict):
+                return {k: self._ensure_json_compliance(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [self._ensure_json_compliance(v) for v in obj]
+            elif isinstance(obj, (str, int, float, bool)) or obj is None:
+                return obj
+            else:
+                self.logger.debug(f"Converting {type(obj)} to string")
+                return str(obj)
+        except Exception as e:
+            self.logger.error(f"JSON compliance check failed: {str(e)}", exc_info=True)
+            raise
+
 
     def _convert_to_json_structure(self, content: str) -> Dict:
         """Convert markdown/text content to structured JSON"""
@@ -633,16 +689,151 @@ class APIHandler:
         return bullets
 
     def _clean_content(self, content: str) -> str:
-        """
-        Cleans response content by removing formatting artifacts.
-        """
+        self.logger.debug("Cleaning content")
         content = content.strip()
-        # Remove markdown code blocks
+        
         if '```json' in content:
+            self.logger.debug("Removing JSON code blocks")
             content = content.split('```json')[1].split('```')[0]
         elif '```' in content:
+            self.logger.debug("Removing generic code blocks")
             content = content.split('```')[1].split('```')[0]
-        return content.strip()
+            
+        cleaned = content.strip()
+        self.logger.debug(f"Cleaned content: {cleaned}")
+        return cleaned
+
+    def _process_enhancement_response(self, response_data: Any) -> Dict:
+        """Specialized response processor for enhancement stage responses"""
+        self.logger.info("Processing enhancement stage response")
+        try:
+            # Log the initial response data type and structure
+            self.logger.debug(f"Initial response_data type: {type(response_data)}")
+            self.logger.debug(f"Initial response_data: {json.dumps(response_data, indent=2)}")
+
+            # Handle list response format
+            if isinstance(response_data, list) and response_data:
+                self.logger.debug("Response is a list, taking first element")
+                response_data = response_data[0]
+
+            # Extract content from message structure with detailed logging
+            content = None
+            if isinstance(response_data, dict):
+                self.logger.debug("Response is a dictionary, attempting to extract content")
+                # Try different possible content locations
+                if 'message' in response_data:
+                    content = response_data['message'].get('content', '')
+                    self.logger.debug("Found content in message.content")
+                elif 'content' in response_data:
+                    content = response_data['content']
+                    self.logger.debug("Found content directly in content field")
+                elif 'choices' in response_data and response_data['choices']:
+                    content = response_data['choices'][0].get('message', {}).get('content', '')
+                    self.logger.debug("Found content in choices array")
+            else:
+                content = str(response_data)
+                self.logger.debug("Converted response to string")
+
+            if not content:
+                self.logger.error("No content found in response")
+                return self._create_enhancement_fallback()
+
+            self.logger.debug(f"Extracted raw content: {content}")
+
+            # Try to find JSON within the content
+            json_start = content.find('{\n  "prompts"')
+            if json_start != -1:
+                self.logger.debug(f"Found JSON start at position {json_start}")
+                try:
+                    json_content = content[json_start:]
+                    json_data = json.loads(json_content)
+                    self.logger.debug(f"Successfully parsed JSON content: {json.dumps(json_data, indent=2)}")
+                    return json_data
+                except json.JSONDecodeError as e:
+                    self.logger.warning(f"Failed to parse JSON from content: {str(e)}")
+
+            # If no JSON found, parse the markdown format
+            self.logger.debug("Attempting to parse markdown format")
+            enhanced_versions = []
+            lines = content.split('\n')
+            current_version = None
+            current_text = []
+
+            # Log each line for debugging
+            for i, line in enumerate(lines):
+                self.logger.debug(f"Processing line {i}: {line}")
+                
+                # Check for version markers with more flexible matching
+                if "Enhanced Version" in line or "Version" in line:
+                    self.logger.debug(f"Found version marker: {line}")
+                    if current_version and current_text:
+                        prompt_text = ' '.join(current_text).strip('"').strip()
+                        self.logger.debug(f"Adding version {current_version}: {prompt_text}")
+                        enhanced_versions.append({
+                            "prompt": prompt_text,
+                            "focus": f"Version {current_version}",
+                            "perspective": "Enhanced Description"
+                        })
+                    try:
+                        current_version = line.split('Version')[1].split(':')[0].strip()
+                    except IndexError:
+                        current_version = str(len(enhanced_versions) + 1)
+                    current_text = []
+                elif current_version and line.strip():
+                    current_text.append(line.strip())
+
+            # Add the last version
+            if current_version and current_text:
+                prompt_text = ' '.join(current_text).strip('"').strip()
+                self.logger.debug(f"Adding final version {current_version}: {prompt_text}")
+                enhanced_versions.append({
+                    "prompt": prompt_text,
+                    "focus": f"Version {current_version}",
+                    "perspective": "Enhanced Description"
+                })
+
+            if enhanced_versions:
+                self.logger.info(f"Successfully extracted {len(enhanced_versions)} enhanced versions")
+                return {"prompts": enhanced_versions}
+
+            # If we still haven't found any prompts, try one last parsing attempt
+            self.logger.debug("Attempting final parsing of content")
+            # Split content by double newlines to separate distinct sections
+            sections = content.split('\n\n')
+            if len(sections) > 1:
+                enhanced_versions = [
+                    {
+                        "prompt": section.strip('"').strip(),
+                        "focus": f"Version {i+1}",
+                        "perspective": "Enhanced Description"
+                    }
+                    for i, section in enumerate(sections)
+                    if section.strip()
+                ]
+                if enhanced_versions:
+                    self.logger.info(f"Extracted {len(enhanced_versions)} versions from sections")
+                    return {"prompts": enhanced_versions}
+
+            self.logger.warning("Could not extract prompts from content")
+            self.logger.debug("Final content that couldn't be parsed:", content)
+            return self._create_enhancement_fallback()
+
+        except Exception as e:
+            self.logger.error(f"Enhancement response processing failed: {str(e)}", exc_info=True)
+            return self._create_enhancement_fallback()
+
+
+    def _create_enhancement_fallback(self) -> Dict:
+        """Create a fallback response for enhancement stage"""
+        self.logger.info("Creating enhancement fallback response")
+        fallback = {
+            "prompts": [{
+                "prompt": "Could not process the enhancement request. Please try again with more specific instructions.",
+               
+            }]
+        }
+        self.logger.debug(f"Created fallback response: {json.dumps(fallback, indent=2)}")
+        return fallback
 
     def _convert_markdown_to_json(self, markdown_content: str) -> Dict:
         """
@@ -671,6 +862,7 @@ class APIHandler:
         }
 
     def _create_error_response(self, error_msg: str) -> Dict:
+        self.logger.error(f"Creating error response: {error_msg}")
         return {
             "status": "error",
             "error": error_msg,
@@ -1561,12 +1753,12 @@ class AnalysisStage(PipelineStage):
 
     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
         super().__init__(logger, api_handler, context_tracker)
-        self.required_fields = ["intent", "requirements", "context"]
+        self.required_fields = ["intent", "requirements", "context"] 
 
     def execute(self, pipeline_context: Dict) -> Dict:
         try:
             prompt = pipeline_context.get("original_prompt")
-            ai_type = pipeline_context.get("ai_type")
+            ai_type = pipeline_context.get("ai_type") 
             style = pipeline_context.get("style")
             preprocessing = pipeline_context.get("stage_results", {}).get("preprocessing", {})
 
@@ -1947,6 +2139,7 @@ class EnhancementStage(PipelineStage):
     def __init__(self, logger: Logger, api_handler: APIHandler, context_tracker: ContextTracker):
         super().__init__(logger, api_handler, context_tracker)
         self.required_fields = ["prompts"]
+        self.logger.info(f"Initializing EnhancementStage with required fields: {self.required_fields}")
 
     def _create_fallback_enhanced_prompts(self, pipeline_context: ContextTracker) -> Dict:
         """
@@ -1955,53 +2148,110 @@ class EnhancementStage(PipelineStage):
         This method provides a structured set of prompts that maintain the core 
         intent of the original request while offering different perspectives.
         """
-        original_prompt = pipeline_context.context['original_prompt']
-        ai_type = pipeline_context.context['ai_type']
-        style = pipeline_context.context['style']
+        self.logger.info("Generating fallback enhanced prompts")
+        
+        try:
+            original_prompt = pipeline_context.context['original_prompt']
+            ai_type = pipeline_context.context['ai_type']
+            style = pipeline_context.context['style']
+            
+            self.logger.debug(f"Fallback context - Original Prompt: {original_prompt}")
+            self.logger.debug(f"Fallback context - AI Type: {ai_type}")
+            self.logger.debug(f"Fallback context - Style: {style}")
 
-        return {
-            "prompts": [
-                {
-                    "prompt": f"Develop a comprehensive time management strategy for {original_prompt}, " +
-                              f"focusing on systematic task organization and prioritization in a {style} approach.",
-                    "focus": "Systematic Approach",
-                    "perspective": "Structured and methodical time management"
-                },
-                {
-                    "prompt": f"Create a flexible time management framework for {original_prompt}, " +
-                              f"emphasizing adaptability and personal efficiency in a {style} communication style.",
-                    "focus": "Adaptive Strategy",
-                    "perspective": "Dynamic and personalized time management"
-                },
-                {
-                    "prompt": f"Design an advanced time tracking and optimization plan for {original_prompt}, " +
-                              f"integrating productivity techniques tailored to {ai_type} workflow in a {style} format.",
-                    "focus": "Optimization",
-                    "perspective": "Data-driven and performance-oriented approach"
-                }
-            ]
-        }
+            fallback_response = {
+                "prompts": [
+                    {
+                        "prompt": f"Develop a comprehensive time management strategy for {original_prompt}, " +
+                                f"focusing on systematic task organization and prioritization in a {style} approach.",
+                        "focus": "Systematic Approach",
+                        "perspective": "Structured and methodical time management"
+                    },
+                    {
+                        "prompt": f"Create a flexible time management framework for {original_prompt}, " +
+                                f"emphasizing adaptability and personal efficiency in a {style} communication style.",
+                        "focus": "Adaptive Strategy",
+                        "perspective": "Dynamic and personalized time management"
+                    },
+                    {
+                        "prompt": f"Design an advanced time tracking and optimization plan for {original_prompt}, " +
+                                f"integrating productivity techniques tailored to {ai_type} workflow in a {style} format.",
+                        "focus": "Optimization",
+                        "perspective": "Data-driven and performance-oriented approach"
+                    }
+                ]
+            }
+            
+            self.logger.info("Successfully generated fallback prompts")
+            self.logger.debug(f"Fallback response: {json.dumps(fallback_response, indent=2)}")
+            
+            return fallback_response
+
+        except Exception as e:
+            self.logger.error(f"Error generating fallback prompts: {str(e)}", exc_info=True)
+            # Return a minimal fallback response in case of error
+            return {
+                "prompts": [{
+                    "prompt": "Please provide more details about your request.",
+                    "focus": "Clarification",
+                    "perspective": "Basic inquiry"
+                }]
+            }
 
     def execute(self, pipeline_context: Dict) -> Dict:
+        self.logger.info("Starting EnhancementStage execution")
+        self.logger.debug(f"Initial pipeline context: {json.dumps(pipeline_context, indent=2)}")
+
         try:
-            # Extract context information
+            # Extract and log context information
             original_prompt = pipeline_context.get("original_prompt", "")
             ai_type = pipeline_context.get("ai_type", "general")
             style = pipeline_context.get("style", "professional")
             
-            # Get stage results
+            self.logger.info(f"Processing enhancement request - AI Type: {ai_type}, Style: {style}")
+            self.logger.debug(f"Original prompt: {original_prompt}")
+
+            # Get and log stage results
             stage_results = pipeline_context.get("execution_context", {}).get("stage_results", {})
             analysis_result = stage_results.get("analysis", {})
             feedback_result = stage_results.get("feedback", {})
             guidelines_result = stage_results.get("guidelines", {})
 
-            system_message = f"""You are a prompt enhancement expert specializing in {ai_type} systems.
-            Generate multiple enhanced versions of the original prompt that:
-            - Maintain the core intent
-            - Provide different perspectives
-            - Align with {style} communication style
-            - Offer unique insights"""
+            self.logger.debug("Stage results retrieved:")
+            self.logger.debug(f"Analysis result: {json.dumps(analysis_result, indent=2)}")
+            self.logger.debug(f"Feedback result: {json.dumps(feedback_result, indent=2)}")
+            self.logger.debug(f"Guidelines result: {json.dumps(guidelines_result, indent=2)}")
 
+            # Create and log system message
+            system_message = f"""You are a prompt enhancement expert specializing in {ai_type} systems.
+                Generate multiple enhanced versions of the original prompt that:
+                - Maintain the core intent
+                - Provide different perspectives
+                - Align with {style} communication style
+                - Offer unique insights
+
+                IMPORTANT: Your response must include a 'prompts' array with enhanced prompts.
+                Example response format:
+                {{
+                    "prompts": [
+                        {{
+                            "prompt": "enhanced version 1",
+                            "focus": "area of focus",
+                            "perspective": "perspective taken"
+                        }},
+                        {{
+                            "prompt": "enhanced version 2",
+                            "focus": "different focus",
+                            "perspective": "different perspective"
+                        }}
+                    ]
+                }}"""
+
+
+            
+            self.logger.debug(f"Generated system message: {system_message}")
+
+            # Create and log enhancement prompt
             enhancement_prompt = f"""Generate three distinct, enhanced versions of the original prompt:
 
 Original Request: {original_prompt}
@@ -2017,7 +2267,9 @@ Feedback Insights:
 Guidelines:
 {json.dumps(guidelines_result, indent=2)}"""
 
-            # Make API call with clean context
+            self.logger.debug(f"Generated enhancement prompt: {enhancement_prompt}")
+
+            # Prepare and log API context
             api_context = {
                 "original_prompt": original_prompt,
                 "ai_type": ai_type,
@@ -2028,19 +2280,65 @@ Guidelines:
                     "guidelines": guidelines_result
                 }
             }
+            
+            self.logger.debug(f"Prepared API context: {json.dumps(api_context, indent=2)}")
 
+            # Make API call
+            self.logger.info("Attempting API call for enhancement")
             response = self.api_handler.make_api_call(
                 system_message=system_message,
                 prompt=enhancement_prompt,
                 context=api_context,
+                stage="enhancement",
                 temperature=0.7
             )
+            self.logger.info("API call completed successfully")
+            self.logger.debug(f"API response: {json.dumps(response, indent=2)}")
 
-            return self._preserve_context("enhancement", response)
+            # Validate response
+            self._validate_response(response)
+
+            # Preserve context and return
+            preserved_context = self._preserve_context("enhancement", response)
+            self.logger.info("Enhancement stage completed successfully")
+            self.logger.debug(f"Final preserved context: {json.dumps(preserved_context, indent=2)}")
+
+            return preserved_context
 
         except Exception as e:
-            self.logger.error(f"Enhancement stage failed: {str(e)}")
-            return self._create_fallback_enhanced_prompts(pipeline_context)
+            self.logger.error(f"Enhancement stage failed with error: {str(e)}", exc_info=True)
+            self.logger.error(f"Pipeline context at failure: {json.dumps(pipeline_context, indent=2)}")
+            
+            # Generate fallback response
+            self.logger.info("Attempting to generate fallback response")
+            fallback = self._create_fallback_enhanced_prompts(pipeline_context)
+            self.logger.info("Fallback response generated successfully")
+            
+            return fallback
+
+    def _validate_response(self, response: Dict) -> None:
+        """Validate the response contains all required fields"""
+        self.logger.debug("Validating API response")
+        
+        if not isinstance(response, dict):
+            error_msg = f"Invalid response type: expected dict, got {type(response)}"
+            self.logger.error(error_msg)
+            raise ValueError(error_msg)
+            
+        missing_fields = [field for field in self.required_fields if field not in response]
+        
+        if missing_fields:
+            error_msg = f"Missing required fields in response: {missing_fields}"
+            self.logger.error(error_msg)
+            raise ValueError(error_msg)
+            
+        if not isinstance(response.get("prompts"), list):
+            error_msg = "Invalid 'prompts' field: expected list"
+            self.logger.error(error_msg)
+            raise ValueError(error_msg)
+            
+        self.logger.debug("Response validation successful")
+
 
 
 
@@ -3314,6 +3612,7 @@ Automated Analysis for: {prompt}
                 raise ValueError(f"API Error: {full_response[0]['error']}")
 
             content = full_response.get('choices', [{}])[0].get('message', {}).get('content', '')
+
             if not content:
                 raise ValueError("Empty or invalid response from API")
 
