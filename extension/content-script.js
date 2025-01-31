@@ -1377,12 +1377,18 @@
       
       let lastSavedPromptId;
       let lastTokensUsed;
+      let timeoutId;
       
       try {
         const state = getState();
         // console.log("Starting prompt enhancement");
         const platformInfo = state.platformInfo;
         console.log(`Detected platform: ${platformInfo.platform}`);
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error('We are experiencing high traffic right now. Please try again later.'));
+          }, 5000); // 5 seconds timeout
+        });
         
         if (!state.styleType) {
           throw new Error('Please select a style first');
@@ -1414,21 +1420,27 @@
           AIType: platformInfo.platform || 'ChatGPT',
           singlePrompt: true
         };
-    
-        // Use chrome runtime message to send request through background script
-        const response = await new Promise((resolve, reject) => {
+
+        const apiCallPromise = new Promise((resolve, reject) => {
           chrome.runtime.sendMessage({
             action: 'enhancePrompt',
             ...requestData
           }, (response) => {
-            if (response.success) {
-              console.log("Raw response:", response.data);
+            if (response?.success) {
               resolve(response.data);
             } else {
               reject(new Error(response.error || 'We are experiencing high traffic right now. Please try again later.'));
             }
           });
         });
+    
+        // Use chrome runtime message to send request through background script
+        const response = await Promise.race([
+          apiCallPromise,
+          timeoutPromise
+        ]);
+
+        clearTimeout(timeoutId);
     
         // console.log("Received server response:", response);
     
@@ -1478,7 +1490,7 @@
     
       } catch (error) {
         // console.error('Enhancement failed:', error);
-        
+        clearTimeout(timeoutId);
         trackEvent('We are experiencing high traffic right now. Please try again later.', {
           error: error.message,
           platform: getState().platform,
@@ -1487,7 +1499,8 @@
         });
     
         // Re-throw the error for the UI layer to handle
-        throw error;
+        throw new Error('We are experiencing high traffic right now. Please try again later.');
+
       }
     }
   // Function to create and attach enhance button
