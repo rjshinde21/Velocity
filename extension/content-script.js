@@ -1382,9 +1382,11 @@
         const state = getState();
         // console.log("Starting prompt enhancement");
         const platformInfo = state.platformInfo;
-        // console.log(`Detected platform: ${platformInfo.platform}`);
+        console.log(`Detected platform: ${platformInfo.platform}`);
         
-        
+        if (!state.styleType) {
+          throw new Error('Please select a style first');
+        }
     
         // Track enhancement attempt
         trackEvent('Enhance Button clicked', {
@@ -1420,7 +1422,7 @@
             ...requestData
           }, (response) => {
             if (response.success) {
-              // console.log("Raw response:", response.data);
+              console.log("Raw response:", response.data);
               resolve(response.data);
             } else {
               reject(new Error(response.error || 'We are experiencing high traffic right now. Please try again later.'));
@@ -1436,6 +1438,7 @@
           if (Array.isArray(response.enhanced_prompts) && response.enhanced_prompts.length > 0) {
             // Take the first enhanced prompt from the array
             enhancedPrompt = response.enhanced_prompts[0].prompt;
+            console.log(enhancedPrompt);
           } else {
             throw new Error('No valid prompts in response');
           }
@@ -1471,7 +1474,7 @@
           // console.log("Implementation notes:", response.implementation_notes);
         }
     
-        return response; // Return full response for details visualization
+        return response.enhanced_prompts[1].prompt;; // Return full response for details visualization
     
       } catch (error) {
         // console.error('Enhancement failed:', error);
@@ -2056,11 +2059,46 @@ button.addEventListener('click', async (e) => {
   
   if (!selectedText && !fullText) return;
 
+  if (!window.velocityState.styleType) {
+    const storage = await chrome.storage.local.get(['userName']);
+    
+    // Clear popup content
+    popup.innerHTML = '';
+    
+    // Add style selection message
+    const messageEl = document.createElement('div');
+    messageEl.className = 'velocity-message';
+    messageEl.textContent = `Please select a style  that best matches your needs`;
+    messageEl.style.display = 'block';
+    
+    // Add styles section
+    const settingsSection = document.createElement('div');
+    settingsSection.className = 'settings-section';
+    settingsSection.appendChild(styleButtonsContainer);
+    
+    popup.appendChild(messageEl);
+    popup.appendChild(settingsSection);
+    settingsSection.classList.add('show');
+    popup.classList.add('show');
+    return;
+  }
+
   try {
     showLoading(); // Make sure this function is defined and works correctly
     const textToEnhance = selectedText || fullText;
+    console.log("Starting enhancement with text:", textToEnhance);
     const enhancedResponse = await enhancePrompt(textToEnhance);
-    const enhancedText = enhancedResponse.enhanced_prompts[0].prompt;
+    let enhancedText;
+    console.log(enhancedText)
+    if (enhancedResponse.enhanced_prompts && 
+      Array.isArray(enhancedResponse.enhanced_prompts) && 
+      enhancedResponse.enhanced_prompts.length > 0) {
+    enhancedText = enhancedResponse.enhanced_prompts[0].prompt;
+    console.log("Extracted enhanced text:", enhancedText);
+  } else {
+    console.error("Failed to extract enhanced text from response:", enhancedResponse);
+    throw new Error('No valid prompts in response');
+  }
 
     // Replace text handling
     if (selectedText) {
@@ -2084,7 +2122,6 @@ button.addEventListener('click', async (e) => {
       if (inputElement.value !== undefined) {
         inputElement.value = enhancedText;
       } else {
-        // Handle contenteditable
         inputElement.textContent = enhancedText;
       }
     }
@@ -2093,27 +2130,59 @@ button.addEventListener('click', async (e) => {
     const inputEvent = new Event('input', { bubbles: true });
     inputElement.dispatchEvent(inputEvent);
     
-    const changeEvent = new Event('change', { bubbles: true });
-    inputElement.dispatchEvent(changeEvent);
-    
-    inputElement.focus();
-    
-    if (inputElement.getAttribute('contenteditable') === 'true') {
-      const keyEvent = new KeyboardEvent('keyup', {
-        bubbles: true,
-        key: 'Space',
-        keyCode: 32
-      });
-      inputElement.dispatchEvent(keyEvent);
+    if (platformInfo?.platform === 'claude') {
+      const changeEvent = new Event('change', { bubbles: true });
+      inputElement.dispatchEvent(changeEvent);
+      inputElement.focus();
+      
+      if (inputElement.getAttribute('contenteditable') === 'true') {
+        const keyEvent = new KeyboardEvent('keyup', {
+          bubbles: true,
+          key: 'Space',
+          keyCode: 32
+        });
+        inputElement.dispatchEvent(keyEvent);
+      }
     }
+
+    // Show success message with analysis
+    const detailsContainer = document.createElement('div');
+    detailsContainer.className = 'velocity-details-popup';
+    detailsContainer.innerHTML = `
+      <div class="velocity-analysis-section">
+        <h4 class="velocity-section-title">Prompt Analysis</h4>
+        
+        <div class="velocity-analysis-item">
+          <span class="velocity-label">Technique:</span>
+          <span class="velocity-value">${safeGet(enhancedResponse, 'analysis.technique.selected_technique')}</span>
+        </div>
+        
+        <div class="velocity-analysis-item">
+          <span class="velocity-label">Style Applied:</span>
+          <span class="velocity-value">${window.velocityState.styleType || 'Standard'}</span>
+        </div>
+        
+        <div class="velocity-analysis-item">
+          <span class="velocity-label">Analysis:</span>
+          <span class="velocity-value">${safeGet(enhancedResponse, "implementation_notes.user's prompt analysis")}</span>
+        </div>
+      </div>
+    `;
+
+    // Update popup with analysis
+    popup.innerHTML = '';
+    popup.appendChild(detailsContainer);
+    popup.classList.add('show');
 
   } catch (error) {
     console.error('Enhancement failed:', error);
     // Show error message
-    messageEl.textContent = 'Enhancement failed. Please try again.';
+    const storage = await chrome.storage.local.get(['userName']);
+    messageEl.textContent = `Enhancement failed: ${error.message}`;
     messageEl.style.color = '#ff4444';
     setTimeout(() => {
       messageEl.style.color = '';
+      messageEl.textContent = `Please select a style that best matches your needs`;
     }, 3000);
   } finally {
     hideLoading();
@@ -2600,36 +2669,41 @@ const interactions = handleButtonAndPopupInteractions(
   
   styles.forEach(style => {
     const styleButton = document.createElement('button');
-    styleButton.className = 'velocity-style-button';
-    styleButton.dataset.style = style.name.toLowerCase();
-    
-    const gridContainer = document.createElement('div');
-    gridContainer.className = 'velocity-style-grid';
-    
-    const imageContainer = document.createElement('div');
-    imageContainer.className = 'velocity-style-image';
-    const img = document.createElement('img');
-    img.src = chrome.runtime.getURL(style.imagePath);
-    img.alt = style.name;
-    imageContainer.appendChild(img);
-    
-    const textContainer = document.createElement('div');
-    textContainer.className = 'velocity-style-text';
-    
-    // const titleSpan = document.createElement('span');
-    // titleSpan.className = 'velocity-style-button-title';
-    // titleSpan.textContent = style.name;
-    
-    // textContainer.appendChild(titleSpan);
-    
-    gridContainer.appendChild(imageContainer);
-    gridContainer.appendChild(textContainer);
-    styleButton.appendChild(gridContainer);
+styleButton.className = 'velocity-style-button';
+styleButton.dataset.style = style.name.toLowerCase();
+
+const gridContainer = document.createElement('div');
+gridContainer.className = 'velocity-style-grid';
+
+const imageContainer = document.createElement('div');
+imageContainer.className = 'velocity-style-image';
+const img = document.createElement('img');
+img.src = chrome.runtime.getURL(style.imagePath);
+img.alt = style.name;
+imageContainer.appendChild(img);
+
+const textContainer = document.createElement('div');
+textContainer.className = 'velocity-style-text';
+
+const titleSpan = document.createElement('span');
+titleSpan.className = 'velocity-style-button-title';
+titleSpan.textContent = style.name;
+
+const descriptionSpan = document.createElement('span');
+descriptionSpan.className = 'velocity-style-description';
+descriptionSpan.textContent = style.description;
+
+textContainer.appendChild(titleSpan);
+textContainer.appendChild(descriptionSpan);
+
+gridContainer.appendChild(imageContainer);
+gridContainer.appendChild(textContainer);
+styleButton.appendChild(gridContainer);
   
     // Update the styles in popupStyles.textContent
     const newStyles = `
        .velocity-style-button {
-  padding: 8px 8px !important;
+  padding: 12px !important; 
   white-space: nowrap !important;
   width: auto !important;
   background: rgb(255, 255, 255) !important;
@@ -2641,21 +2715,27 @@ const interactions = handleButtonAndPopupInteractions(
   transition: all 0.2s ease !important;
   display: flex !important;
   align-items: center !important;
-  gap: 8px !important;
+  gap: 12px !important; /* Increased gap */
 }
 
 .velocity-style-grid {
   display: flex !important;
   align-items: center !important;
-  gap: 5px !important;
+  justify-content: space-between !important; /* Better alignment */
+  width: 100% !important;
+  gap: 8px !important;
 }
 
 .velocity-style-image {
-  width: 24px !important;
-  height: 24px !important;
+  flex-shrink: 0 !important; /* Prevent image from shrinking */
+  width: 32px !important; /* Larger icons */
+  height: 32px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+  background: #F3F4F6 !important; /* Light background for icons */
+  border-radius: 6px !important;
+  padding: 6px !important;
 }
 
 .velocity-style-image img {
@@ -2665,27 +2745,37 @@ const interactions = handleButtonAndPopupInteractions(
 }
 
 .velocity-style-text {
+  flex-grow: 1 !important;
   display: flex !important;
-  align-items: center !important;
+  flex-direction: column !important; /* Stack title and description */
+  gap: 2px !important;
 }
 
 .velocity-style-button-title {
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   font-size: 14px !important;
   color: #1a1a1a !important;
+  margin-bottom: 2px !important;
 }
 
-
+.velocity-style-description {
+  font-size: 12px !important;
+  color: #6B7280 !important;
+  line-height: 1.4 !important;
+}
 
 
 .velocity-style-button:hover {
-  background: rgb(255, 255, 255) !important;
-  border: 1px solid rgb(2, 123, 199) !important;
+  background: #F8FAFC !important;
+  border-color: #60A5FA !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
 }
 
 .velocity-style-button.active {
-  background: rgb(240, 249, 255) !important;
-  border: 2px solid rgb(2, 132, 199) !important;
+  background: #EFF6FF !important;
+  border: 2px solid #3B82F6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1) !important;
 }
 
 
@@ -2790,7 +2880,7 @@ const interactions = handleButtonAndPopupInteractions(
           messageEl.style.color = '#ff4444';
           setTimeout(() => {
             messageEl.style.color = '';
-            messageEl.textContent = `Hey ${storage.userName}, select a style that best matches your needs`;
+            messageEl.textContent = `Please select a style that best matches your needs`;
           }, 3000);
         } finally {
           hideLoading();
@@ -2804,7 +2894,7 @@ const interactions = handleButtonAndPopupInteractions(
         hasStyleSelected = false;
         
         const storage = await chrome.storage.local.get(['userName']);
-        messageEl.textContent = `Hey ${storage.userName}, select a style that best matches your needs`;
+        messageEl.textContent = `Please select a style that best matches your needs`;
         await chrome.storage.local.remove('selectedStyle');
       }
     });
@@ -2931,8 +3021,18 @@ if (existingSettingsSection) {
   });
 
   function safeGet(obj, path, defaultValue = 'Not specified') {
-    return path.split('.').reduce((acc, key) => 
-      acc && acc[key] !== undefined ? acc[key] : defaultValue, obj);
+    console.log("safeGet called with:", { obj, path, defaultValue });
+    try {
+      const result = path.split('.').reduce((acc, key) => {
+        console.log("Accessing key:", key, "Current acc:", acc);
+        return acc && acc[key] !== undefined ? acc[key] : defaultValue;
+      }, obj);
+      console.log("safeGet result:", result);
+      return result;
+    } catch (error) {
+      console.error("safeGet error:", error);
+      return defaultValue;
+    }
   }
 
   button.addEventListener('click', async (e) => {

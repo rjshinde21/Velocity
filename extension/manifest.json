@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Velocity",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "Prompt Co-Pilot: Turn unclear instructions into AI-ready prompts in one click. Save time, unlock results & boost productivity by 30%",
   "permissions": [
     "activeTab",
