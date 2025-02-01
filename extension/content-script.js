@@ -1377,7 +1377,9 @@
       
       let lastSavedPromptId;
       let lastTokensUsed;
-      let timeoutId;
+      // let timeoutId;
+      let abortController = new AbortController(); // Create abort controller
+
       
       try {
         const state = getState();
@@ -1385,9 +1387,10 @@
         const platformInfo = state.platformInfo;
         console.log(`Detected platform: ${platformInfo.platform}`);
         const timeoutPromise = new Promise((_, reject) => {
-          timeoutId = setTimeout(() => {
+          setTimeout(() => {
+            abortController.abort();
             reject(new Error('We are experiencing high traffic right now. Please try again later.'));
-          }, 5000); // 5 seconds timeout
+          }, 3000); // Changed to 3 seconds
         });
         
         if (!state.styleType) {
@@ -1421,26 +1424,42 @@
           singlePrompt: true
         };
 
-        const apiCallPromise = new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage({
-            action: 'enhancePrompt',
-            ...requestData
-          }, (response) => {
-            if (response?.success) {
-              resolve(response.data);
-            } else {
-              reject(new Error(response.error || 'We are experiencing high traffic right now. Please try again later.'));
-            }
-          });
-        });
+        // const apiCallPromise = new Promise((resolve, reject) => {
+        //   chrome.runtime.sendMessage({
+        //     action: 'enhancePrompt',
+        //     ...requestData
+        //   }, (response) => {
+        //     if (response?.success) {
+        //       resolve(response.data);
+        //     } else {
+        //       reject(new Error(response.error || 'We are experiencing high traffic right now. Please try again later.'));
+        //     }
+        //   });
+        // });
     
         // Use chrome runtime message to send request through background script
         const response = await Promise.race([
-          apiCallPromise,
+          new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage({
+              action: 'enhancePrompt',
+              ...requestData
+            }, response => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
+              }
+              if (response?.success) {
+                resolve(response.data);
+              } else {
+                reject(new Error(response.error || 'Enhancement failed'));
+              }
+            });
+          }),
           timeoutPromise
         ]);
+    
 
-        clearTimeout(timeoutId);
+        // clearTimeout(timeoutId);
     
         // console.log("Received server response:", response);
     
@@ -1489,8 +1508,8 @@
         return response.enhanced_prompts[1].prompt;; // Return full response for details visualization
     
       } catch (error) {
-        // console.error('Enhancement failed:', error);
-        clearTimeout(timeoutId);
+        console.error('Enhancement failed:', error);
+        // clearTimeout(timeoutId);
         trackEvent('We are experiencing high traffic right now. Please try again later.', {
           error: error.message,
           platform: getState().platform,
@@ -1498,9 +1517,23 @@
           location: "Enhance Button"
         });
     
-        // Re-throw the error for the UI layer to handle
-        throw new Error('We are experiencing high traffic right now. Please try again later.');
-
+        if (error.message.includes('high traffic')) {
+          // Create error popup with timeout message
+          const messageEl = popup.querySelector('.velocity-message');
+          if (messageEl) {
+            messageEl.textContent = 'We are experiencing high traffic right now. Please try again later.';
+            messageEl.style.color = '#ff4444';
+            popup.classList.add('show');
+            setTimeout(() => {
+              messageEl.style.color = '';
+              popup.classList.remove('show');
+            }, 3000);
+          }
+        }
+    
+        throw error;
+      } finally {
+        abortController.abort();
       }
     }
   // Function to create and attach enhance button
@@ -2189,14 +2222,21 @@ button.addEventListener('click', async (e) => {
 
   } catch (error) {
     console.error('Enhancement failed:', error);
-    // Show error message
-    const storage = await chrome.storage.local.get(['userName']);
-    messageEl.textContent = `Enhancement failed: ${error.message}`;
-    messageEl.style.color = '#ff4444';
-    setTimeout(() => {
-      messageEl.style.color = '';
-      messageEl.textContent = `Please select a style that best matches your needs`;
-    }, 3000);
+    hideLoading();
+
+    const messageEl = popup.querySelector('.velocity-message');
+    if (messageEl) {
+      messageEl.textContent = error.message;
+      messageEl.style.color = '#ff4444';
+      popup.classList.add('show');
+      settingsSection.classList.remove('show');
+      
+      setTimeout(() => {
+        messageEl.style.color = '';
+        popup.classList.remove('show');
+        messageEl.textContent = 'Select a style that best matches your needs';
+      }, 3000);
+    }
   } finally {
     hideLoading();
     updateButtonAnimations(button, inputElement);
