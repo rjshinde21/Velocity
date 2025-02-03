@@ -431,7 +431,7 @@ function updateHeaderUI() {
       
       // Remove the login redirect listener
       signupButton.classList.remove('not-logged-in');
-      console.log("checking user id:"+userId);
+      // console.log("checking user id:"+userId);
       // Fetch and display user info
       fetch(`https://thinkvelocity.in/api/api/users/profile/${userId}`, {
           method: 'GET',

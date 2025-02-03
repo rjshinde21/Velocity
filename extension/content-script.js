@@ -223,6 +223,26 @@
           });
         }
       });
+
+      if (platformInfo?.platform === 'deepseek') {
+        const observer = new MutationObserver((mutations, obs) => {
+          const sendButton = document.querySelector('button[type="submit"]');
+          if (sendButton && !sendButton.dataset.velocityTracking) {
+            sendButton.dataset.velocityTracking = 'true';
+            sendButton.addEventListener('click', () => {
+              const content = getInputContent();
+              if (!enhanceButtonUsed && content.trim().length > 25) {
+                showReminder();
+              }
+            });
+          }
+        });
+      
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true
+        });
+      }
   
       // Initial check for send button
       const initialSendButton = document.querySelector('button[data-testid="send-button"]');
@@ -453,6 +473,39 @@
         }
       `
     },
+
+    deepseek: {
+      urlPattern: /^https:\/\/(chat\.)?deepseek\.ai/,
+      selectors: '#chat-input.c92459f0',
+      name: 'Deepseek',
+      customStyles: `
+        .velocity-wrapper {
+          position: relative !important;
+          display: block !important;
+          width: 100% !important;
+          min-height: 48px !important;
+          margin: 0 !important;
+          background: transparent !important;
+        }
+        
+        .velocity-wrapper textarea {
+          width: 100% !important;
+          min-height: inherit !important;
+          padding-right: 45px !important;
+          box-sizing: border-box !important;
+          resize: none !important;
+          background: transparent !important;
+        }
+    
+        .velocity-enhance-button {
+          position: absolute !important;
+          bottom: 8px !important;
+          right: 12px !important;
+          z-index: 999999 !important;
+        }
+      `
+    },
+
     claude: {
       urlPattern: /^https:\/\/claude\.ai/,
       selectors: '.claude-textarea, div[contenteditable="true"]',
@@ -1517,19 +1570,16 @@
           location: "Enhance Button"
         });
     
-        if (error.message.includes('high traffic')) {
-          // Create error popup with timeout message
-          const messageEl = popup.querySelector('.velocity-message');
-          if (messageEl) {
-            messageEl.textContent = 'We are experiencing high traffic right now. Please try again later.';
-            messageEl.style.color = '#ff4444';
-            popup.classList.add('show');
-            setTimeout(() => {
-              messageEl.style.color = '';
-              popup.classList.remove('show');
-            }, 3000);
-          }
-        }
+        const messageEl = popup.querySelector('.velocity-message');
+    if (messageEl) {
+      messageEl.textContent = 'We are experiencing high traffic right now. Please try again later.';
+      messageEl.style.color = '#ff4444';
+      popup.classList.add('show');
+      setTimeout(() => {
+        messageEl.style.color = '';
+        popup.classList.remove('show');
+      }, 3000);
+    }
     
         throw error;
       } finally {
@@ -1757,7 +1807,11 @@
   const popup = document.createElement('div');
   popup.className = 'velocity-popup';
   const messageEl = document.createElement('div');
-  messageEl.className = 'velocity-message';
+messageEl.className = 'velocity-message';
+messageEl.textContent = `Select a style that best matches your needs`;
+
+
+
   popup.style.opacity = '0';
   popup.style.visibility = 'hidden';
   popup.appendChild(messageEl);
@@ -2103,7 +2157,14 @@ button.addEventListener('click', async (e) => {
   const selectedText = getSelectedText(inputElement);
   const fullText = inputElement.value || inputElement.textContent || '';
   
-  if (!selectedText && !fullText) return;
+
+  // Check if input is empty
+  if (!selectedText && !fullText) {
+    const storage = await chrome.storage.local.get(['userName']);
+    messageEl.textContent = `Hey ${storage.userName || 'there'}, please type something first!`;
+    popup.classList.add('show');
+    return;
+  }
 
   if (!window.velocityState.styleType) {
     const storage = await chrome.storage.local.get(['userName']);
@@ -2330,25 +2391,18 @@ function getSelectedText(element) {
   const popupStyles = document.createElement('style');
   popupStyles.textContent = `
       .velocity-popup {
-    position: fixed !important;
-    background: white !important;
-    color: #1a1a1a !important;
-    padding: 16px !important;
-    border-radius: 12px !important;
-    line-height: 1.5 !important;
-    font-size: 14px !important;
-    word-wrap: break-word !important;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
-    border: 1px solid rgba(0, 0, 0, 0.1) !important;
-    z-index: 9999999 !important;
-    width: 280px !important; /* Fixed width */
-    max-height: 320px !important;
-    overflow-y: auto !important;
-    opacity: 0 !important;
-    pointer-events: auto !important;
-    transition: all 0.2s ease !important;
-    visibility: hidden !important;
-  }
+  position: fixed !important;
+  background: #FFFFFF !important;
+  padding: 0 !important; /* Remove default padding */
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  width: 240px !important;
+  max-width: 90vw !important;
+  position: fixed !important;
+  transform: translateX(-50%) !important;
+  z-index: 9999999 !important;
+  border: 1px solid #E5E7EB !important;
+}
 
   .velocity-popup.show {
     opacity: 1 !important;
@@ -2374,12 +2428,13 @@ function getSelectedText(element) {
     background: transparent !important;
   }
   
-    .velocity-message {
-    padding: 8px 0 !important;
-    font-size: 14px !important;
-    color: #333 !important;
-    margin: 0 !important;
-  }
+   .velocity-message {
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  border-bottom: 1px solid #E5E7EB !important;
+  line-height: 1.4 !important;
+  word-break: normal !important;
+}
 
   
     .settings-section {
@@ -2389,28 +2444,69 @@ function getSelectedText(element) {
     .settings-section.show {
       display: block !important;
     }
-  
-      .velocity-style-buttons {
-  display: grid !important;
-  grid-template-columns: auto auto !important;
-  justify-content: start !important;
-  gap: 12px !important;
+
+   .settings-section {
+  max-height: 240px !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin !important;
 }
+
+.settings-section::-webkit-scrollbar {
+  width: 4px !important;
+} /* For Chrome, Safari, and Opera */
+
+.settings-section::-webkit-scrollbar-thumb {
+  background-color: #E5E7EB !important;
+  border-radius: 2px !important;
+}
+  
+ .velocity-style-buttons {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important; /* Remove gap between buttons */
+
+}
+
+.velocity-style-icon {
+  width: 20px !important;
+  height: 20px !important;
+  margin-right: 12px !important;
+  flex-shrink: 0 !important;
+}
+
+.velocity-style-text {
+  color: #111827 !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+
+.velocity-style-button {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  padding: 12px 16px !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid #E5E7EB !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease !important;
+  text-align: left !important;
+}
+
+
+.velocity-style-button:last-child {
+  border-bottom: none !important;
+}
+
 
 
     .velocity-style-button:hover {
       background: #E0F2FE !important;
     }
   
-    .velocity-style-button.active {
-      background: #E0F2FE !important;
-      border: 1px solid #3B82F6 !important;
-    }
 
-    .velocity-popup .settings-section {
-    margin-top: 12px !important;
-    padding: 0 !important;
-  }
+    
   
     .velocity-toggle-container {
       display: flex !important;
@@ -2539,6 +2635,8 @@ document.head.appendChild(breathingStyles);
   // Create style buttons container
   const styleButtonsContainer = document.createElement('div');
   styleButtonsContainer.className = 'velocity-style-buttons';
+
+  
   // Replace the existing button styles with:
 const buttonStyles = document.createElement('style');
 buttonStyles.textContent = `
@@ -2699,22 +2797,22 @@ const interactions = handleButtonAndPopupInteractions(
   const styles = [
     {
       name: 'Descriptive',
-      description: 'Adds detailed context to enhance clarity and depth',
+      // description: 'Adds detailed context to enhance clarity and depth',
       imagePath: 'assets/desc.png'
     },
     {
       name: 'Creative',
-      description: 'Inspires unique, imaginative, & artistic outputs',
+      // description: 'Inspires unique, imaginative, & artistic outputs',
       imagePath: 'assets/cre.png'
     },
     {
       name: 'Professional',
-      description: 'Delivers polished, formal, and industry-specific results',
+      // description: 'Delivers polished, formal, and industry-specific results',
       imagePath: 'assets/pro.png'
     },
     {
       name: 'Concise',
-      description: 'Focuses on brevity and clarity, cutting out unnecessary details',
+      // description: 'Focuses on brevity and clarity, cutting out unnecessary details',
       imagePath: 'assets/conc.png'
     }
   ];
@@ -2722,242 +2820,20 @@ const interactions = handleButtonAndPopupInteractions(
   
   styles.forEach(style => {
     const styleButton = document.createElement('button');
-styleButton.className = 'velocity-style-button';
-styleButton.dataset.style = style.name.toLowerCase();
-
-const gridContainer = document.createElement('div');
-gridContainer.className = 'velocity-style-grid';
-
-const imageContainer = document.createElement('div');
-imageContainer.className = 'velocity-style-image';
-const img = document.createElement('img');
-img.src = chrome.runtime.getURL(style.imagePath);
-img.alt = style.name;
-imageContainer.appendChild(img);
-
-const textContainer = document.createElement('div');
-textContainer.className = 'velocity-style-text';
-
-const titleSpan = document.createElement('span');
-titleSpan.className = 'velocity-style-button-title';
-titleSpan.textContent = style.name;
-
-const descriptionSpan = document.createElement('span');
-descriptionSpan.className = 'velocity-style-description';
-descriptionSpan.textContent = style.description;
-
-textContainer.appendChild(titleSpan);
-textContainer.appendChild(descriptionSpan);
-
-gridContainer.appendChild(imageContainer);
-gridContainer.appendChild(textContainer);
-styleButton.appendChild(gridContainer);
-  
-    // Update the styles in popupStyles.textContent
-    const newStyles = `
-       .velocity-style-button {
-  padding: 12px !important; 
-  white-space: nowrap !important;
-  width: auto !important;
-  background: rgb(255, 255, 255) !important;
-  border: 1px solid #E5E7EB !important;
-  border-radius: 8px !important;
-  cursor: pointer !important;
-  width: 100% !important;
-  text-align: left !important;
-  transition: all 0.2s ease !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important; /* Increased gap */
-}
-
-.velocity-style-grid {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important; /* Better alignment */
-  width: 100% !important;
-  gap: 8px !important;
-}
-
-.velocity-style-image {
-  flex-shrink: 0 !important; /* Prevent image from shrinking */
-  width: 32px !important; /* Larger icons */
-  height: 32px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: #F3F4F6 !important; /* Light background for icons */
-  border-radius: 6px !important;
-  padding: 6px !important;
-}
-
-.velocity-style-image img {
-  width: 20px !important;
-  height: 20px !important;
-  object-fit: contain !important;
-}
-
-.velocity-style-text {
-  flex-grow: 1 !important;
-  display: flex !important;
-  flex-direction: column !important; /* Stack title and description */
-  gap: 2px !important;
-}
-
-.velocity-style-button-title {
-  font-weight: 600 !important;
-  font-size: 14px !important;
-  color: #1a1a1a !important;
-  margin-bottom: 2px !important;
-}
-
-.velocity-style-description {
-  font-size: 12px !important;
-  color: #6B7280 !important;
-  line-height: 1.4 !important;
-}
-
-
-.velocity-style-button:hover {
-  background: #F8FAFC !important;
-  border-color: #60A5FA !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
-}
-
-.velocity-style-button.active {
-  background: #EFF6FF !important;
-  border: 2px solid #3B82F6 !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1) !important;
-}
-
-
-
+    styleButton.className = 'velocity-style-button';
+    styleButton.dataset.style = style.name.toLowerCase();
+    
+    styleButton.innerHTML = `
+      <img src="${chrome.runtime.getURL(style.imagePath)}" alt="${style.name}" class="velocity-style-icon">
+      <span class="velocity-style-text">${style.name}</span>
     `;
-  
-    // Add the new styles to the existing popupStyles
-    if (popupStyles.textContent.includes('.velocity-style-button {')) {
-      popupStyles.textContent = popupStyles.textContent.replace(
-        /.velocity-style-button {[\s\S]*?}(?=\s*\.velocity-style-button\.active|$)/g,
-        newStyles
-      );
-    } else {
-      popupStyles.textContent += newStyles;
-    }
-  
-    // Add event listener...
-    styleButton.addEventListener('click', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const currentStyle = styleButton.dataset.style;
-      const isCurrentlyActive = styleButton.classList.contains('active');
-      
-      styleButtonsContainer.querySelectorAll('.velocity-style-button').forEach(btn => {
-        btn.classList.remove('active');
-      });
-  
-      if (!isCurrentlyActive) {
-        styleButton.classList.add('active');
-        window.velocityState.styleType = currentStyle;
-        hasStyleSelected = true;
-        const selectedText = getSelectedText(inputElement);
-        const fullText = inputElement.value || inputElement.textContent || '';
-        
-        if (!selectedText && !fullText) {
-          const storage = await chrome.storage.local.get(['userName']);
-          messageEl.textContent = `Hey ${storage.userName}, please enter some text first!`;
-          return;
-        }
     
-        try {
-          showLoading();
-          const textToEnhance = selectedText || fullText;
-          const enhancedText = await enhancePrompt(textToEnhance);
-    
-          // Handle different input types
-          if (selectedText) {
-            if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
-              const selectionStart = inputElement.selectionStart;
-              const selectionEnd = inputElement.selectionEnd;
-              inputElement.value = fullText.substring(0, selectionStart) + 
-                               enhancedText + 
-                               fullText.substring(selectionEnd);
-              inputElement.selectionStart = selectionStart;
-              inputElement.selectionEnd = selectionStart + enhancedText.length;
-            } else {
-              const selection = window.getSelection();
-              if (selection.rangeCount > 0) {
-                const range = selection.getRangeAt(0);
-                range.deleteContents();
-                range.insertNode(document.createTextNode(enhancedText));
-              }
-            }
-          } else {
-            if (inputElement.value !== undefined) {
-              inputElement.value = enhancedText;
-            } else {
-              // Handle contenteditable
-              inputElement.textContent = enhancedText;
-            }
-          }
-    
-          // Trigger input events for all platforms
-          const inputEvent = new Event('input', { bubbles: true });
-          inputElement.dispatchEvent(inputEvent);
-          
-          // Additional events for Claude
-          if (platformInfo?.platform === 'claude') {
-            const changeEvent = new Event('change', { bubbles: true });
-            inputElement.dispatchEvent(changeEvent);
-            
-            // Trigger focus if needed
-            inputElement.focus();
-            
-            if (inputElement.getAttribute('contenteditable') === 'true') {
-              const keyEvent = new KeyboardEvent('keyup', {
-                bubbles: true,
-                key: 'Space',
-                keyCode: 32
-              });
-              inputElement.dispatchEvent(keyEvent);
-            }
-          }
-    
-          await chrome.storage.local.set({ selectedStyle: currentStyle });
-    
-        } catch (error) {
-          // console.error('Enhancement failed:', error);
-          const storage = await chrome.storage.local.get(['userName']);
-          messageEl.textContent = 'Enhancement failed. Please try again.';
-          messageEl.style.color = '#ff4444';
-          setTimeout(() => {
-            messageEl.style.color = '';
-            messageEl.textContent = `Please select a style that best matches your needs`;
-          }, 3000);
-        } finally {
-          hideLoading();
-          updateButtonAnimations(button, inputElement);
-        }    
-        const storage = await chrome.storage.local.get(['userName']);
-        messageEl.textContent = `Hey ${storage.userName}, press the button below to enhance your prompt!`;
-        await chrome.storage.local.set({ selectedStyle: currentStyle });
-      } else {
-        window.velocityState.styleType = '';
-        hasStyleSelected = false;
-        
-        const storage = await chrome.storage.local.get(['userName']);
-        messageEl.textContent = `Please select a style that best matches your needs`;
-        await chrome.storage.local.remove('selectedStyle');
-      }
-    });
-  
     styleButtonsContainer.appendChild(styleButton);
   });
   
-  
+
    
-  settingsSection.appendChild(styleButtonsContainer);
+
   
   // Create toggle container
   const toggleContainer = document.createElement('div');
@@ -3019,13 +2895,21 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
   // Show style selection
   popup.innerHTML = '';
   const storage = await chrome.storage.local.get(['userName']);
-  messageEl.textContent = `Hey ${storage.userName}, let me help you prompt better`;
+  const messageEl = document.createElement('div');
+  messageEl.className = 'velocity-message';
+  messageEl.textContent = `Select a style that best matches your needs`;
   messageEl.style.display = 'block';
-  settingsSection.classList.add('show');
+  
+  const settingsSection = document.createElement('div');
+  settingsSection.className = 'settings-section';
+  settingsSection.appendChild(styleButtonsContainer);
+  // settingsSection.appendChild(infoText);
+  
   popup.appendChild(messageEl);
-  // popup.appendChild(settingsSection);
+  popup.appendChild(settingsSection);
+  settingsSection.classList.add('show');
   popup.classList.add('show');
-  const existingSettingsSection = popup.querySelector('.settings-section');
+
 if (existingSettingsSection) {
   existingSettingsSection.remove();
 }
