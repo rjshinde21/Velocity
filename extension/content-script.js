@@ -14,10 +14,142 @@
   let loadingInterval;
   let originalStyles;
   const HIDE_DELAY = 300; // 300ms delay
+
+  const loadingMessages = [
+    'Enhancing your prompt to match your needs...',
+    'Crafting the perfect prompt for your platform...',
+    'Working my magic on your prompt...',
+    'Transforming your prompt with style...',
+    'Adding a touch of Velocity to your writing...',
+    'Optimizing your prompt for better results...',
+    'Crafting your enhanced prompt...',
+    'Making your prompt more impactful...'
+  ];
+  
+  
   function isDiscordPlatform() {
     const url = window.location.href;
     return /^https:\/\/(www\.)?discord\.com\/channels/.test(url);
   }
+  window.velocityState = {
+    ...window.velocityState,
+    themeUtils: {
+      currentTheme: 'light',
+      
+      injectThemeStyles() {
+        if (document.getElementById('velocity-theme-styles')) return;
+        
+        const styleElement = document.createElement('style');
+        styleElement.id = 'velocity-theme-styles';
+        
+        styleElement.textContent = `
+          .velocity-wrapper[data-theme="dark"] .velocity-popup,
+          .velocity-wrapper[data-theme="dark"] .velocity-message,
+          .velocity-wrapper[data-theme="dark"] .velocity-style-button {
+            background-color: #1A1A1A !important;
+            color: #FFFFFF !important;
+            border-color: #404040 !important;
+          }
+
+          .velocity-wrapper[data-theme="dark"] .velocity-theme-toggle,
+          .velocity-wrapper[data-theme="dark"] .velocity-enhance-button {
+            background-color: #2D2D2D !important;
+            border-color: #404040 !important;
+            color: #FFFFFF !important;
+          }
+
+          .velocity-wrapper[data-theme="dark"] .velocity-style-button:hover {
+            background-color: #374151 !important;
+          }
+
+          .velocity-wrapper[data-theme="dark"] .velocity-style-button.active {
+            background-color: #374151 !important;
+            border-color: #60A5FA !important;
+          }
+
+          .velocity-theme-toggle {
+            position: absolute !important;
+            top: 8px !important;
+            right: 52px !important;
+            width: 32px !important;
+            height: 32px !important;
+            padding: 6px !important;
+            background: white !important;
+            border: 1px solid #E5E7EB !important;
+            border-radius: 6px !important;
+            cursor: pointer !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.2s ease !important;
+            z-index: 999999 !important;
+          }
+
+          .velocity-theme-toggle:hover {
+            transform: scale(1.05) !important;
+          }
+
+          .velocity-theme-toggle svg {
+            width: 20px !important;
+            height: 20px !important;
+          }
+        `;
+        
+        document.head.appendChild(styleElement);
+      },
+
+      getSunIcon() {
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/>
+                  <line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/>
+                  <line x1="21" y1="12" x2="23" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>`;
+      },
+
+      getMoonIcon() {
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>`;
+      },
+
+      createThemeToggle(wrapper) {
+        const button = document.createElement('button');
+        button.className = 'velocity-theme-toggle';
+        button.innerHTML = this.getSunIcon();
+        
+        // Load saved theme
+        const savedTheme = localStorage.getItem('velocityTheme');
+        if (savedTheme) {
+          wrapper.setAttribute('data-theme', savedTheme);
+          button.innerHTML = savedTheme === 'dark' ? this.getMoonIcon() : this.getSunIcon();
+        }
+
+        button.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const currentTheme = wrapper.getAttribute('data-theme') || 'light';
+          const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+          
+          wrapper.setAttribute('data-theme', newTheme);
+          button.innerHTML = newTheme === 'dark' ? this.getMoonIcon() : this.getSunIcon();
+          
+          localStorage.setItem('velocityTheme', newTheme);
+        });
+
+        return button;
+      }
+    }
+  };
+
   
   function trackEvent(eventName, properties = {}) {
     chrome.runtime.sendMessage({
@@ -223,26 +355,6 @@
           });
         }
       });
-
-      if (platformInfo?.platform === 'deepseek') {
-        const observer = new MutationObserver((mutations, obs) => {
-          const sendButton = document.querySelector('button[type="submit"]');
-          if (sendButton && !sendButton.dataset.velocityTracking) {
-            sendButton.dataset.velocityTracking = 'true';
-            sendButton.addEventListener('click', () => {
-              const content = getInputContent();
-              if (!enhanceButtonUsed && content.trim().length > 25) {
-                showReminder();
-              }
-            });
-          }
-        });
-      
-        observer.observe(document.body, {
-          childList: true,
-          subtree: true
-        });
-      }
   
       // Initial check for send button
       const initialSendButton = document.querySelector('button[data-testid="send-button"]');
@@ -473,39 +585,6 @@
         }
       `
     },
-
-    deepseek: {
-      urlPattern: /^https:\/\/(chat\.)?deepseek\.ai/,
-      selectors: '#chat-input.c92459f0',
-      name: 'Deepseek',
-      customStyles: `
-        .velocity-wrapper {
-          position: relative !important;
-          display: block !important;
-          width: 100% !important;
-          min-height: 48px !important;
-          margin: 0 !important;
-          background: transparent !important;
-        }
-        
-        .velocity-wrapper textarea {
-          width: 100% !important;
-          min-height: inherit !important;
-          padding-right: 45px !important;
-          box-sizing: border-box !important;
-          resize: none !important;
-          background: transparent !important;
-        }
-    
-        .velocity-enhance-button {
-          position: absolute !important;
-          bottom: 8px !important;
-          right: 12px !important;
-          z-index: 999999 !important;
-        }
-      `
-    },
-
     claude: {
       urlPattern: /^https:\/\/claude\.ai/,
       selectors: '.claude-textarea, div[contenteditable="true"]',
@@ -666,20 +745,18 @@
         }
       }
     };
-    const loadingMessages = [
-      `Enhancing your prompt to match your needs...`,
-      `Crafting the perfect prompt for ${window.velocityState.platformInfo?.platform || 'your platform'}...`,
-      `Working my magic on your prompt...`,
-      `Transforming your prompt with ${window.velocityState.styleType} style...`,
-      `Adding a touch of Velocity to your writing...`,
-      `Optimizing your prompt for better results...`,
-      `Crafting your enhanced prompt...`,
-      `Making your prompt more impactful...`
-    ];
+    // const loadingMessages = [
+    //   `Enhancing your prompt to match your needs...`,
+    //   `Crafting the perfect prompt for ${window.velocityState.platformInfo?.platform || 'your platform'}...`,
+    //   `Working my magic on your prompt...`,
+    //   `Transforming your prompt with ${window.velocityState.styleType} style...`,
+    //   `Adding a touch of Velocity to your writing...`,
+    //   `Optimizing your prompt for better results...`,
+    //   `Crafting your enhanced prompt...`,
+    //   `Making your prompt more impactful...`
+    // ];
     
-    const getRandomLoadingMessage = () => {
-      return loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
-    };
+
     
     
   async function detectPlatform() {
@@ -1430,25 +1507,14 @@
       
       let lastSavedPromptId;
       let lastTokensUsed;
-      // let timeoutId;
-      let abortController = new AbortController(); // Create abort controller
-
       
       try {
         const state = getState();
         // console.log("Starting prompt enhancement");
         const platformInfo = state.platformInfo;
-        console.log(`Detected platform: ${platformInfo.platform}`);
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => {
-            abortController.abort();
-            reject(new Error('We are experiencing high traffic right now. Please try again later.'));
-          }, 3000); // Changed to 3 seconds
-        });
+        // console.log(`Detected platform: ${platformInfo.platform}`);
         
-        if (!state.styleType) {
-          throw new Error('Please select a style first');
-        }
+        
     
         // Track enhancement attempt
         trackEvent('Enhance Button clicked', {
@@ -1476,43 +1542,21 @@
           AIType: platformInfo.platform || 'ChatGPT',
           singlePrompt: true
         };
-
-        // const apiCallPromise = new Promise((resolve, reject) => {
-        //   chrome.runtime.sendMessage({
-        //     action: 'enhancePrompt',
-        //     ...requestData
-        //   }, (response) => {
-        //     if (response?.success) {
-        //       resolve(response.data);
-        //     } else {
-        //       reject(new Error(response.error || 'We are experiencing high traffic right now. Please try again later.'));
-        //     }
-        //   });
-        // });
     
         // Use chrome runtime message to send request through background script
-        const response = await Promise.race([
-          new Promise((resolve, reject) => {
-            chrome.runtime.sendMessage({
-              action: 'enhancePrompt',
-              ...requestData
-            }, response => {
-              if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-                return;
-              }
-              if (response?.success) {
-                resolve(response.data);
-              } else {
-                reject(new Error(response.error || 'Enhancement failed'));
-              }
-            });
-          }),
-          timeoutPromise
-        ]);
-    
-
-        // clearTimeout(timeoutId);
+        const response = await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage({
+            action: 'enhancePrompt',
+            ...requestData
+          }, (response) => {
+            if (response.success) {
+              // console.log("Raw response:", response.data);
+              resolve(response.data);
+            } else {
+              reject(new Error(response.error || 'We are experiencing high traffic right now. Please try again later.'));
+            }
+          });
+        });
     
         // console.log("Received server response:", response);
     
@@ -1522,7 +1566,6 @@
           if (Array.isArray(response.enhanced_prompts) && response.enhanced_prompts.length > 0) {
             // Take the first enhanced prompt from the array
             enhancedPrompt = response.enhanced_prompts[0].prompt;
-            console.log(enhancedPrompt);
           } else {
             throw new Error('No valid prompts in response');
           }
@@ -1558,11 +1601,11 @@
           // console.log("Implementation notes:", response.implementation_notes);
         }
     
-        return response.enhanced_prompts[1].prompt;; // Return full response for details visualization
+        return response; // Return full response for details visualization
     
       } catch (error) {
-        console.error('Enhancement failed:', error);
-        // clearTimeout(timeoutId);
+        // console.error('Enhancement failed:', error);
+        
         trackEvent('We are experiencing high traffic right now. Please try again later.', {
           error: error.message,
           platform: getState().platform,
@@ -1570,20 +1613,8 @@
           location: "Enhance Button"
         });
     
-        const messageEl = popup.querySelector('.velocity-message');
-    if (messageEl) {
-      messageEl.textContent = 'We are experiencing high traffic right now. Please try again later.';
-      messageEl.style.color = '#ff4444';
-      popup.classList.add('show');
-      setTimeout(() => {
-        messageEl.style.color = '';
-        popup.classList.remove('show');
-      }, 3000);
-    }
-    
+        // Re-throw the error for the UI layer to handle
         throw error;
-      } finally {
-        abortController.abort();
       }
     }
   // Function to create and attach enhance button
@@ -1716,9 +1747,17 @@
     
       const wrapper = document.createElement('div');
       wrapper.className = 'velocity-wrapper';
+     
       const platformInfo = window.velocityState.platformInfo;
       const isClaudeInput = platformInfo?.platform === 'claude';
 
+      window.velocityState.themeUtils.injectThemeStyles();
+      const themeToggle = window.velocityState.themeUtils.createThemeToggle(wrapper);
+
+      const savedTheme = localStorage.getItem('velocityTheme');
+  if (savedTheme) {
+    wrapper.setAttribute('data-theme', savedTheme);
+  }
 
        // Apply platform-specific wrapper styles
   if (isClaudeInput) {
@@ -1807,15 +1846,13 @@
   const popup = document.createElement('div');
   popup.className = 'velocity-popup';
   const messageEl = document.createElement('div');
-messageEl.className = 'velocity-message';
-messageEl.textContent = `Select a style that best matches your needs`;
-
-
-
+  messageEl.className = 'velocity-message';
   popup.style.opacity = '0';
   popup.style.visibility = 'hidden';
   popup.appendChild(messageEl);
   wrapper.appendChild(popup);
+  popup.appendChild(window.velocityState.themeUtils.createThemeToggle(popup));
+
   
   // Wait for next frame to ensure button is positioned
   requestAnimationFrame(() => {
@@ -2037,6 +2074,10 @@ else if(platformInfo.platform == 'gemini') {
           popup.classList.remove('top', 'bottom');
           popup.classList.add(position);
           }
+
+          const getRandomLoadingMessage = () => {
+            return loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+          };
   
           // popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
           // popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
@@ -2157,55 +2198,13 @@ button.addEventListener('click', async (e) => {
   const selectedText = getSelectedText(inputElement);
   const fullText = inputElement.value || inputElement.textContent || '';
   
-
-  // Check if input is empty
-  if (!selectedText && !fullText) {
-    const storage = await chrome.storage.local.get(['userName']);
-    messageEl.textContent = `Hey ${storage.userName || 'there'}, please type something first!`;
-    popup.classList.add('show');
-    return;
-  }
-
-  if (!window.velocityState.styleType) {
-    const storage = await chrome.storage.local.get(['userName']);
-    
-    // Clear popup content
-    popup.innerHTML = '';
-    
-    // Add style selection message
-    const messageEl = document.createElement('div');
-    messageEl.className = 'velocity-message';
-    messageEl.textContent = `Please select a style  that best matches your needs`;
-    messageEl.style.display = 'block';
-    
-    // Add styles section
-    const settingsSection = document.createElement('div');
-    settingsSection.className = 'settings-section';
-    settingsSection.appendChild(styleButtonsContainer);
-    
-    popup.appendChild(messageEl);
-    popup.appendChild(settingsSection);
-    settingsSection.classList.add('show');
-    popup.classList.add('show');
-    return;
-  }
+  if (!selectedText && !fullText) return;
 
   try {
     showLoading(); // Make sure this function is defined and works correctly
     const textToEnhance = selectedText || fullText;
-    console.log("Starting enhancement with text:", textToEnhance);
     const enhancedResponse = await enhancePrompt(textToEnhance);
-    let enhancedText;
-    console.log(enhancedText)
-    if (enhancedResponse.enhanced_prompts && 
-      Array.isArray(enhancedResponse.enhanced_prompts) && 
-      enhancedResponse.enhanced_prompts.length > 0) {
-    enhancedText = enhancedResponse.enhanced_prompts[0].prompt;
-    console.log("Extracted enhanced text:", enhancedText);
-  } else {
-    console.error("Failed to extract enhanced text from response:", enhancedResponse);
-    throw new Error('No valid prompts in response');
-  }
+    const enhancedText = enhancedResponse.enhanced_prompts[0].prompt;
 
     // Replace text handling
     if (selectedText) {
@@ -2229,6 +2228,7 @@ button.addEventListener('click', async (e) => {
       if (inputElement.value !== undefined) {
         inputElement.value = enhancedText;
       } else {
+        // Handle contenteditable
         inputElement.textContent = enhancedText;
       }
     }
@@ -2237,67 +2237,28 @@ button.addEventListener('click', async (e) => {
     const inputEvent = new Event('input', { bubbles: true });
     inputElement.dispatchEvent(inputEvent);
     
-    if (platformInfo?.platform === 'claude') {
-      const changeEvent = new Event('change', { bubbles: true });
-      inputElement.dispatchEvent(changeEvent);
-      inputElement.focus();
-      
-      if (inputElement.getAttribute('contenteditable') === 'true') {
-        const keyEvent = new KeyboardEvent('keyup', {
-          bubbles: true,
-          key: 'Space',
-          keyCode: 32
-        });
-        inputElement.dispatchEvent(keyEvent);
-      }
+    const changeEvent = new Event('change', { bubbles: true });
+    inputElement.dispatchEvent(changeEvent);
+    
+    inputElement.focus();
+    
+    if (inputElement.getAttribute('contenteditable') === 'true') {
+      const keyEvent = new KeyboardEvent('keyup', {
+        bubbles: true,
+        key: 'Space',
+        keyCode: 32
+      });
+      inputElement.dispatchEvent(keyEvent);
     }
-
-    // Show success message with analysis
-    const detailsContainer = document.createElement('div');
-    detailsContainer.className = 'velocity-details-popup';
-    detailsContainer.innerHTML = `
-      <div class="velocity-analysis-section">
-        <h4 class="velocity-section-title">Prompt Analysis</h4>
-        
-        <div class="velocity-analysis-item">
-          <span class="velocity-label">Technique:</span>
-          <span class="velocity-value">${safeGet(enhancedResponse, 'analysis.technique.selected_technique')}</span>
-        </div>
-        
-        <div class="velocity-analysis-item">
-          <span class="velocity-label">Style Applied:</span>
-          <span class="velocity-value">${window.velocityState.styleType || 'Standard'}</span>
-        </div>
-        
-        <div class="velocity-analysis-item">
-          <span class="velocity-label">Analysis:</span>
-          <span class="velocity-value">${safeGet(enhancedResponse, "implementation_notes.user's prompt analysis")}</span>
-        </div>
-      </div>
-    `;
-
-    // Update popup with analysis
-    popup.innerHTML = '';
-    popup.appendChild(detailsContainer);
-    popup.classList.add('show');
 
   } catch (error) {
     console.error('Enhancement failed:', error);
-    hideLoading();
-
-    const messageEl = popup.querySelector('.velocity-message');
-    if (messageEl) {
-      messageEl.textContent = error.message;
-      messageEl.style.color = '#ff4444';
-      popup.classList.add('show');
-      settingsSection.classList.remove('show');
-      
-      setTimeout(() => {
-        messageEl.style.color = '';
-        popup.classList.remove('show');
-        messageEl.textContent = 'Select a style that best matches your needs';
-      }, 3000);
-    }
+    // Show error message
+    messageEl.textContent = 'Enhancement failed. Please try again.';
+    messageEl.style.color = '#ff4444';
+    setTimeout(() => {
+      messageEl.style.color = '';
+    }, 3000);
   } finally {
     hideLoading();
     updateButtonAnimations(button, inputElement);
@@ -2391,17 +2352,70 @@ function getSelectedText(element) {
   const popupStyles = document.createElement('style');
   popupStyles.textContent = `
       .velocity-popup {
-  position: fixed !important;
-  background: #FFFFFF !important;
-  padding: 0 !important; /* Remove default padding */
-  border-radius: 12px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-  width: 240px !important;
-  max-width: 90vw !important;
-  position: fixed !important;
-  transform: translateX(-50%) !important;
-  z-index: 9999999 !important;
-  border: 1px solid #E5E7EB !important;
+    position: fixed !important;
+    background: white !important;
+    color: #1a1a1a !important;
+    padding: 16px !important;
+    border-radius: 12px !important;
+    line-height: 1.5 !important;
+    font-size: 14px !important;
+    word-wrap: break-word !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    z-index: 9999999 !important;
+    width: 280px !important; /* Fixed width */
+    max-height: 320px !important;
+    overflow-y: auto !important;
+    opacity: 0 !important;
+    pointer-events: auto !important;
+    transition: all 0.2s ease !important;
+    visibility: hidden !important;
+  }
+    .velocity-style-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding: 12px !important;
+  border-radius: 8px !important;
+  background: white !important;
+  margin-bottom: 12px !important;
+}
+
+.velocity-wrapper[data-theme="dark"] .velocity-style-list {
+  background: #1A1A1A !important;
+  color: #FFFFFF !important;
+}
+
+.velocity-wrapper[data-theme="dark"] .velocity-style-option {
+  color: #FFFFFF !important;
+}
+
+.velocity-wrapper[data-theme="dark"] .velocity-style-option:hover {
+  background: #374151 !important;
+}
+
+.velocity-style-option {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: background 0.2s !important;
+}
+
+.velocity-style-icon {
+  font-size: 18px !important;
+}
+
+.velocity-style-option:hover {
+  background: #f3f4f6;
+}
+
+.velocity-theme-toggle {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
 }
 
   .velocity-popup.show {
@@ -2428,13 +2442,12 @@ function getSelectedText(element) {
     background: transparent !important;
   }
   
-   .velocity-message {
-  padding: 12px 16px !important;
-  font-size: 14px !important;
-  border-bottom: 1px solid #E5E7EB !important;
-  line-height: 1.4 !important;
-  word-break: normal !important;
-}
+    .velocity-message {
+    padding: 8px 0 !important;
+    font-size: 14px !important;
+    color: #333 !important;
+    margin: 0 !important;
+  }
 
   
     .settings-section {
@@ -2444,69 +2457,28 @@ function getSelectedText(element) {
     .settings-section.show {
       display: block !important;
     }
-
-   .settings-section {
-  max-height: 240px !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  scrollbar-width: thin !important;
-}
-
-.settings-section::-webkit-scrollbar {
-  width: 4px !important;
-} /* For Chrome, Safari, and Opera */
-
-.settings-section::-webkit-scrollbar-thumb {
-  background-color: #E5E7EB !important;
-  border-radius: 2px !important;
-}
   
- .velocity-style-buttons {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 0 !important; /* Remove gap between buttons */
-
+      .velocity-style-buttons {
+  display: grid !important;
+  grid-template-columns: auto auto !important;
+  justify-content: start !important;
+  gap: 12px !important;
 }
-
-.velocity-style-icon {
-  width: 20px !important;
-  height: 20px !important;
-  margin-right: 12px !important;
-  flex-shrink: 0 !important;
-}
-
-.velocity-style-text {
-  color: #111827 !important;
-  font-size: 14px !important;
-  font-weight: 400 !important;
-}
-
-.velocity-style-button {
-  display: flex !important;
-  align-items: center !important;
-  width: 100% !important;
-  padding: 12px 16px !important;
-  background: transparent !important;
-  border: none !important;
-  border-bottom: 1px solid #E5E7EB !important;
-  cursor: pointer !important;
-  transition: background-color 0.2s ease !important;
-  text-align: left !important;
-}
-
-
-.velocity-style-button:last-child {
-  border-bottom: none !important;
-}
-
 
 
     .velocity-style-button:hover {
       background: #E0F2FE !important;
     }
   
+    .velocity-style-button.active {
+      background: #E0F2FE !important;
+      border: 1px solid #3B82F6 !important;
+    }
 
-    
+    .velocity-popup .settings-section {
+    margin-top: 12px !important;
+    padding: 0 !important;
+  }
   
     .velocity-toggle-container {
       display: flex !important;
@@ -2635,8 +2607,6 @@ document.head.appendChild(breathingStyles);
   // Create style buttons container
   const styleButtonsContainer = document.createElement('div');
   styleButtonsContainer.className = 'velocity-style-buttons';
-
-  
   // Replace the existing button styles with:
 const buttonStyles = document.createElement('style');
 buttonStyles.textContent = `
@@ -2710,7 +2680,14 @@ function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSect
       button.classList.add('breathing');
     }
   }
-  
+  function showStyleList() {
+    const styleList = document.createElement('div');
+    styleList.className = 'velocity-style-list';
+    // Add style options
+    popup.innerHTML = '';
+    popup.appendChild(styleList);
+    popup.appendChild(window.velocityState.themeUtils.createThemeToggle(popup));
+  }
 
   function hidePopup() {
     popup.classList.remove('show');
@@ -2727,13 +2704,48 @@ function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSect
     popup.classList.add('show');
   }
 
-  // Button interactions
-  button.addEventListener('mouseenter', () => {
-    if (button.classList.contains('loading')) return;
-    
-    clearTimeout(hideTimeout);
-    showPopup();
+// Replace the current button.addEventListener('mouseenter') with:
+button.addEventListener('mouseenter', () => {
+  const styleList = document.createElement('div');
+  styleList.className = 'velocity-style-list';
+  
+  const styles = [
+    {icon: '≡', name: 'Descriptive', key: 'descriptive'},
+    {icon: '✎', name: 'Creative', key: 'creative'}, 
+    {icon: '👔', name: 'Professional', key: 'professional'},
+    {icon: '—', name: 'Concise', key: 'concise'}
+  ];
+
+  styles.forEach(style => {
+    const option = document.createElement('div');
+    option.className = 'velocity-style-option';
+    option.innerHTML = `
+      <span class="style-icon">${style.icon}</span>
+      <span>${style.name}</span>
+    `;
+    option.addEventListener('click', async () => {
+      window.velocityState.styleType = style.key;
+      const textToEnhance = inputElement.value || inputElement.textContent || '';
+      if (textToEnhance.trim()) {
+        showLoading();
+        try {
+          const response = await enhancePrompt(textToEnhance);
+          updateInputWithResponse(response);
+        } catch (error) {
+          console.error('Enhancement failed:', error);
+        } finally {
+          hideLoading();
+        }
+      }
+    });
+    styleList.appendChild(option);
   });
+
+  popup.innerHTML = '';
+  popup.appendChild(styleList);
+  popup.appendChild(window.velocityState.themeUtils.createThemeToggle(popup));
+  popup.classList.add('show');
+});
 
   button.addEventListener('mouseleave', (e) => {
     updateButtonAnimations(button, inputElement);
@@ -2767,6 +2779,12 @@ function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSect
       }
     }
   };
+  async function handleStyleSelection(style) {
+    window.velocityState.styleType = style;
+    const response = await enhancePrompt(inputElement.value);
+    updateInputWithResponse(response);
+    popup.classList.remove('show');
+  }
 }
 function updateButtonAnimations(button, inputElement) {
   if (!button || !inputElement) return;
@@ -2797,43 +2815,260 @@ const interactions = handleButtonAndPopupInteractions(
   const styles = [
     {
       name: 'Descriptive',
-      // description: 'Adds detailed context to enhance clarity and depth',
+      description: 'Adds detailed context to enhance clarity and depth',
       imagePath: 'assets/desc.png'
     },
     {
       name: 'Creative',
-      // description: 'Inspires unique, imaginative, & artistic outputs',
+      description: 'Inspires unique, imaginative, & artistic outputs',
       imagePath: 'assets/cre.png'
     },
     {
       name: 'Professional',
-      // description: 'Delivers polished, formal, and industry-specific results',
+      description: 'Delivers polished, formal, and industry-specific results',
       imagePath: 'assets/pro.png'
     },
     {
       name: 'Concise',
-      // description: 'Focuses on brevity and clarity, cutting out unnecessary details',
+      description: 'Focuses on brevity and clarity, cutting out unnecessary details',
       imagePath: 'assets/conc.png'
     }
   ];
 
+  function updateInputWithResponse(response) {
+    const enhancedText = response.enhanced_prompts[0].prompt;
+    
+    if (inputElement.value !== undefined) {
+      inputElement.value = enhancedText;
+    } else {
+      inputElement.textContent = enhancedText;
+    }
   
+    const inputEvent = new Event('input', { bubbles: true });
+    inputElement.dispatchEvent(inputEvent);
+    
+    if (platformInfo?.platform === 'claude') {
+      const changeEvent = new Event('change', { bubbles: true });
+      inputElement.dispatchEvent(changeEvent);
+      inputElement.focus();
+    }
+  }
   styles.forEach(style => {
     const styleButton = document.createElement('button');
     styleButton.className = 'velocity-style-button';
     styleButton.dataset.style = style.name.toLowerCase();
     
-    styleButton.innerHTML = `
-      <img src="${chrome.runtime.getURL(style.imagePath)}" alt="${style.name}" class="velocity-style-icon">
-      <span class="velocity-style-text">${style.name}</span>
-    `;
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'velocity-style-grid';
     
+    const imageContainer = document.createElement('div');
+    imageContainer.className = 'velocity-style-image';
+    const img = document.createElement('img');
+    img.src = chrome.runtime.getURL(style.imagePath);
+    img.alt = style.name;
+    imageContainer.appendChild(img);
+    
+    const textContainer = document.createElement('div');
+    textContainer.className = 'velocity-style-text';
+    
+    // const titleSpan = document.createElement('span');
+    // titleSpan.className = 'velocity-style-button-title';
+    // titleSpan.textContent = style.name;
+    
+    // textContainer.appendChild(titleSpan);
+    
+    gridContainer.appendChild(imageContainer);
+    gridContainer.appendChild(textContainer);
+    styleButton.appendChild(gridContainer);
+  
+    // Update the styles in popupStyles.textContent
+    const newStyles = `
+       .velocity-style-button {
+  padding: 8px 8px !important;
+  white-space: nowrap !important;
+  width: auto !important;
+  background: rgb(255, 255, 255) !important;
+  border: 1px solid #E5E7EB !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  width: 100% !important;
+  text-align: left !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.velocity-style-grid {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+
+.velocity-style-image {
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.velocity-style-image img {
+  width: 20px !important;
+  height: 20px !important;
+  object-fit: contain !important;
+}
+
+.velocity-style-text {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.velocity-style-button-title {
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  color: #1a1a1a !important;
+}
+
+
+
+
+.velocity-style-button:hover {
+  background: rgb(255, 255, 255) !important;
+  border: 1px solid rgb(2, 123, 199) !important;
+}
+
+.velocity-style-button.active {
+  background: rgb(240, 249, 255) !important;
+  border: 2px solid rgb(2, 132, 199) !important;
+}
+
+
+
+    `;
+  
+    // Add the new styles to the existing popupStyles
+    if (popupStyles.textContent.includes('.velocity-style-button {')) {
+      popupStyles.textContent = popupStyles.textContent.replace(
+        /.velocity-style-button {[\s\S]*?}(?=\s*\.velocity-style-button\.active|$)/g,
+        newStyles
+      );
+    } else {
+      popupStyles.textContent += newStyles;
+    }
+  
+    // Add event listener...
+    styleButton.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const currentStyle = styleButton.dataset.style;
+      const isCurrentlyActive = styleButton.classList.contains('active');
+      
+      
+  
+      if (!isCurrentlyActive) {
+        styleButton.classList.add('active');
+        window.velocityState.styleType = currentStyle;
+        hasStyleSelected = true;
+        const selectedText = getSelectedText(inputElement);
+        localStorage.setItem('velocitySelectedStyle', currentStyle);
+        const fullText = inputElement.value || inputElement.textContent || '';
+        
+        if (!selectedText && !fullText) {
+          const storage = await chrome.storage.local.get(['userName']);
+          messageEl.textContent = `Hey ${storage.userName}, please enter some text first!`;
+          return;
+        }
+    
+        try {
+          showLoading();
+          const textToEnhance = selectedText || fullText;
+          const enhancedText = await enhancePrompt(textToEnhance);
+    
+          // Handle different input types
+          if (selectedText) {
+            if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
+              const selectionStart = inputElement.selectionStart;
+              const selectionEnd = inputElement.selectionEnd;
+              inputElement.value = fullText.substring(0, selectionStart) + 
+                               enhancedText + 
+                               fullText.substring(selectionEnd);
+              inputElement.selectionStart = selectionStart;
+              inputElement.selectionEnd = selectionStart + enhancedText.length;
+            } else {
+              const selection = window.getSelection();
+              if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                range.insertNode(document.createTextNode(enhancedText));
+              }
+            }
+          } else {
+            if (inputElement.value !== undefined) {
+              inputElement.value = enhancedText;
+            } else {
+              // Handle contenteditable
+              inputElement.textContent = enhancedText;
+            }
+          }
+    
+          // Trigger input events for all platforms
+          const inputEvent = new Event('input', { bubbles: true });
+          inputElement.dispatchEvent(inputEvent);
+          
+          // Additional events for Claude
+          if (platformInfo?.platform === 'claude') {
+            const changeEvent = new Event('change', { bubbles: true });
+            inputElement.dispatchEvent(changeEvent);
+            
+            // Trigger focus if needed
+            inputElement.focus();
+            
+            if (inputElement.getAttribute('contenteditable') === 'true') {
+              const keyEvent = new KeyboardEvent('keyup', {
+                bubbles: true,
+                key: 'Space',
+                keyCode: 32
+              });
+              inputElement.dispatchEvent(keyEvent);
+            }
+          }
+    
+          await chrome.storage.local.set({ selectedStyle: currentStyle });
+    
+        } catch (error) {
+          // console.error('Enhancement failed:', error);
+          const storage = await chrome.storage.local.get(['userName']);
+          messageEl.textContent = 'Enhancement failed. Please try again.';
+          messageEl.style.color = '#ff4444';
+          setTimeout(() => {
+            messageEl.style.color = '';
+            messageEl.textContent = `Hey ${storage.userName}, select a style that best matches your needs`;
+          }, 3000);
+        } finally {
+          hideLoading();
+          updateButtonAnimations(button, inputElement);
+        }    
+        const storage = await chrome.storage.local.get(['userName']);
+        messageEl.textContent = `Hey ${storage.userName}, press the button below to enhance your prompt!`;
+        await chrome.storage.local.set({ selectedStyle: currentStyle });
+      } else {
+        window.velocityState.styleType = '';
+        hasStyleSelected = false;
+        
+        const storage = await chrome.storage.local.get(['userName']);
+        messageEl.textContent = `Hey ${storage.userName}, select a style that best matches your needs`;
+        await chrome.storage.local.remove('selectedStyle');
+      }
+    });
+  
     styleButtonsContainer.appendChild(styleButton);
   });
   
-
+  
    
-
+  settingsSection.appendChild(styleButtonsContainer);
   
   // Create toggle container
   const toggleContainer = document.createElement('div');
@@ -2893,23 +3128,11 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
   hasStyleSelected = false;
 
   // Show style selection
-  popup.innerHTML = '';
-  const storage = await chrome.storage.local.get(['userName']);
-  const messageEl = document.createElement('div');
-  messageEl.className = 'velocity-message';
-  messageEl.textContent = `Select a style that best matches your needs`;
-  messageEl.style.display = 'block';
-  
-  const settingsSection = document.createElement('div');
-  settingsSection.className = 'settings-section';
-  settingsSection.appendChild(styleButtonsContainer);
-  // settingsSection.appendChild(infoText);
-  
+ 
   popup.appendChild(messageEl);
-  popup.appendChild(settingsSection);
-  settingsSection.classList.add('show');
+  // popup.appendChild(settingsSection);
   popup.classList.add('show');
-
+  const existingSettingsSection = popup.querySelector('.settings-section');
 if (existingSettingsSection) {
   existingSettingsSection.remove();
 }
@@ -2944,32 +3167,22 @@ if (existingSettingsSection) {
   });
   
   // Add popup mouseleave handler
-  popup.addEventListener('mouseleave', (e) => {
-    // Only hide if not showing analysis details
-    if (!popup.querySelector('.velocity-details-popup')) {
-      if (!button.matches(':hover')) {
-        hideTimeout = setTimeout(() => {
-          popup.classList.remove('show');
-          settingsSection.classList.remove('show');
-          messageEl.style.display = 'block';
-        }, HIDE_DELAY);
-      }
-    }
-  });
+  // popup.addEventListener('mouseleave', (e) => {
+  //   // Only hide if not showing analysis details
+  //   if (!popup.querySelector('.velocity-details-popup')) {
+  //     if (!button.matches(':hover')) {
+  //       hideTimeout = setTimeout(() => {
+  //         popup.classList.remove('show');
+  //         settingsSection.classList.remove('show');
+  //         messageEl.style.display = 'block';
+  //       }, HIDE_DELAY);
+  //     }
+  //   }
+  // });
 
   function safeGet(obj, path, defaultValue = 'Not specified') {
-    console.log("safeGet called with:", { obj, path, defaultValue });
-    try {
-      const result = path.split('.').reduce((acc, key) => {
-        console.log("Accessing key:", key, "Current acc:", acc);
-        return acc && acc[key] !== undefined ? acc[key] : defaultValue;
-      }, obj);
-      console.log("safeGet result:", result);
-      return result;
-    } catch (error) {
-      console.error("safeGet error:", error);
-      return defaultValue;
-    }
+    return path.split('.').reduce((acc, key) => 
+      acc && acc[key] !== undefined ? acc[key] : defaultValue, obj);
   }
 
   button.addEventListener('click', async (e) => {
@@ -3436,6 +3649,7 @@ function setupTextareaResizing(textarea) {
         // console.log('Unsupported platform, stopping initialization');
         return;
       }
+
     
       const currentState = window.velocityState || {};
       window.velocityState = {

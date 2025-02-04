@@ -45,7 +45,7 @@
         "https://thinkvelocity.in/*",
          "https://deepseek.ai/*"
       ],
-      "js": ["content-script.js"],
+      "js": ["content-script.js", "themeUtils.js"],
       "css": ["src/output.css"],
        "run_at": "document_idle"
     }
