@@ -13,143 +13,74 @@
   let hasStyleSelected = false;
   let loadingInterval;
   let originalStyles;
+  let isShowingAnalysis = false; 
+  let isShowingStyles = false;
   const HIDE_DELAY = 300; // 300ms delay
 
-  const loadingMessages = [
-    'Enhancing your prompt to match your needs...',
-    'Crafting the perfect prompt for your platform...',
-    'Working my magic on your prompt...',
-    'Transforming your prompt with style...',
-    'Adding a touch of Velocity to your writing...',
-    'Optimizing your prompt for better results...',
-    'Crafting your enhanced prompt...',
-    'Making your prompt more impactful...'
-  ];
+  const MESSAGE_TYPES = {
+    INFO: 'info',
+    ERROR: 'error',
+    SUCCESS: 'success',
+    LOADING: 'loading'
+  };
   
+  function showMessage(messageEl, text, type = MESSAGE_TYPES.INFO, duration = 3000) {
+    if (!messageEl) return;
   
+    // Set message and style based on type
+    messageEl.textContent = text;
+    messageEl.className = 'velocity-message';
+    messageEl.classList.add(`velocity-message-${type}`);
+  
+    // Add styles for message types
+    const messageStyles = `
+      .velocity-message {
+        transition: opacity 0.3s ease !important;
+      }
+      .velocity-message-error {
+        color: #ef4444 !important;
+      }
+      .velocity-message-success {
+        color: #10b981 !important;
+      }
+      .velocity-message-loading {
+        color: #6b7280 !important;
+      }
+    `;
+  
+    if (!document.querySelector('#velocity-message-styles')) {
+      const styleElement = document.createElement('style');
+      styleElement.id = 'velocity-message-styles';
+      styleElement.textContent = messageStyles;
+      document.head.appendChild(styleElement);
+    }
+  
+    // Clear any existing timeout
+    if (messageEl.timeoutId) {
+      clearTimeout(messageEl.timeoutId);
+    }
+  
+    // Auto-clear non-loading messages
+    if (type !== MESSAGE_TYPES.LOADING && duration) {
+      messageEl.timeoutId = setTimeout(() => {
+        resetMessage(messageEl);
+      }, duration);
+    }
+  }
+  
+  function resetMessage(messageEl) {
+    if (!messageEl) return;
+    const storage = chrome.storage.local.get(['userName'], (result) => {
+      messageEl.textContent = result.userName ? 
+        `Hey ${result.userName}, let me help you prompt better` :
+        'Hey, let me help you prompt better';
+      messageEl.className = 'velocity-message';
+    });
+  }
   function isDiscordPlatform() {
     const url = window.location.href;
     return /^https:\/\/(www\.)?discord\.com\/channels/.test(url);
   }
-  window.velocityState = {
-    ...window.velocityState,
-    themeUtils: {
-      currentTheme: 'light',
-      
-      injectThemeStyles() {
-        if (document.getElementById('velocity-theme-styles')) return;
-        
-        const styleElement = document.createElement('style');
-        styleElement.id = 'velocity-theme-styles';
-        
-        styleElement.textContent = `
-          .velocity-wrapper[data-theme="dark"] .velocity-popup,
-          .velocity-wrapper[data-theme="dark"] .velocity-message,
-          .velocity-wrapper[data-theme="dark"] .velocity-style-button {
-            background-color: #1A1A1A !important;
-            color: #FFFFFF !important;
-            border-color: #404040 !important;
-          }
-
-          .velocity-wrapper[data-theme="dark"] .velocity-theme-toggle,
-          .velocity-wrapper[data-theme="dark"] .velocity-enhance-button {
-            background-color: #2D2D2D !important;
-            border-color: #404040 !important;
-            color: #FFFFFF !important;
-          }
-
-          .velocity-wrapper[data-theme="dark"] .velocity-style-button:hover {
-            background-color: #374151 !important;
-          }
-
-          .velocity-wrapper[data-theme="dark"] .velocity-style-button.active {
-            background-color: #374151 !important;
-            border-color: #60A5FA !important;
-          }
-
-          .velocity-theme-toggle {
-            position: absolute !important;
-            top: 8px !important;
-            right: 52px !important;
-            width: 32px !important;
-            height: 32px !important;
-            padding: 6px !important;
-            background: white !important;
-            border: 1px solid #E5E7EB !important;
-            border-radius: 6px !important;
-            cursor: pointer !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            transition: all 0.2s ease !important;
-            z-index: 999999 !important;
-          }
-
-          .velocity-theme-toggle:hover {
-            transform: scale(1.05) !important;
-          }
-
-          .velocity-theme-toggle svg {
-            width: 20px !important;
-            height: 20px !important;
-          }
-        `;
-        
-        document.head.appendChild(styleElement);
-      },
-
-      getSunIcon() {
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" 
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="5"/>
-                  <line x1="12" y1="1" x2="12" y2="3"/>
-                  <line x1="12" y1="21" x2="12" y2="23"/>
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                  <line x1="1" y1="12" x2="3" y2="12"/>
-                  <line x1="21" y1="12" x2="23" y2="12"/>
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                </svg>`;
-      },
-
-      getMoonIcon() {
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" 
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                </svg>`;
-      },
-
-      createThemeToggle(wrapper) {
-        const button = document.createElement('button');
-        button.className = 'velocity-theme-toggle';
-        button.innerHTML = this.getSunIcon();
-        
-        // Load saved theme
-        const savedTheme = localStorage.getItem('velocityTheme');
-        if (savedTheme) {
-          wrapper.setAttribute('data-theme', savedTheme);
-          button.innerHTML = savedTheme === 'dark' ? this.getMoonIcon() : this.getSunIcon();
-        }
-
-        button.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          const currentTheme = wrapper.getAttribute('data-theme') || 'light';
-          const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-          
-          wrapper.setAttribute('data-theme', newTheme);
-          button.innerHTML = newTheme === 'dark' ? this.getMoonIcon() : this.getSunIcon();
-          
-          localStorage.setItem('velocityTheme', newTheme);
-        });
-
-        return button;
-      }
-    }
-  };
-
   
   function trackEvent(eventName, properties = {}) {
     chrome.runtime.sendMessage({
@@ -230,8 +161,9 @@
   }
   function calculatePopupPosition(button, popup) {
     const buttonRect = button.getBoundingClientRect();
-    const popupHeight = popup.offsetHeight;
+    const popupHeight = popup.offsetHeight || 320;
     const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
     const platformInfo = window.velocityState.platformInfo;
 
     if (platformInfo?.platform === 'gemini') {
@@ -242,17 +174,32 @@
       // Check if there's more space above or below
       const spaceBelow = viewportHeight - buttonRect.bottom;
       const spaceAbove = buttonRect.top;
+
+      let left = buttonRect.left + (buttonRect.width / 2);
+      const popupWidth = popup.offsetWidth || 280; // Default width if not rendered
       
-      if (spaceBelow >= popupHeight || spaceBelow > spaceAbove) {
+  if (left - (popupWidth / 2) < 10) {
+        left = 10 + (popupWidth / 2);
+    } else if (left + (popupWidth / 2) > viewportWidth - 10) {
+        left = viewportWidth - 10 - (popupWidth / 2);
+    }
+
+    popup.style.position = 'fixed';
+    popup.style.left = `${left}px`;
+    popup.style.transform = 'translateX(-50%)';
+    popup.style.width = '280px'; // Ensure consistent width
+    
+    // Determine vertical position
+    if (spaceBelow >= popupHeight || spaceBelow > spaceAbove) {
         popup.style.top = `${buttonRect.bottom + 10}px`;
         popup.style.bottom = 'auto';
         return 'bottom';
-      } else {
+    } else {
         popup.style.bottom = `${viewportHeight - buttonRect.top + 10}px`;
         popup.style.top = 'auto';
         return 'top';
-      }
     }
+}
     
     // Check if we're on Claude
     if (window.velocityState.platformInfo?.platform === 'claude') {
@@ -745,18 +692,20 @@
         }
       }
     };
-    // const loadingMessages = [
-    //   `Enhancing your prompt to match your needs...`,
-    //   `Crafting the perfect prompt for ${window.velocityState.platformInfo?.platform || 'your platform'}...`,
-    //   `Working my magic on your prompt...`,
-    //   `Transforming your prompt with ${window.velocityState.styleType} style...`,
-    //   `Adding a touch of Velocity to your writing...`,
-    //   `Optimizing your prompt for better results...`,
-    //   `Crafting your enhanced prompt...`,
-    //   `Making your prompt more impactful...`
-    // ];
+    const loadingMessages = [
+      `Enhancing your prompt to match your needs...`,
+      `Crafting the perfect prompt for ${window.velocityState.platformInfo?.platform || 'your platform'}...`,
+      `Working my magic on your prompt...`,
+      `Transforming your prompt with ${window.velocityState.styleType} style...`,
+      `Adding a touch of Velocity to your writing...`,
+      `Optimizing your prompt for better results...`,
+      `Crafting your enhanced prompt...`,
+      `Making your prompt more impactful...`
+    ];
     
-
+    const getRandomLoadingMessage = () => {
+      return loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+    };
     
     
   async function detectPlatform() {
@@ -1525,11 +1474,15 @@
     
         // Validate credits first
         const creditValidation = await validateCredits(state);
+        const selectedStyle = state.styleType || 'professional';
+
+        console.log("Selected style:", selectedStyle);
     
         // Get style transformation logic
         if (state.styleType && state.styleTransformations[state.styleType.toLowerCase()]) {
           styleTransform = state.styleTransformations[state.styleType.toLowerCase()];
         }
+        console.log("Style transformation:", styleTransform);
     
         // Save prompt history first to ensure tracking
         const promptData = await savePromptToHistory(originalText, state.platform);
@@ -1538,10 +1491,12 @@
         // Prepare request data for background script
         const requestData = {
           prompt: originalText,
-          style: state.styleType || 'descriptive',
+          style: selectedStyle || 'descriptive',
           AIType: platformInfo.platform || 'ChatGPT',
           singlePrompt: true
         };
+
+        console.log("Request data:", requestData);
     
         // Use chrome runtime message to send request through background script
         const response = await new Promise((resolve, reject) => {
@@ -1550,7 +1505,7 @@
             ...requestData
           }, (response) => {
             if (response.success) {
-              // console.log("Raw response:", response.data);
+              console.log("Raw response:", response.data);
               resolve(response.data);
             } else {
               reject(new Error(response.error || 'We are experiencing high traffic right now. Please try again later.'));
@@ -1651,6 +1606,8 @@
     }
     
     function handleButtonHover(button, popup) {
+      let hideTimeout;
+      const HIDE_DELAY = 300;
       // Add hover related styles
       const hoverStyles = document.createElement('style');
       hoverStyles.textContent = `
@@ -1682,26 +1639,70 @@
         }
       `;
       document.head.appendChild(hoverStyles);
+
+      button.addEventListener('mouseenter', async () => {
+        if (isShowingAnalysis) return; // Don't show hover content if analysis is showing
+        clearTimeout(hideTimeout);
+        isShowingStyles = true;
+        const styleOptions = popup.querySelector('.velocity-style-options');
+        if (styleOptions) {
+          styleOptions.style.display = 'grid';
+        }
+        
+        const buttonRect = button.getBoundingClientRect();
+        const position = calculatePopupPosition(button, popup);
+        popup.classList.add('show');
+      });
+    
+      // Hide on mouseleave
+      button.addEventListener('mouseleave', (e) => {
+        if (isShowingAnalysis) return; // Don't hide if showing analysis
+        if (!popup.contains(e.relatedTarget)) {
+          hideTimeout = setTimeout(() => {
+            popup.classList.remove('show');
+          }, HIDE_DELAY);
+        }
+      });
+
+      popup.addEventListener('mouseleave', (e) => {
+        if (isShowingAnalysis) return; // Don't hide if showing analysis
+        if (!button.contains(e.relatedTarget)) {
+          hideTimeout = setTimeout(() => {
+            popup.classList.remove('show');
+          }, HIDE_DELAY);
+        }
+      });
+
+      
     
       // Position the popup whenever button position changes
-      const updatePopupPosition = () => {
-        const buttonRect = button.getBoundingClientRect();
-        popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-        popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
-      };
+      // const updatePopupPosition = () => {
+      //   const buttonRect = button.getBoundingClientRect();
+      //   popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
+      //   popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
+      // };
     
-      // Update position on scroll and resize
-      window.addEventListener('scroll', updatePopupPosition, { passive: true });
-      window.addEventListener('resize', updatePopupPosition, { passive: true });
+      // // Update position on scroll and resize
+      // window.addEventListener('scroll', updatePopupPosition, { passive: true });
+      // window.addEventListener('resize', updatePopupPosition, { passive: true });
     
-      // Initial position
-      updatePopupPosition();
+      // // Initial position
+      // updatePopupPosition();
     
       return {
         forceHide: () => {
-          popup.classList.remove('show');
+          if (!isShowingAnalysis) {
+            popup.classList.remove('show');
+          }
         },
-        updatePosition: updatePopupPosition
+        updatePosition: () => {
+          if (popup.classList.contains('show')) {
+            const buttonRect = button.getBoundingClientRect();
+            const position = calculatePopupPosition(button, popup);
+            popup.classList.remove('top', 'bottom');
+            popup.classList.add(position);
+          }
+        }
       };
     }
     
@@ -1747,17 +1748,9 @@
     
       const wrapper = document.createElement('div');
       wrapper.className = 'velocity-wrapper';
-     
       const platformInfo = window.velocityState.platformInfo;
       const isClaudeInput = platformInfo?.platform === 'claude';
 
-      window.velocityState.themeUtils.injectThemeStyles();
-      const themeToggle = window.velocityState.themeUtils.createThemeToggle(wrapper);
-
-      const savedTheme = localStorage.getItem('velocityTheme');
-  if (savedTheme) {
-    wrapper.setAttribute('data-theme', savedTheme);
-  }
 
        // Apply platform-specific wrapper styles
   if (isClaudeInput) {
@@ -1851,8 +1844,6 @@
   popup.style.visibility = 'hidden';
   popup.appendChild(messageEl);
   wrapper.appendChild(popup);
-  popup.appendChild(window.velocityState.themeUtils.createThemeToggle(popup));
-
   
   // Wait for next frame to ensure button is positioned
   requestAnimationFrame(() => {
@@ -2032,18 +2023,22 @@ else if(platformInfo.platform == 'gemini') {
       wrapper.style.height = inputStyles.height;
       }
       const img = document.createElement('img');
-      img.src = chrome.runtime.getURL('assets/logo.png'); // Make sure to update this path
-      img.alt = 'Enhance';
-      img.draggable = false; // Prevent image dragging
-      img.style.cssText = `
-        width: 35px !important;
-        height: 35px !important;
-        transition: transform 0.2s ease !important;
-        object-fit: contain !important;
-        background: transparent !important; /* Ensure no background */
-        display: block !important;
-        filter: brightness(1) !important; /* Ensure no filter is adding white */
-      `;
+img.src = chrome.runtime.getURL('assets/logo.png');
+img.alt = 'Enhance';
+img.draggable = false;
+img.style.cssText = `
+    width: 35px !important;
+    height: 35px !important;
+    transition: transform 0.2s ease !important;
+    object-fit: contain !important;
+    background: transparent !important;
+    display: block !important;
+    filter: var(--velocity-icon-filter) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+`;
 
       button.appendChild(img);
       button.title = `Enhance ${platformInfo?.config?.name || ''} prompt`;
@@ -2054,35 +2049,24 @@ else if(platformInfo.platform == 'gemini') {
         // if (wrapper) {
         //   wrapper.classList.add('loading');
         // }
+        isShowingAnalysis = false;
+        showMessage(messageEl, getRandomLoadingMessage(), MESSAGE_TYPES.LOADING);
         interactions.forceHide();
         button.classList.add('loading'); 
         button.disabled = true;
-        // button.style.pointerEvents = 'none';
-        // button.style.opacity = '0.5'; // Make it look disabled
-             
         img.classList.add('animate-spin');
-        hoverHandler.forceHide(); // Force hide popup when loading starts
+        hoverHandler.forceHide();
         const showLoadingMessage = () => {
           const buttonRect = button.getBoundingClientRect();
           if (window.velocityState.platformInfo?.platform != 'claude') {
-  
             popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
             popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
-          }  
-          else{
-          const position = calculatePopupPosition(button, popup);
-          popup.classList.remove('top', 'bottom');
-          popup.classList.add(position);
+          } else {
+            const position = calculatePopupPosition(button, popup);
+            popup.classList.remove('top', 'bottom');
+            popup.classList.add(position);
           }
-
-          const getRandomLoadingMessage = () => {
-            return loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
-          };
-  
-          // popup.style.left = `${buttonRect.left + buttonRect.width/2}px`;
-          // popup.style.bottom = `${window.innerHeight - buttonRect.top + 10}px`;
           
-          // Get random loading message
           messageEl.textContent = getRandomLoadingMessage();
           popup.classList.add('show');
           messageEl.style.display = 'block';
@@ -2095,99 +2079,15 @@ else if(platformInfo.platform == 'gemini') {
   
   
       const hideLoading = () => {
-    clearInterval(loadingInterval);
-    button.disabled = false;
-    if (window.velocityState.isEnabled) {
-      button.style.pointerEvents = 'auto';
-    }
-    button.style.opacity = '1';
-    button.classList.remove('loading');  
-    img.classList.remove('animate-spin');
-    popup.classList.remove('show');
-  };
-      
-  // button.addEventListener('click', async (e) => {
-  //   e.preventDefault();
-  //   e.stopPropagation();
-  
-  //   if (!platformInfo?.isSupported) return;
-  
-  //   const selectedText = getSelectedText(inputElement);
-  //   const fullText = inputElement.value || inputElement.textContent || '';
-    
-  //   if (!selectedText && !fullText) return;
-  
-  //   try {
-  //     showLoading();
-  //     const textToEnhance = selectedText || fullText;
-  //     const enhancedText = await enhancePrompt(textToEnhance);
-  
-  //     // Handle different input types
-  //     if (selectedText) {
-  //       if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
-  //         const selectionStart = inputElement.selectionStart;
-  //         const selectionEnd = inputElement.selectionEnd;
-  //         inputElement.value = fullText.substring(0, selectionStart) + 
-  //                            enhancedText + 
-  //                            fullText.substring(selectionEnd);
-  //         inputElement.selectionStart = selectionStart;
-  //         inputElement.selectionEnd = selectionStart + enhancedText.length;
-  //       } else {
-  //         const selection = window.getSelection();
-  //         if (selection.rangeCount > 0) {
-  //           const range = selection.getRangeAt(0);
-  //           range.deleteContents();
-  //           range.insertNode(document.createTextNode(enhancedText));
-  //         }
-  //       }
-  //     } else {
-  //       if (inputElement.value !== undefined) {
-  //         inputElement.value = enhancedText;
-  //       } else {
-  //         // Handle contenteditable
-  //         inputElement.textContent = enhancedText;
-  //       }
-  //     }
-  
-  //     // Trigger input events for all platforms
-  //     const inputEvent = new Event('input', { bubbles: true });
-  //     inputElement.dispatchEvent(inputEvent);
-      
-  //     // Additional events for Claude
-  //     if (platformInfo?.platform === 'claude') {
-  //       const changeEvent = new Event('change', { bubbles: true });
-  //       inputElement.dispatchEvent(changeEvent);
+        clearInterval(loadingInterval);
+        button.disabled = false;
+        button.classList.remove('loading');
+        img.classList.remove('animate-spin');
         
-        
-  //       // Force Claude's internal update
-  //       if (inputElement.getAttribute('contenteditable') === 'true') {
-  //         const keyEvent = new KeyboardEvent('keyup', {
-  //           bubbles: true,
-  //           key: 'Space',
-  //           keyCode: 32
-  //         });
-  //         inputElement.dispatchEvent(keyEvent);
-  //       }
-  //     }
-  
-  //   } catch (error) {
-  //     console.error('Enhancement failed:', error);
-  //     // Show error message in popup
-  //     const messageEl = document.querySelector('.velocity-message');
-  //     if (messageEl) {
-  //       messageEl.textContent = 'Enhancement failed. Please try again.';
-  //       messageEl.style.color = '#ff4444';
-  //       setTimeout(() => {
-  //         messageEl.style.color = '';
-  //       }, 3000);
-  //     }
-  //   } finally {
-  //     hideLoading();
-  //     updateButtonAnimations(button, inputElement);
-  //   }
-  // });
-
-// Add helper function for getting selected text
+        if (!isShowingAnalysis) {
+          popup.classList.remove('show');
+        }
+      };
 
 button.addEventListener('click', async (e) => {
   e.preventDefault();
@@ -2201,12 +2101,12 @@ button.addEventListener('click', async (e) => {
   if (!selectedText && !fullText) return;
 
   try {
-    showLoading(); // Make sure this function is defined and works correctly
+    showLoading();
     const textToEnhance = selectedText || fullText;
     const enhancedResponse = await enhancePrompt(textToEnhance);
     const enhancedText = enhancedResponse.enhanced_prompts[0].prompt;
 
-    // Replace text handling
+    // Handle text replacement
     if (selectedText) {
       if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
         const selectionStart = inputElement.selectionStart;
@@ -2228,32 +2128,146 @@ button.addEventListener('click', async (e) => {
       if (inputElement.value !== undefined) {
         inputElement.value = enhancedText;
       } else {
-        // Handle contenteditable
         inputElement.textContent = enhancedText;
       }
     }
 
-    // Trigger Claude-specific events
-    const inputEvent = new Event('input', { bubbles: true });
-    inputElement.dispatchEvent(inputEvent);
-    
-    const changeEvent = new Event('change', { bubbles: true });
-    inputElement.dispatchEvent(changeEvent);
-    
+    // Trigger necessary events
+    inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+    inputElement.dispatchEvent(new Event('change', { bubbles: true }));
     inputElement.focus();
     
     if (inputElement.getAttribute('contenteditable') === 'true') {
-      const keyEvent = new KeyboardEvent('keyup', {
+      inputElement.dispatchEvent(new KeyboardEvent('keyup', {
         bubbles: true,
         key: 'Space',
         keyCode: 32
-      });
-      inputElement.dispatchEvent(keyEvent);
+      }));
     }
+
+    // Show analysis popup
+    isShowingAnalysis = true;
+    popup.innerHTML = `
+  <div class="velocity-analysis-container">
+   <button 
+      class="velocity-close-analysis" 
+      aria-label="Close analysis"
+      style="
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: transparent;
+        border: none;
+        color: #666;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 5px;
+        line-height: 1;
+        z-index: 10;
+      "
+    >
+      ×
+    </button>
+    <div class="velocity-message">Prompt Analysis Results</div>
+    <div class="velocity-details-popup">
+      <div class="velocity-analysis-section">
+        <h4 class="velocity-section-title">Enhancement Details:</h4>
+        <div class="velocity-analysis-item">
+          <span class="velocity-label">Technique Used</span>
+          <span class="velocity-value">${safeGet(enhancedResponse, 'analysis.technique.selected_technique')}</span>
+        </div>
+        <div class="velocity-analysis-item">
+          <span class="velocity-label">Analysis Breakdown</span>
+          <span class="velocity-value">${safeGet(enhancedResponse, "implementation_notes.user's prompt analysis")}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+`;
+
+// Position and show popup
+const position = calculatePopupPosition(button, popup);
+popup.classList.remove('top', 'bottom');
+popup.classList.add(position, 'show', 'showing-analysis');
+
+const closeButton = popup.querySelector('.velocity-close-analysis');
+closeButton.addEventListener('click', async (e) => {
+  // Prevent default browser behaviors
+  e.preventDefault();
+  e.stopPropagation();
+  
+  // Reset the analysis state
+  isShowingAnalysis = false;
+  
+  // Remove popup display classes
+  popup.classList.remove('showing-analysis', 'show');
+  
+  // Clear the popup content
+  popup.innerHTML = '';
+  
+  // Recreate the default popup content
+  const messageEl = document.createElement('div');
+  messageEl.className = 'velocity-message';
+  
+  // Recreate style options container
+  const styleOptionsContainer = document.createElement('div');
+  styleOptionsContainer.className = 'velocity-style-options';
+  
+  // Rebuild style options
+  styles.forEach(style => {
+    const option = document.createElement('div');
+    option.className = 'velocity-style-option';
+    if(style.id === window.velocityState.styleType) {
+      option.classList.add('active');
+    }
+    option.dataset.style = style.id;
+    
+    const icon = document.createElement('img');
+    icon.src = chrome.runtime.getURL(style.icon);
+    icon.className = 'velocity-style-icon';
+    icon.alt = style.name;
+    
+    const text = document.createElement('span');
+    text.textContent = style.name;
+    
+    option.appendChild(icon);
+    option.appendChild(text);
+    
+    // Reattach style option click handlers
+    option.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      styleOptionsContainer.querySelectorAll('.velocity-style-option').forEach(opt => {
+        opt.classList.remove('active');
+      });
+      option.classList.add('active');
+      window.velocityState.styleType = style.id;
+      await chrome.storage.local.set({ selectedStyle: style.id });
+      messageEl.textContent = `Style set to ${style.name}. Click enhance to apply!`;
+    });
+    
+    styleOptionsContainer.appendChild(option);
+  });
+
+  // Get username and set default message
+  const storage = await chrome.storage.local.get(['userName']);
+  messageEl.textContent = storage.userName ? 
+    `Hey ${storage.userName}, let me help you prompt better` : 
+    'Hey, let me help you prompt better';
+  
+  // Rebuild popup
+  popup.appendChild(messageEl);
+  popup.appendChild(styleOptionsContainer);
+  
+  // Restore popup position
+  requestAnimationFrame(() => {
+    const position = calculatePopupPosition(button, popup);
+    popup.classList.remove('top', 'bottom');
+    popup.classList.add(position, 'show');
+  });
+});
 
   } catch (error) {
     console.error('Enhancement failed:', error);
-    // Show error message
     messageEl.textContent = 'Enhancement failed. Please try again.';
     messageEl.style.color = '#ff4444';
     setTimeout(() => {
@@ -2264,6 +2278,7 @@ button.addEventListener('click', async (e) => {
     updateButtonAnimations(button, inputElement);
   }
 });
+
 function getSelectedText(element) {
   if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
     return element.value.substring(element.selectionStart, element.selectionEnd);
@@ -2347,23 +2362,23 @@ function getSelectedText(element) {
     
     
     resizeObserver.observe(inputElement);
-   
+
     // First add the popup styles
   const popupStyles = document.createElement('style');
   popupStyles.textContent = `
-      .velocity-popup {
+    .velocity-popup {
     position: fixed !important;
-    background: white !important;
-    color: #1a1a1a !important;
+    background: var(--velocity-bg-color) !important;
+    color: var(--velocity-popup-text) !important;
     padding: 16px !important;
     border-radius: 12px !important;
+    border: 1px solid var(--velocity-border-color) !important;
     line-height: 1.5 !important;
     font-size: 14px !important;
     word-wrap: break-word !important;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
-    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: var(--velocity-popup-shadow) !important;
     z-index: 9999999 !important;
-    width: 280px !important; /* Fixed width */
+    width: 280px !important;
     max-height: 320px !important;
     overflow-y: auto !important;
     opacity: 0 !important;
@@ -2371,66 +2386,144 @@ function getSelectedText(element) {
     transition: all 0.2s ease !important;
     visibility: hidden !important;
   }
-    .velocity-style-list {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 8px !important;
-  padding: 12px !important;
-  border-radius: 8px !important;
-  background: white !important;
-  margin-bottom: 12px !important;
-}
-
-.velocity-wrapper[data-theme="dark"] .velocity-style-list {
-  background: #1A1A1A !important;
-  color: #FFFFFF !important;
-}
-
-.velocity-wrapper[data-theme="dark"] .velocity-style-option {
-  color: #FFFFFF !important;
-}
-
-.velocity-wrapper[data-theme="dark"] .velocity-style-option:hover {
-  background: #374151 !important;
-}
-
-.velocity-style-option {
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
-  padding: 8px 12px !important;
-  border-radius: 6px !important;
-  cursor: pointer !important;
-  transition: background 0.2s !important;
-}
-
-.velocity-style-icon {
-  font-size: 18px !important;
-}
-
-.velocity-style-option:hover {
-  background: #f3f4f6;
-}
-
-.velocity-theme-toggle {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #e5e7eb;
-}
 
   .velocity-popup.show {
     opacity: 1 !important;
-    pointer-events: auto !important;
     visibility: visible !important;
+    pointer-events: auto !important;
   }
 
+    .velocity-close-analysis {
+    pointer-events: none;
+  }
+  
+  .velocity-close-analysis * {
+    pointer-events: none;
+  }
+
+  .velocity-popup.showing-analysis {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    display: block !important;
+  }
+
+.velocity-theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px;
+    margin-top: 8px;
+    border-top: 1px solid var(--velocity-border-color);
+  }
+
+.velocity-popup.showing-analysis {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+  z-index: 1000000 !important;
+}
+
+.velocity-analysis-container {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+  transition: opacity 0.3s ease !important;
+}
+
+  .velocity-theme-switch {
+    position: relative;
+    width: 40px;
+    height: 20px;
+  }
+
+  .velocity-theme-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .velocity-theme-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #e5e7eb;
+    transition: .4s;
+    border-radius: 20px;
+  }
+
+  .velocity-theme-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+
+  input:checked + .velocity-theme-slider {
+    background-color: #3b82f6;
+  }
+
+  input:checked + .velocity-theme-slider:before {
+    transform: translateX(20px);
+  }
+
+  /* Dark theme variables */
+.velocity-wrapper {
+    --velocity-bg-color: #ffffff;
+    --velocity-text-color: #1a1a1a;
+    --velocity-border-color: #e5e7eb;
+    --velocity-hover-bg: #f3f4f6;
+    --velocity-active-bg: #e0f2fe;
+    --velocity-button-bg: white;
+    --velocity-popup-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    --velocity-popup-text: #333333;
+    --velocity-icon-filter: none;
+    --velocity-message-color: #666666;
+}
+
+ .velocity-wrapper[data-theme="dark"] {
+    --velocity-bg-color: #1f2937 !important;
+    --velocity-text-color: #e5e7eb !important;
+    --velocity-border-color: #374151 !important;
+    --velocity-hover-bg: #374151 !important;
+    --velocity-active-bg: #2563eb !important;
+    --velocity-button-bg: #374151 !important;
+    --velocity-popup-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+    --velocity-popup-text: #ffffff !important;
+    --velocity-icon-filter: invert(1) !important;
+    --velocity-message-color: #e5e7eb !important;
+}
 
 
+.velocity-wrapper[data-theme="dark"] .velocity-popup {
+    background: var(--velocity-bg-color) !important;
+    color: var(--velocity-popup-text) !important;
+}
+
+.velocity-wrapper[data-theme="dark"] .velocity-message {
+    color: var(--velocity-message-color) !important;
+}
   
   /* Prevent hover conflicts */
   .velocity-enhance-button[data-showing-popup="true"] {
     pointer-events: none !important;
   }
+
+  .velocity-wrapper, 
+.velocity-popup,
+.velocity-message,
+.velocity-style-options,
+.velocity-style-option {
+    isolation: isolate !important;
+}
 
   /* Input styles */
   .velocity-wrapper textarea,
@@ -2442,12 +2535,12 @@ function getSelectedText(element) {
     background: transparent !important;
   }
   
-    .velocity-message {
+   .velocity-message {
     padding: 8px 0 !important;
     font-size: 14px !important;
-    color: #333 !important;
+    color: var(--velocity-message-color) !important;
     margin: 0 !important;
-  }
+}
 
   
     .settings-section {
@@ -2465,6 +2558,45 @@ function getSelectedText(element) {
   gap: 12px !important;
 }
 
+.velocity-style-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 8px;
+    margin-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .velocity-style-option {
+    padding: 6px !important;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background: var(--velocity-bg-color) !important;
+    border-color: var(--velocity-border-color) !important;
+    color: var(--velocity-text-color) !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .velocity-style-option:hover {
+    border-color: #3b82f6;
+    background: var(--velocity-hover-bg) !important;
+  }
+
+  .velocity-style-option.active {
+    background: var(--velocity-active-bg) !important;
+    border-color: #3b82f6;
+  }
+
+  .velocity-style-icon {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+  }
+
 
     .velocity-style-button:hover {
       background: #E0F2FE !important;
@@ -2478,6 +2610,10 @@ function getSelectedText(element) {
     .velocity-popup .settings-section {
     margin-top: 12px !important;
     padding: 0 !important;
+  }
+     .velocity-style-option span {
+    font-size: 12px !important;
+    font-weight: 500 !important;
   }
   
     .velocity-toggle-container {
@@ -2539,6 +2675,9 @@ function getSelectedText(element) {
     cursor: not-allowed !important;
     opacity: 0.5 !important;
   }
+    .velocity-enhance-button {
+    background: var(--velocity-button-bg) !important;
+  }
 
   `;
   document.head.appendChild(popupStyles);
@@ -2599,6 +2738,112 @@ document.head.appendChild(breathingStyles);
   messageEl.textContent = `Hey ${storage.userName}, I am Velocity. Your personal magician!`;
     }
   popup.appendChild(messageEl);
+  const styleOptionsContainer = document.createElement('div');
+styleOptionsContainer.className = 'velocity-style-options';
+
+const styles = [
+  { id: 'descriptive', name: 'Descriptive', icon: 'assets/desc.png' },
+  { id: 'creative', name: 'Creative', icon: 'assets/cre.png' },
+  { id: 'professional', name: 'Professional', icon: 'assets/pro.png' },
+  { id: 'concise', name: 'Concise', icon: 'assets/conc.png' }
+];
+
+// Create style options
+styles.forEach(style => {
+  const option = document.createElement('div');
+  option.className = 'velocity-style-option';
+  option.dataset.style = style.id;
+  
+  const icon = document.createElement('img');
+  icon.src = chrome.runtime.getURL(style.icon);
+  icon.className = 'velocity-style-icon';
+  icon.alt = style.name;
+  
+  const text = document.createElement('span');
+  text.textContent = style.name;
+  
+  option.appendChild(icon);
+  option.appendChild(text);
+
+  option.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    
+    // Remove active class from all options
+    styleOptionsContainer.querySelectorAll('.velocity-style-option').forEach(opt => {
+      opt.classList.remove('active');
+    });
+    
+    // Add active class to selected option
+    option.classList.add('active');
+    
+    // Update state
+    window.velocityState.styleType = style.id;
+    
+    // Store preference
+    await chrome.storage.local.set({ selectedStyle: style.id });
+    
+    // Update message
+    const storage = await chrome.storage.local.get(['userName']);
+    messageEl.textContent = `Style set to ${style.name}. Click enhance to apply!`;
+  });
+  
+  styleOptionsContainer.appendChild(option);
+});
+
+// Add style options to popup
+popup.appendChild(styleOptionsContainer);
+
+const themeToggle = document.createElement('div');
+themeToggle.className = 'velocity-theme-toggle';
+
+const themeLabel = document.createElement('span');
+themeLabel.textContent = 'Dark Mode';
+
+const themeSwitch = document.createElement('label');
+themeSwitch.className = 'velocity-theme-switch';
+
+const themeInput = document.createElement('input');
+themeInput.type = 'checkbox';
+
+// Get stored theme preference
+chrome.storage.local.get(['theme'], ({ theme }) => {
+  if (theme === 'dark') {
+    themeInput.checked = true;
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+});
+
+const themeSlider = document.createElement('span');
+themeSlider.className = 'velocity-theme-slider';
+
+themeSwitch.appendChild(themeInput);
+themeSwitch.appendChild(themeSlider);
+themeToggle.appendChild(themeLabel);
+themeToggle.appendChild(themeSwitch);
+
+// Add theme toggle to popup
+popup.appendChild(themeToggle);
+
+// Handle theme toggle
+themeInput.addEventListener('change', () => {
+  const isDark = themeInput.checked;
+  const theme = isDark ? 'dark' : 'light';
+  
+  document.querySelectorAll('.velocity-wrapper').forEach(wrapper => {
+    wrapper.setAttribute('data-theme', theme);
+  });
+  
+  // Store preference
+  chrome.storage.local.set({ theme });
+  
+  // Update message
+  messageEl.textContent = `Theme switched to ${theme} mode`;
+  setTimeout(() => {
+    messageEl.textContent = window.velocityState.styleType ? 
+      `Style set to ${window.velocityState.styleType}. Click enhance to apply!` :
+      'Select a style or click enhance to apply!';
+  }, 2000);
+});
   
   // Create settings section
   const settingsSection = document.createElement('div');
@@ -2680,14 +2925,7 @@ function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSect
       button.classList.add('breathing');
     }
   }
-  function showStyleList() {
-    const styleList = document.createElement('div');
-    styleList.className = 'velocity-style-list';
-    // Add style options
-    popup.innerHTML = '';
-    popup.appendChild(styleList);
-    popup.appendChild(window.velocityState.themeUtils.createThemeToggle(popup));
-  }
+  
 
   function hidePopup() {
     popup.classList.remove('show');
@@ -2704,48 +2942,13 @@ function handleButtonAndPopupInteractions(button, popup, messageEl, settingsSect
     popup.classList.add('show');
   }
 
-// Replace the current button.addEventListener('mouseenter') with:
-button.addEventListener('mouseenter', () => {
-  const styleList = document.createElement('div');
-  styleList.className = 'velocity-style-list';
-  
-  const styles = [
-    {icon: '≡', name: 'Descriptive', key: 'descriptive'},
-    {icon: '✎', name: 'Creative', key: 'creative'}, 
-    {icon: '👔', name: 'Professional', key: 'professional'},
-    {icon: '—', name: 'Concise', key: 'concise'}
-  ];
-
-  styles.forEach(style => {
-    const option = document.createElement('div');
-    option.className = 'velocity-style-option';
-    option.innerHTML = `
-      <span class="style-icon">${style.icon}</span>
-      <span>${style.name}</span>
-    `;
-    option.addEventListener('click', async () => {
-      window.velocityState.styleType = style.key;
-      const textToEnhance = inputElement.value || inputElement.textContent || '';
-      if (textToEnhance.trim()) {
-        showLoading();
-        try {
-          const response = await enhancePrompt(textToEnhance);
-          updateInputWithResponse(response);
-        } catch (error) {
-          console.error('Enhancement failed:', error);
-        } finally {
-          hideLoading();
-        }
-      }
-    });
-    styleList.appendChild(option);
+  // Button interactions
+  button.addEventListener('mouseenter', () => {
+    if (button.classList.contains('loading')) return;
+    
+    clearTimeout(hideTimeout);
+    showPopup();
   });
-
-  popup.innerHTML = '';
-  popup.appendChild(styleList);
-  popup.appendChild(window.velocityState.themeUtils.createThemeToggle(popup));
-  popup.classList.add('show');
-});
 
   button.addEventListener('mouseleave', (e) => {
     updateButtonAnimations(button, inputElement);
@@ -2779,12 +2982,6 @@ button.addEventListener('mouseenter', () => {
       }
     }
   };
-  async function handleStyleSelection(style) {
-    window.velocityState.styleType = style;
-    const response = await enhancePrompt(inputElement.value);
-    updateInputWithResponse(response);
-    popup.classList.remove('show');
-  }
 }
 function updateButtonAnimations(button, inputElement) {
   if (!button || !inputElement) return;
@@ -2812,47 +3009,30 @@ const interactions = handleButtonAndPopupInteractions(
 // Add this function to handle button animations
 
   // Add style buttons
-  const styles = [
-    {
-      name: 'Descriptive',
-      description: 'Adds detailed context to enhance clarity and depth',
-      imagePath: 'assets/desc.png'
-    },
-    {
-      name: 'Creative',
-      description: 'Inspires unique, imaginative, & artistic outputs',
-      imagePath: 'assets/cre.png'
-    },
-    {
-      name: 'Professional',
-      description: 'Delivers polished, formal, and industry-specific results',
-      imagePath: 'assets/pro.png'
-    },
-    {
-      name: 'Concise',
-      description: 'Focuses on brevity and clarity, cutting out unnecessary details',
-      imagePath: 'assets/conc.png'
-    }
-  ];
+  // const styles = [
+  //   {
+  //     name: 'Descriptive',
+  //     description: 'Adds detailed context to enhance clarity and depth',
+  //     imagePath: 'assets/desc.png'
+  //   },
+  //   {
+  //     name: 'Creative',
+  //     description: 'Inspires unique, imaginative, & artistic outputs',
+  //     imagePath: 'assets/cre.png'
+  //   },
+  //   {
+  //     name: 'Professional',
+  //     description: 'Delivers polished, formal, and industry-specific results',
+  //     imagePath: 'assets/pro.png'
+  //   },
+  //   {
+  //     name: 'Concise',
+  //     description: 'Focuses on brevity and clarity, cutting out unnecessary details',
+  //     imagePath: 'assets/conc.png'
+  //   }
+  // ];
 
-  function updateInputWithResponse(response) {
-    const enhancedText = response.enhanced_prompts[0].prompt;
-    
-    if (inputElement.value !== undefined) {
-      inputElement.value = enhancedText;
-    } else {
-      inputElement.textContent = enhancedText;
-    }
   
-    const inputEvent = new Event('input', { bubbles: true });
-    inputElement.dispatchEvent(inputEvent);
-    
-    if (platformInfo?.platform === 'claude') {
-      const changeEvent = new Event('change', { bubbles: true });
-      inputElement.dispatchEvent(changeEvent);
-      inputElement.focus();
-    }
-  }
   styles.forEach(style => {
     const styleButton = document.createElement('button');
     styleButton.className = 'velocity-style-button';
@@ -2965,14 +3145,15 @@ const interactions = handleButtonAndPopupInteractions(
       const currentStyle = styleButton.dataset.style;
       const isCurrentlyActive = styleButton.classList.contains('active');
       
-      
+      styleButtonsContainer.querySelectorAll('.velocity-style-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
   
       if (!isCurrentlyActive) {
         styleButton.classList.add('active');
         window.velocityState.styleType = currentStyle;
         hasStyleSelected = true;
         const selectedText = getSelectedText(inputElement);
-        localStorage.setItem('velocitySelectedStyle', currentStyle);
         const fullText = inputElement.value || inputElement.textContent || '';
         
         if (!selectedText && !fullText) {
@@ -3128,7 +3309,11 @@ button.addEventListener('mouseleave', () => updateButtonAnimations(button, input
   hasStyleSelected = false;
 
   // Show style selection
- 
+  popup.innerHTML = '';
+  const storage = await chrome.storage.local.get(['userName']);
+  messageEl.textContent = `Hey ${storage.userName}, let me help you prompt better`;
+  messageEl.style.display = 'block';
+  settingsSection.classList.add('show');
   popup.appendChild(messageEl);
   // popup.appendChild(settingsSection);
   popup.classList.add('show');
@@ -3167,225 +3352,253 @@ if (existingSettingsSection) {
   });
   
   // Add popup mouseleave handler
-  // popup.addEventListener('mouseleave', (e) => {
-  //   // Only hide if not showing analysis details
-  //   if (!popup.querySelector('.velocity-details-popup')) {
-  //     if (!button.matches(':hover')) {
-  //       hideTimeout = setTimeout(() => {
-  //         popup.classList.remove('show');
-  //         settingsSection.classList.remove('show');
-  //         messageEl.style.display = 'block';
-  //       }, HIDE_DELAY);
-  //     }
-  //   }
-  // });
+  popup.addEventListener('mouseleave', (e) => {
+    // Only hide if not showing analysis details
+    if (!popup.querySelector('.velocity-details-popup')) {
+      if (!button.matches(':hover')) {
+        hideTimeout = setTimeout(() => {
+          popup.classList.remove('show');
+          settingsSection.classList.remove('show');
+          messageEl.style.display = 'block';
+        }, HIDE_DELAY);
+      }
+    }
+  });
 
   function safeGet(obj, path, defaultValue = 'Not specified') {
     return path.split('.').reduce((acc, key) => 
       acc && acc[key] !== undefined ? acc[key] : defaultValue, obj);
   }
 
-  button.addEventListener('click', async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+//   button.addEventListener('click', async (e) => {
+//     e.preventDefault();
+//     e.stopPropagation();
   
-    if (!platformInfo?.isSupported) return;
+//     if (!platformInfo?.isSupported) return;
   
-    const selectedText = getSelectedText(inputElement);
-    const fullText = inputElement.value || inputElement.textContent || '';
+//     const selectedText = getSelectedText(inputElement);
+//     const fullText = inputElement.value || inputElement.textContent || '';
     
-    if (!selectedText && !fullText) return;
+//     if (!selectedText && !fullText) return;
+
+//     if (!window.velocityState.styleType) {
+//       const storage = await chrome.storage.local.get(['userName']);
+//       messageEl.textContent = `Hey ${storage.userName || 'there'}, please select a style first!`;
+//       popup.classList.add('show');
+//       return;
+//     }
   
-    try {
-      showLoading();
-      const textToEnhance = selectedText || fullText;
-      const enhancedResponse = await enhancePrompt(textToEnhance);
-      const enhancedText = enhancedResponse.enhanced_prompts[0].prompt;
+//     try {
+//       showLoading();
+//       const textToEnhance = selectedText || fullText;
+//       const enhancedResponse = await enhancePrompt(textToEnhance);
+//       const enhancedText = enhancedResponse.enhanced_prompts[0].prompt;
+//       function hideStylesPopup() {
+//         const styleOptions = popup.querySelector('.velocity-style-options');
+//         if (styleOptions) {
+//           styleOptions.style.display = 'none';
+//         }
+//         isShowingStyles = false;
+//       }
+//       // Handle different input types
+//       if (selectedText) {
+//         if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
+//           const selectionStart = inputElement.selectionStart;
+//           const selectionEnd = inputElement.selectionEnd;
+//           inputElement.value = fullText.substring(0, selectionStart) + 
+//                              enhancedResponse.enhanced_prompts[0].prompt + 
+//                              fullText.substring(selectionEnd);
+//           inputElement.selectionStart = selectionStart;
+//           inputElement.selectionEnd = selectionStart + enhancedResponse.enhanced_prompts[0].prompt.length;
+//         } else {
+//           const selection = window.getSelection();
+//           if (selection.rangeCount > 0) {
+//             const range = selection.getRangeAt(0);
+//             range.deleteContents();
+//             range.insertNode(document.createTextNode(enhancedResponse.enhanced_prompts[0].prompt));
+//           }
+//         }
+//       } else {
+//         if (inputElement.value !== undefined) {
+//           inputElement.value = enhancedResponse.enhanced_prompts[0].prompt;
+//         } else {
+//           // Handle contenteditable
+//           inputElement.textContent = enhancedResponse.enhanced_prompts[0].prompt;
+//         }
+//       }
   
-      // Handle different input types
-      if (selectedText) {
-        if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
-          const selectionStart = inputElement.selectionStart;
-          const selectionEnd = inputElement.selectionEnd;
-          inputElement.value = fullText.substring(0, selectionStart) + 
-                             enhancedResponse.enhanced_prompts[0].prompt + 
-                             fullText.substring(selectionEnd);
-          inputElement.selectionStart = selectionStart;
-          inputElement.selectionEnd = selectionStart + enhancedResponse.enhanced_prompts[0].prompt.length;
-        } else {
-          const selection = window.getSelection();
-          if (selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-            range.insertNode(document.createTextNode(enhancedResponse.enhanced_prompts[0].prompt));
-          }
-        }
-      } else {
-        if (inputElement.value !== undefined) {
-          inputElement.value = enhancedResponse.enhanced_prompts[0].prompt;
-        } else {
-          // Handle contenteditable
-          inputElement.textContent = enhancedResponse.enhanced_prompts[0].prompt;
-        }
-      }
-  
-      // Trigger input events for all platforms
-      const inputEvent = new Event('input', { bubbles: true });
-      inputElement.dispatchEvent(inputEvent);
+//       // Trigger input events for all platforms
+//       const inputEvent = new Event('input', { bubbles: true });
+//       inputElement.dispatchEvent(inputEvent);
       
-      // Additional events for Claude
-      if (platformInfo?.platform === 'claude') {
-        const changeEvent = new Event('change', { bubbles: true });
-        inputElement.dispatchEvent(changeEvent);
+//       // Additional events for Claude
+//       if (platformInfo?.platform === 'claude') {
+//         const changeEvent = new Event('change', { bubbles: true });
+//         inputElement.dispatchEvent(changeEvent);
         
-        // Trigger focus if needed
-        inputElement.focus();
+//         // Trigger focus if needed
+//         inputElement.focus();
         
-        // Force Claude's internal update
-        if (inputElement.getAttribute('contenteditable') === 'true') {
-          const keyEvent = new KeyboardEvent('keyup', {
-            bubbles: true,
-            key: 'Space',
-            keyCode: 32
-          });
-          inputElement.dispatchEvent(keyEvent);
-        }
-      }
-
-      // Update popup with details visualization
-      const detailsContainer = document.createElement('div');
-      detailsContainer.className = 'velocity-details-popup';
-      const popupStyles = document.createElement('style');
-    popupStyles.textContent = `
-      .velocity-details-popup {
-    width: 100% !important;
-    max-height: 280px !important;
-    padding: 12px !important;
-    font-size: 12px !important;
-    overflow-y: auto !important; /* Enable vertical scrolling */
-  }
-
-      .velocity-section-title {
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    margin: 0 0 12px 0 !important;
-    padding-bottom: 8px !important;
-    border-bottom: 1px solid #e5e7eb !important;
-    word-wrap: break-word !important; /* Add word wrapping */
-  }
-
-      .velocity-analysis-item {
-    margin-bottom: 12px !important;
-    word-wrap: break-word !important; /* Add word wrapping */
-  }
-
-      .velocity-label {
-    display: block !important;
-    font-weight: 500 !important;
-    margin-bottom: 4px !important;
-    color: #4b5563 !important;
-  }
-
-  .velocity-value {
-    display: block !important;
-    color: #1f2937 !important;
-    word-wrap: break-word !important; /* Add word wrapping */
-    white-space: normal !important; /* Allow text to wrap */
-    line-height: 1.4 !important; /* Improve readability */
-  }
-    `;
-    document.head.appendChild(popupStyles);
-
-    // popup.addEventListener('mouseenter', async () => {
-    //   const storage = await chrome.storage.local.get(['userName']);
-    //   popup.innerHTML = ''; // Clear analysis
-      
-    //   // Show style selection
-    //   const messageEl = document.createElement('div');
-    //   messageEl.className = 'velocity-message';
-    //   messageEl.textContent = `Hey ${storage.userName}, select a style that best matches your needs`;
-    //   messageEl.style.display = 'block';
-      
-    //   settingsSection.classList.add('show');
-      
-    //   popup.appendChild(messageEl);
-    //   popup.appendChild(settingsSection);
-    // });
-
-      detailsContainer.innerHTML = `
-  <div class="velocity-analysis-section">
-    <h4 class="velocity-section-title">Prompt Analysis</h4>
-    
-    <div class="velocity-analysis-item">
-      <span class="velocity-label">Technique:</span>
-      <span class="velocity-value">${safeGet(enhancedResponse, 'analysis.technique.selected_technique')}</span>
-    </div>
-    
-    
-    <div class="velocity-analysis-item">
-      <span class="velocity-label">Analysis:</span>
-      <span class="velocity-value">${safeGet(enhancedResponse, "implementation_notes.user's prompt analysis")}</span>
-    </div>
-  </div>
-`;
-
-      
-      // Update popup
-      if (!document.querySelector('#velocity-popup-styles')) {
-        const styleElement = document.createElement('style');
-        styleElement.id = 'velocity-popup-styles';
-        styleElement.textContent = popupStyles;
-        document.head.appendChild(styleElement);
-      }
-
-      popup.innerHTML = '';
-      popup.appendChild(detailsContainer);
-      popup.classList.add('show');
+//         // Force Claude's internal update
+//         if (inputElement.getAttribute('contenteditable') === 'true') {
+//           const keyEvent = new KeyboardEvent('keyup', {
+//             bubbles: true,
+//             key: 'Space',
+//             keyCode: 32
+//           });
+//           inputElement.dispatchEvent(keyEvent);
+//         }
+//       }
+//       const analysisStyles = `
+//       .velocity-analysis-container {
+//       position: relative !important;
+//       width: 100% !important;
+//       height: auto !important;
+//       min-height: 100px !important;
+//       background: var(--velocity-bg-color) !important;
+//       padding: 16px !important;
+//       border-radius: 8px !important;
+//       opacity: 1 !important;
+//       visibility: visible !important;
+//       display: block !important;
+//       z-index: 1000000 !important;
+//     }
   
-    } catch (error) {
-      console.error('Enhancement failed:', error);
-      const messageEl = document.querySelector('.velocity-message');
-      if (messageEl) {
-        messageEl.textContent = 'Enhancement failed. Please try again.';
-        messageEl.style.color = '#ff4444';
-        setTimeout(() => {
-          messageEl.style.color = '';
-        }, 3000);
-      }
-    } finally {
-      hideLoading();
-      updateButtonAnimations(button, inputElement);
-    }
-  });
+//     .velocity-close-analysis {
+//       position: absolute !important;
+//       top: 8px !important;
+//       right: 8px !important;
+//       background: transparent !important;
+//       border: none !important;
+//       color: var(--velocity-text-color) !important;
+//       font-size: 24px !important;
+//       cursor: pointer !important;
+//       padding: 4px 8px !important;
+//       border-radius: 4px !important;
+//       z-index: 1000001 !important;
+//       line-height: 1 !important;
+//       transition: all 0.2s ease !important;
+//     }
+  
+//     .velocity-close-analysis:hover {
+//       background: var(--velocity-hover-bg) !important;
+//     }
+  
+//     .velocity-details-popup {
+//       margin-top: 16px !important;
+//       padding: 16px !important;
+//       background: var(--velocity-hover-bg) !important;
+//       border-radius: 8px !important;
+//       border: 1px solid var(--velocity-border-color) !important;
+//       display: block !important;
+//       visibility: visible !important;
+//       opacity: 1 !important;
+//     }
+//       .velocity-analysis-item {
+//           margin-bottom: 16px !important;
+//           padding: 12px !important;
+//           background: var(--velocity-bg-color) !important;
+//           border-radius: 6px !important;
+//           border: 1px solid var(--velocity-border-color) !important;
+//       }
+  
+//       .velocity-section-title {
+//           font-size: 16px !important;
+//           font-weight: 600 !important;
+//           color: var(--velocity-text-color) !important;
+//           margin-bottom: 16px !important;
+//       }
+  
+//       .velocity-label {
+//           display: block !important;
+//           font-weight: 600 !important;
+//           color: var(--velocity-text-color) !important;
+//           margin-bottom: 8px !important;
+//       }
+  
+//       .velocity-value {
+//           display: block !important;
+//           color: var(--velocity-text-color) !important;
+//           line-height: 1.6 !important;
+//           font-size: 14px !important;
+//       }
+//   `;
 
-// Add CSS for details popup (can be added to existing styles)
-const detailsStyles = document.createElement('style');
-detailsStyles.textContent = `
-  .velocity-details-popup {
-    width: 100% !important;
-    max-height: 250px !important; // Control height
-    padding: 12px !important; // Reduced padding
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  }
-  .velocity-details-popup h4 {
-    margin-bottom: 10px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid #e0e0e0;
-    color: #333;
-  }
-  .velocity-details-popup p, 
-  .velocity-details-popup ul {
-    font-size: 12px;
-    color: #666;
-    margin-bottom: 10px;
-  }
-  .velocity-details-popup ul {
-    padding-left: 15px;
-  }
-`;
-document.head.appendChild(detailsStyles);
+ 
+//   if (!document.querySelector('#velocity-analysis-styles')) {
+//     const styleElement = document.createElement('style');
+//     styleElement.id = 'velocity-analysis-styles';
+//     styleElement.textContent = analysisStyles;
+//     document.head.appendChild(styleElement);
+//   }
+ 
+//     // Update popup with analysis
+//     hideStylesPopup();
+//     popup.innerHTML = '';
+//     isShowingAnalysis = true;
+//     popup.innerHTML = `
+//     <div class="velocity-analysis-container">
+//       <button class="velocity-close-analysis">×</button>
+//       <div class="velocity-analysis-section">
+//         <h4 class="velocity-section-title">Enhancement Details</h4>
+//         <div class="velocity-analysis-item">
+//           <span class="velocity-label">Technique:</span>
+//           <span class="velocity-value">${safeGet(enhancedResponse, 'analysis.technique.selected_technique')}</span>
+//         </div>
+//         <div class="velocity-analysis-item">
+//           <span class="velocity-label">Analysis:</span>
+//           <span class="velocity-value">${safeGet(enhancedResponse, "implementation_notes.user's prompt analysis")}</span>
+//         </div>
+//       </div>
+//     </div>
+//   `;
+
+//   popup.classList.add('show');
+//   popup.querySelector('.velocity-close-analysis').onclick = () => {
+//     isShowingAnalysis = false;
+//     popup.classList.remove('show');
+//   };
+  
+//     // Set up close button
+//     const closeButton = popup.querySelector('.velocity-close-analysis');
+//     closeButton.addEventListener('click', () => {
+//       isShowingAnalysis = false;
+//       popup.classList.remove('showing-analysis', 'show');
+//       popup.innerHTML = '';
+//       resetMessage(messageEl);
+//     });
+
+//     // Position popup
+//     const position = calculatePopupPosition(button, popup);
+//     popup.classList.remove('top', 'bottom');
+//     popup.classList.add(position);
+  
+//     // Force reflow and ensure visibility
+//     requestAnimationFrame(() => {
+//       popup.style.opacity = '1';
+//       popup.style.visibility = 'visible';
+//       popup.style.display = 'block';
+//     });
+
+// } catch (error) {
+// console.error('Enhancement failed:', error);
+// const messageEl = popup.querySelector('.velocity-message');
+// if (messageEl) {
+//   messageEl.textContent = 'Enhancement failed. Please try again.';
+//   messageEl.style.color = 'var(--velocity-error-color)';
+//   setTimeout(() => {
+//       messageEl.style.color = 'var(--velocity-text-color)';
+//       messageEl.textContent = `Style set to ${window.velocityState.styleType}. Click enhance to apply!`;
+//   }, 3000);
+// }
+// } finally {
+// hideLoading();
+// updateButtonAnimations(button, inputElement);
+// }
+// });
+
+
+
   
   // Helper function to get selected text
   function getSelectedText(element) {
@@ -3643,13 +3856,22 @@ function setupTextareaResizing(textarea) {
 }
 
   (async function init() {
+    async function initializeTheme() {
+      const { theme } = await chrome.storage.local.get(['theme']);
+      if (theme === 'dark') {
+        document.querySelectorAll('.velocity-wrapper').forEach(wrapper => {
+          wrapper.setAttribute('data-theme', 'dark');
+        });
+      }
+    }
+    
     try {
+      await initializeTheme();
       const platformInfo = await detectPlatform();
       if (!platformInfo.isSupported) {
         // console.log('Unsupported platform, stopping initialization');
         return;
       }
-
     
       const currentState = window.velocityState || {};
       window.velocityState = {
@@ -3659,6 +3881,16 @@ function setupTextareaResizing(textarea) {
         styleType: '',
         platform: platformInfo.platform
       };
+
+      chrome.storage.local.get(['selectedStyle'], ({ selectedStyle }) => {
+        if (selectedStyle) {
+          window.velocityState.styleType = selectedStyle;
+          const option = document.querySelector(`[data-style="${selectedStyle}"]`);
+          if (option) {
+            option.classList.add('active');
+          }
+        }
+      });
     
       // if (platformInfo.isSupported) {
       //   await injectStyles();
