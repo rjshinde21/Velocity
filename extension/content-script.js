@@ -23,6 +23,12 @@
     SUCCESS: 'success',
     LOADING: 'loading'
   };
+
+  function createTimeout(ms) {
+    return new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Request timeout')), ms)
+    );
+  }
   
   function showMessage(messageEl, text, type = MESSAGE_TYPES.INFO, duration = 3000) {
     if (!messageEl) return;
@@ -1499,19 +1505,21 @@
         console.log("Request data:", requestData);
     
         // Use chrome runtime message to send request through background script
-        const response = await new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage({
-            action: 'enhancePrompt',
-            ...requestData
-          }, (response) => {
-            if (response.success) {
-              console.log("Raw response:", response.data);
-              resolve(response.data);
-            } else {
-              reject(new Error(response.error || 'We are experiencing high traffic right now. Please try again later.'));
-            }
-          });
-        });
+        const response = await Promise.race([
+          new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage({
+              action: 'enhancePrompt',
+              ...requestData
+            }, (response) => {
+              if (response.success) {
+                resolve(response.data);
+              } else {
+                reject(new Error(response.error || 'Enhancement failed'));
+              }
+            });
+          }),
+          createTimeout(4000) // 4 second timeout
+        ]);
     
         // console.log("Received server response:", response);
     
@@ -1559,19 +1567,22 @@
         return response; // Return full response for details visualization
     
       } catch (error) {
-        // console.error('Enhancement failed:', error);
+        console.error('Enhancement failed:', error);
         
-        trackEvent('We are experiencing high traffic right now. Please try again later.', {
-          error: error.message,
-          platform: getState().platform,
-          style: getState().styleType,
-          location: "Enhance Button"
-        });
-    
-        // Re-throw the error for the UI layer to handle
-        throw error;
-      }
+        const errorMessage = error.message === 'Request timeout' 
+        ? 'We are experiencing high traffic. Please try again.'
+        : 'PLease select a style that you like.';
+      
+      trackEvent('Enhancement Error', {
+        error: errorMessage,
+        platform: getState().platform,
+        style: getState().styleType,
+        location: "Enhance Button"
+      });
+  
+      throw new Error(errorMessage);
     }
+  }
   // Function to create and attach enhance button
     function calculatePopupPosition(button, popup) {
       const buttonRect = button.getBoundingClientRect();
@@ -2098,7 +2109,29 @@ button.addEventListener('click', async (e) => {
   const selectedText = getSelectedText(inputElement);
   const fullText = inputElement.value || inputElement.textContent || '';
   
-  if (!selectedText && !fullText) return;
+  if (!selectedText && (!fullText || fullText.trim() === '')) {
+    // Show guidance message
+    popup.classList.add('show');
+    messageEl.style.display = 'block';
+    messageEl.style.color = '#ff4444'; // Red color for attention
+    
+    const storage = await chrome.storage.local.get(['userName']);
+    const userName = storage.userName ? `${storage.userName}` : 'there';
+    messageEl.textContent = `Hey ${userName}, please type something first!`;
+    
+    // Reset message after 3 seconds
+    setTimeout(async () => {
+      messageEl.style.color = '';
+      const storage = await chrome.storage.local.get(['userName']);
+      messageEl.textContent = storage.userName ? 
+        `Hey ${storage.userName}, I am Velocity. Your personal magician!` :
+        'Hey, I am Velocity. Your personal magician!';
+      popup.classList.remove('show');
+    }, 3000);
+    
+    return;
+  }
+
 
   try {
     showLoading();
@@ -2242,7 +2275,7 @@ closeButton.addEventListener('click', async (e) => {
       option.classList.add('active');
       window.velocityState.styleType = style.id;
       await chrome.storage.local.set({ selectedStyle: style.id });
-      messageEl.textContent = `Style set to ${style.name}. Click enhance to apply!`;
+      messageEl.textContent = `Style set to ${style.name}. Click Velocity to apply!`;
     });
     
     styleOptionsContainer.appendChild(option);
@@ -2268,11 +2301,21 @@ closeButton.addEventListener('click', async (e) => {
 
   } catch (error) {
     console.error('Enhancement failed:', error);
-    messageEl.textContent = 'Enhancement failed. Please try again.';
+    messageEl.textContent = error.message || 'Please Select a style.';
     messageEl.style.color = '#ff4444';
+    
+    // Force show the error message
+    popup.classList.add('show');
+    messageEl.style.display = 'block';
+    
+    // Auto-hide error after 3 seconds
     setTimeout(() => {
       messageEl.style.color = '';
+      const storage = chrome.storage.local.get(['userName']);
+      messageEl.textContent = `Hey ${storage.userName || 'there'}, select a style that matches your needs`;
+      popup.classList.remove('show');
     }, 3000);
+    
   } finally {
     hideLoading();
     updateButtonAnimations(button, inputElement);
@@ -2379,7 +2422,7 @@ function getSelectedText(element) {
     box-shadow: var(--velocity-popup-shadow) !important;
     z-index: 9999999 !important;
     width: 280px !important;
-    max-height: 320px !important;
+    min-height: fit-content !important;
     overflow-y: auto !important;
     opacity: 0 !important;
     pointer-events: auto !important;
@@ -2394,11 +2437,11 @@ function getSelectedText(element) {
   }
 
     .velocity-close-analysis {
-    pointer-events: none;
+    pointer-events: auto !important;
   }
   
   .velocity-close-analysis * {
-    pointer-events: none;
+    pointer-events: auto !important;
   }
 
   .velocity-popup.showing-analysis {
@@ -2784,7 +2827,7 @@ styles.forEach(style => {
     
     // Update message
     const storage = await chrome.storage.local.get(['userName']);
-    messageEl.textContent = `Style set to ${style.name}. Click enhance to apply!`;
+    messageEl.textContent = `Style set to ${style.name}. Click Velocity to apply!`;
   });
   
   styleOptionsContainer.appendChild(option);
@@ -2797,7 +2840,7 @@ const themeToggle = document.createElement('div');
 themeToggle.className = 'velocity-theme-toggle';
 
 const themeLabel = document.createElement('span');
-themeLabel.textContent = 'Dark Mode';
+themeLabel.textContent = 'Toggle theme based on your choice';
 
 const themeSwitch = document.createElement('label');
 themeSwitch.className = 'velocity-theme-switch';
@@ -2840,7 +2883,7 @@ themeInput.addEventListener('change', () => {
   messageEl.textContent = `Theme switched to ${theme} mode`;
   setTimeout(() => {
     messageEl.textContent = window.velocityState.styleType ? 
-      `Style set to ${window.velocityState.styleType}. Click enhance to apply!` :
+      `Style set to ${window.velocityState.styleType}. Click Velocity to apply!` :
       'Select a style or click enhance to apply!';
   }, 2000);
 });
@@ -3221,7 +3264,7 @@ const interactions = handleButtonAndPopupInteractions(
         } catch (error) {
           // console.error('Enhancement failed:', error);
           const storage = await chrome.storage.local.get(['userName']);
-          messageEl.textContent = 'Enhancement failed. Please try again.';
+          messageEl.textContent = 'Select a style that matches your needs and then click on Velocity.';
           messageEl.style.color = '#ff4444';
           setTimeout(() => {
             messageEl.style.color = '';
