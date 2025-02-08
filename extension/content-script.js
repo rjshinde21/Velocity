@@ -1571,7 +1571,7 @@
         
         const errorMessage = error.message === 'Request timeout' 
         ? 'We are experiencing high traffic. Please try again.'
-        : 'PLease select a style that you like.';
+        : 'PLease select a style that you want.';
       
       trackEvent('Enhancement Error', {
         error: errorMessage,
@@ -2181,41 +2181,91 @@ button.addEventListener('click', async (e) => {
     // Show analysis popup
     isShowingAnalysis = true;
     popup.innerHTML = `
-  <div class="velocity-analysis-container">
-   <button 
-      class="velocity-close-analysis" 
-      aria-label="Close analysis"
-      style="
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: transparent;
-        border: none;
-        color: #666;
-        font-size: 24px;
-        cursor: pointer;
-        padding: 5px;
-        line-height: 1;
-        z-index: 10;
-      "
-    >
-      ×
-    </button>
-    <div class="velocity-message">Prompt Analysis Results</div>
-    <div class="velocity-details-popup">
-      <div class="velocity-analysis-section">
-        <h4 class="velocity-section-title">Enhancement Details:</h4>
-        <div class="velocity-analysis-item">
-          <span class="velocity-label">Technique Used</span>
-          <span class="velocity-value">${safeGet(enhancedResponse, 'analysis.technique.selected_technique')}</span>
-        </div>
-        <div class="velocity-analysis-item">
-          <span class="velocity-label">Analysis Breakdown</span>
-          <span class="velocity-value">${safeGet(enhancedResponse, "implementation_notes.user's prompt analysis")}</span>
+  <div class="velocity-analysis-container" style="
+        border-radius: 8px;
+        font-family: 'Roboto', sans-serif;
+      ">
+        <button 
+          class="velocity-close-analysis" 
+          aria-label="Close analysis"
+          style="
+            position: absolute;
+            top: 8px; /* Adjusted alignment */
+            right: 10px;
+            background: transparent;
+            border: none;
+            color: #666;
+            font-size: 22px; /* Slightly smaller size */
+            cursor: pointer;
+            line-height: 1;
+            z-index: 10;
+          "
+        >
+          ×
+        </button>
+        <div class="velocity-details-popup">
+          <div class="velocity-analysis-section">
+            <h4 class="velocity-section-title" style="
+              font-size: 18px; /* Increased font size */
+              font-weight: 600;
+              text-align: center; /* Center-aligned heading */
+              color: #2d3748; /* Subtle dark tone */
+              margin-bottom: 10px;
+            ">Enhancement Details:</h4>
+            <div class="velocity-analysis-item" style="
+              margin-bottom: 15px;
+              padding: 8px;/
+              border-radius: 6px;
+              background-color:#00adff3d; /* Light gray background for readability */
+            ">
+              <span class="velocity-label" style="
+                display: block;
+                font-size: 15px;
+                font-weight: 700; /* Bold for labels */
+                color: #4a5568; /* Subtle contrast */
+                margin-bottom: 5px;
+              ">Technique Used</span>
+              <span class="velocity-value" style="
+                display: block;
+                font-size: 14px;
+                color: #2d3748;
+                background-color: #ffffff; /* White background for content */
+                padding: 8px;
+                border-radius: 4px;
+                box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+              ">${safeGet(
+                enhancedResponse,
+                "analysis.technique.selected_technique"
+              )}</span>
+            </div>
+            <div class="velocity-analysis-item" style="
+              padding: 10px;
+              border-radius: 6px;
+              background-color: #00adff3d;
+            ">
+              <span class="velocity-label" style="
+                display: block;
+                font-size: 15px;
+                font-weight: 700;
+                color: #4a5568;
+                margin-bottom: 5px;
+              ">Analysis Breakdown</span>
+              <span class="velocity-value" style="
+                display: block;
+                font-size: 14px;
+                color: #2d3748;
+                background-color: #ffffff;
+                padding: 10px;
+                border-radius: 4px;
+                box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+              ">${safeGet(
+                enhancedResponse,
+                "implementation_notes.user's prompt analysis"
+              )}</span>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
 `;
 
 // Position and show popup
